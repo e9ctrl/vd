@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 	"text/tabwriter"
+	"time"
 
 	"github.com/e9ctrl/vd/lexer"
 	"github.com/e9ctrl/vd/log"
@@ -27,12 +28,14 @@ type streamCommand struct {
 	ackItems []lexer.Item
 }
 
-// Stream device store the information of a se of parameters
+// Stream device store the information of a set of parameters
 type StreamDevice struct {
 	server.Handler
 	param         map[string]parameter.Parameter
 	streamCmd     []*streamCommand
 	outTerminator []byte
+	resDel        time.Duration
+	ackDel        time.Duration
 	splitter      bufio.SplitFunc
 	parser        *parser.Parser
 }
@@ -102,6 +105,8 @@ func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
 		param:         vdfile.Param,
 		streamCmd:     vdfile.StreamCmd,
 		outTerminator: vdfile.OutTerminator,
+		resDel:        vdfile.ResDelay,
+		ackDel:        vdfile.AckDelay,
 		parser:        parser.New(buildCommandPatterns(vdfile.StreamCmd)),
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
@@ -156,17 +161,14 @@ func buildCommandPatterns(scmd []*streamCommand) []parser.CommandPattern {
 func (s StreamDevice) parseTok(tok string) []byte {
 	cmd, err := s.parser.Parse(tok)
 	if err != nil {
-		//fmt.Println("[ERR] ", err.Error())
 		log.ERR(err)
 		return nil
 	}
 
-	//fmt.Println("[•••] ", cmd)
 	log.CMD(cmd)
 	if cmd.Typ == parser.CommandReq {
 		res := s.makeResponse(cmd.Parameter)
 		resStripped, _ := bytes.CutSuffix(res, s.outTerminator)
-		//fmt.Println("[<--] ", string(resStripped), fmt.Sprintf("[% x]", res))
 		log.TX(string(resStripped), res)
 		return res
 	}
@@ -178,7 +180,6 @@ func (s StreamDevice) parseTok(tok string) []byte {
 			if len(opts) > 0 {
 				log.INF("allowed values", opts)
 			}
-			//fmt.Println("[INF] ", "allowed values", s.param[cmd.Parameter].Opts())
 			return []byte(nil)
 		}
 		val := s.param[cmd.Parameter].Value()
@@ -186,7 +187,6 @@ func (s StreamDevice) parseTok(tok string) []byte {
 		ackStripped, _ := bytes.CutSuffix(ack, s.outTerminator)
 
 		log.TX(string(ackStripped), ack)
-		//fmt.Println("[<--] ", string(ackStripped), fmt.Sprintf("[% x]", ack))
 		return ack
 	}
 	return nil
@@ -216,6 +216,7 @@ func (s StreamDevice) makeResponse(param string) []byte {
 	val := s.param[p.Param].Value()
 	out := s.constructOutput(p.resItems, val)
 	out += string(s.outTerminator)
+	time.Sleep(s.resDel)
 	return []byte(out)
 }
 
@@ -223,6 +224,7 @@ func (s StreamDevice) makeAck(param string, value any) []byte {
 	p := s.findStreamCommand(param)
 	out := s.constructOutput(p.ackItems, value)
 	out += string(s.outTerminator)
+	time.Sleep(s.ackDel)
 	return []byte(out)
 }
 
@@ -233,7 +235,6 @@ func (s StreamDevice) Handle(cmd []byte) []byte {
 
 	var buffer []byte
 	for scanner.Scan() {
-		//fmt.Println("[-->] ", scanner.Text(), fmt.Sprintf("[% x]", cmd))
 		log.RX(scanner.Text(), cmd)
 		buffer = append(buffer, s.parseTok(scanner.Text())...)
 	}
