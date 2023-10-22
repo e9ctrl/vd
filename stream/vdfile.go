@@ -2,6 +2,7 @@ package stream
 
 import (
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/e9ctrl/vd/lexer"
@@ -11,6 +12,11 @@ import (
 type terminators struct {
 	InTerminator  string `toml:"intterm"`
 	OutTerminator string `toml:"outterm"`
+}
+
+type delays struct {
+	ResDel string `toml:"resdel,omitempty"`
+	AckDel string `toml:"ackdel,omitempty"`
 }
 
 type configParameter struct {
@@ -26,6 +32,7 @@ type configParameter struct {
 
 type config struct {
 	Term   terminators       `toml:"terminators"`
+	Dels   delays            `toml:"delays,omitempty"`
 	Params []configParameter `toml:"parameter"`
 }
 
@@ -33,6 +40,8 @@ type config struct {
 type VDFile struct {
 	InTerminator  []byte
 	OutTerminator []byte
+	ResDelay      time.Duration
+	AckDelay      time.Duration
 	Param         map[string]parameter.Parameter
 	StreamCmd     []*streamCommand
 }
@@ -74,8 +83,22 @@ func ReadVDFile(path string) (*VDFile, error) {
 
 	vdfile.InTerminator = parseTerminator(config.Term.InTerminator)
 	vdfile.OutTerminator = parseTerminator(config.Term.OutTerminator)
+	vdfile.ResDelay = parseDelays(config.Dels.ResDel)
+	vdfile.AckDelay = parseDelays(config.Dels.AckDel)
 
 	return vdfile, nil
+}
+
+func parseDelays(line string) time.Duration {
+	if len(line) == 0 {
+		return 0
+	}
+
+	t, err := time.ParseDuration(line)
+	if err != nil {
+		return 0
+	}
+	return t
 }
 
 func parseTerminator(line string) []byte {
