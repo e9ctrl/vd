@@ -3,6 +3,7 @@ package stream
 import (
 	"bytes"
 	"os"
+	"time"
 
 	"github.com/e9ctrl/vd/lexer"
 	"github.com/e9ctrl/vd/parameter"
@@ -285,5 +286,79 @@ func TestConstructOutput(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestGetDelay(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		global time.Duration
+		single time.Duration
+		exp    time.Duration
+	}{
+		{"both 0", 0, 0, 0},
+		{"only global", 4 * time.Second, 0, 4 * time.Second},
+		{"only single", 0, 10 * time.Second, 10 * time.Second},
+		{"both set", 5 * time.Second, 10 * time.Second, 10 * time.Second},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := getDelay(tt.global, tt.single)
+			if res != tt.exp {
+				t.Errorf("exp: %v got: %v", tt.exp, res)
+			}
+		})
+	}
+}
+
+func TestMakeResponse(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		param string
+		exp   []byte
+	}{
+		{"current param", "current", []byte("CUR 50\r\n")},
+		{"voltage paran", "voltage", []byte("VOLT 5.342\r\n")},
+		{"psi parma", "psi", []byte("PSI 24.10\r\n")},
+		{"max param", "max", []byte("ch1 max24.20\r\n")},
+		{"version param", "version", []byte("v1.0.0\r\n")},
+		{"wrong param", "test", []byte(nil)},
+		{"empty param", "", []byte(nil)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := dev.makeResponse(tt.param)
+			if !bytes.Equal(res, tt.exp) {
+				t.Errorf("%s: exp resp: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
+			}
+		})
+	}
+}
+
+func TestAckResponse(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		param string
+		val   any
+		exp   []byte
+	}{
+		{"current param", "current", "30", []byte("OK\r\n")},
+		{"voltage param", "voltage", 2.367, []byte("VOLT 2.367 OK\r\n")},
+		{"voltage param empty value", "voltage", nil, []byte(nil)},
+		{"psi param", "psi", 24.56, []byte("PSI 24.56 OK\r\n")},
+		{"param without ack", "version", nil, []byte(nil)},
+		{"wrong param", "test", "20", []byte(nil)},
+		{"empty param", "", "20", []byte(nil)},
+		{"empty value", "current", nil, []byte(nil)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := dev.makeAck(tt.param, tt.val)
+			if !bytes.Equal(res, tt.exp) {
+				t.Errorf("%s: exp ack: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
+			}
+		})
+	}
 }
