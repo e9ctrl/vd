@@ -40,6 +40,7 @@ type StreamDevice struct {
 	globAckDel    time.Duration
 	splitter      bufio.SplitFunc
 	parser        *parser.Parser
+	mismatch      []byte
 }
 
 func supportedCommands(param string, cmd []*streamCommand) (req, res, set, ack bool) {
@@ -72,7 +73,6 @@ func supportedCommands(param string, cmd []*streamCommand) (req, res, set, ack b
 // Create a new stream device given the virtual device configuration file
 func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
 	// parse parameters
-
 	params := []string{}
 	for p := range vdfile.Param {
 		params = append(params, p)
@@ -103,12 +103,20 @@ func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
 	w.Flush()
 	fmt.Println("")
 
+	var globalMismatch []byte
+	if len(vdfile.Mismatch) != 0 {
+		globalMismatch = append(vdfile.Mismatch, vdfile.OutTerminator...)
+	} else {
+		globalMismatch = nil
+	}
+
 	return &StreamDevice{
 		param:         vdfile.Param,
 		streamCmd:     vdfile.StreamCmd,
 		outTerminator: vdfile.OutTerminator,
 		globResDel:    vdfile.ResDelay,
 		globAckDel:    vdfile.AckDelay,
+		mismatch:      globalMismatch,
 		parser:        parser.New(buildCommandPatterns(vdfile.StreamCmd)),
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
@@ -164,7 +172,7 @@ func (s StreamDevice) parseTok(tok string) []byte {
 	cmd, err := s.parser.Parse(tok)
 	if err != nil {
 		log.ERR(err)
-		return nil
+		return s.mismatch
 	}
 
 	log.CMD(cmd)
@@ -182,7 +190,7 @@ func (s StreamDevice) parseTok(tok string) []byte {
 			if len(opts) > 0 {
 				log.INF("allowed values", opts)
 			}
-			return []byte(nil)
+			return s.mismatch
 		}
 		val := s.param[cmd.Parameter].Value()
 		ack := s.makeAck(cmd.Parameter, val)
