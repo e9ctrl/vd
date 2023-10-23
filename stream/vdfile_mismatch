@@ -1,0 +1,66 @@
+# This is toml config file
+
+mismatch = "Wrong query"
+
+[terminators]
+intterm = "CR LF"
+outterm = "CR LF"
+
+[[parameter]]
+name = "current"
+typ = "int"
+req = "CUR?"
+res = "CUR %d"
+set = "CUR %d"
+ack = "OK"
+val = 300
+
+[[parameter]]
+name = "psi"
+typ = "float"
+req = "PSI?"
+res = "PSI %3.2f"
+set = "PSI %3.2f"
+ack = "PSI %3.2f OK"
+val = 3.3
+
+[[parameter]]
+name = "temp"
+typ = "float"
+req = "TEMP?"
+res = "TEMP %.2f"
+val = 2.3
+
+[[parameter]]
+name = "version" 
+typ = "string"
+req = "VER?"
+res = "%s"
+val = "version 1.0"
+
+[[parameter]]
+name = "mode" 
+typ = "string"
+opt = "NORM|SING|BURS|DCYC"
+req = ":PULSE0:MODE?"
+res = "%s"
+set = ":PULSE0:MODE %s"
+ack = "ok"
+val = "NORM"
+
+[[parameter]]
+name = "ff"
+typ = "int"
+req = "FF?"
+res = "%d"
+set = "F%d"
+ack = "ok"
+val = 4
+
+[[parameter]]
+name = "ack"
+typ = "bool"
+req = "ACK?"
+res = "%t"
+set = "ACK %t"
+val = false

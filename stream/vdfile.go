@@ -33,9 +33,10 @@ type configParameter struct {
 }
 
 type config struct {
-	Term   terminators       `toml:"terminators"`
-	Dels   delays            `toml:"delays,omitempty"`
-	Params []configParameter `toml:"parameter"`
+	Term     terminators       `toml:"terminators"`
+	Dels     delays            `toml:"delays,omitempty"`
+	Params   []configParameter `toml:"parameter"`
+	Mismatch string            `toml:"mismatch,omitempty"`
 }
 
 // VDFile struct
@@ -46,6 +47,7 @@ type VDFile struct {
 	AckDelay      time.Duration
 	Param         map[string]parameter.Parameter
 	StreamCmd     []*streamCommand
+	Mismatch      []byte
 }
 
 // Read VDFile from disk from the given filepath
@@ -87,8 +89,10 @@ func ReadVDFile(path string) (*VDFile, error) {
 
 	vdfile.InTerminator = parseTerminator(config.Term.InTerminator)
 	vdfile.OutTerminator = parseTerminator(config.Term.OutTerminator)
+
 	vdfile.ResDelay = parseDelays(config.Dels.ResDelay)
 	vdfile.AckDelay = parseDelays(config.Dels.AckDelay)
+	vdfile.Mismatch = []byte(config.Mismatch)
 
 	return vdfile, nil
 }
