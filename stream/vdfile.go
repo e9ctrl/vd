@@ -20,14 +20,16 @@ type delays struct {
 }
 
 type configParameter struct {
-	Name string `toml:"name"`
-	Typ  string `toml:"typ"`
-	Req  string `toml:"req"`
-	Res  string `toml:"res"`
-	Set  string `toml:"set,omitempty"`
-	Ack  string `toml:"ack,omitempty"`
-	Val  any    `toml:"val"`
-	Opt  string `toml:"opt,omitempty"`
+	Name   string `toml:"name"`
+	Typ    string `toml:"typ"`
+	Req    string `toml:"req"`
+	Res    string `toml:"res"`
+	ResDel string `toml:"resdel,omitempty"`
+	Set    string `toml:"set,omitempty"`
+	Ack    string `toml:"ack,omitempty"`
+	AckDel string `toml:"ackdel,omitempty"`
+	Val    any    `toml:"val"`
+	Opt    string `toml:"opt,omitempty"`
 }
 
 type config struct {
@@ -75,6 +77,8 @@ func ReadVDFile(path string) (*VDFile, error) {
 			resItems: lexer.ItemsFromConfig(param.Res),
 			setItems: lexer.ItemsFromConfig(param.Set),
 			ackItems: lexer.ItemsFromConfig(param.Ack),
+			resDel:   parseDelays(param.ResDel),
+			ackDel:   parseDelays(param.AckDel),
 		}
 
 		vdfile.Param[param.Name] = currentParam

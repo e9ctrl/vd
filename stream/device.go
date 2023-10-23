@@ -26,6 +26,8 @@ type streamCommand struct {
 	resItems []lexer.Item
 	setItems []lexer.Item
 	ackItems []lexer.Item
+	resDel   time.Duration
+	ackDel   time.Duration
 }
 
 // Stream device store the information of a set of parameters
@@ -34,8 +36,8 @@ type StreamDevice struct {
 	param         map[string]parameter.Parameter
 	streamCmd     []*streamCommand
 	outTerminator []byte
-	resDel        time.Duration
-	ackDel        time.Duration
+	globResDel    time.Duration
+	globAckDel    time.Duration
 	splitter      bufio.SplitFunc
 	parser        *parser.Parser
 }
@@ -105,8 +107,8 @@ func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
 		param:         vdfile.Param,
 		streamCmd:     vdfile.StreamCmd,
 		outTerminator: vdfile.OutTerminator,
-		resDel:        vdfile.ResDelay,
-		ackDel:        vdfile.AckDelay,
+		globResDel:    vdfile.ResDelay,
+		globAckDel:    vdfile.AckDelay,
 		parser:        parser.New(buildCommandPatterns(vdfile.StreamCmd)),
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
@@ -213,18 +215,30 @@ func (s StreamDevice) constructOutput(items []lexer.Item, value any) string {
 
 func (s StreamDevice) makeResponse(param string) []byte {
 	p := s.findStreamCommand(param)
+	if p == nil {
+		return []byte(nil)
+	}
 	val := s.param[p.Param].Value()
 	out := s.constructOutput(p.resItems, val)
+	if len(out) == 0 {
+		return []byte(nil)
+	}
 	out += string(s.outTerminator)
-	time.Sleep(s.resDel)
+	time.Sleep(getDelay(s.globResDel, p.resDel))
 	return []byte(out)
 }
 
 func (s StreamDevice) makeAck(param string, value any) []byte {
 	p := s.findStreamCommand(param)
+	if p == nil {
+		return []byte(nil)
+	}
 	out := s.constructOutput(p.ackItems, value)
+	if len(out) == 0 {
+		return []byte(nil)
+	}
 	out += string(s.outTerminator)
-	time.Sleep(s.ackDel)
+	time.Sleep(getDelay(s.globAckDel, p.ackDel))
 	return []byte(out)
 }
 
@@ -272,4 +286,11 @@ func (s StreamDevice) SetParameter(name string, value any) error {
 	}
 
 	return param.SetValue(value)
+}
+
+func getDelay(global, specific time.Duration) time.Duration {
+	if specific > 0 {
+		return specific
+	}
+	return global
 }
