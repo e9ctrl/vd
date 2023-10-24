@@ -55,10 +55,7 @@ func verifyIPAddr(addrStr string) bool {
 	}
 
 	_, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func generateConfig() error {

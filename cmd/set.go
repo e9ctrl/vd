@@ -15,7 +15,7 @@ var setCmd = &cobra.Command{
 	Use:   "set",
 	Args:  cobra.ExactArgs(2),
 	Short: "Command to set value of any parameter",
-	Long: `The command sets value of any paramter. It communicates with REST API of the simulator and using
+	Long: `The command sets value of any parameter. It communicates with REST API of the simulator and using
 HTTP POST verb modifies value of the specified parameter inside the simulator.
 Usage:
 	vd set current 20
