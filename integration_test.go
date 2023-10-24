@@ -14,48 +14,28 @@ import (
 
 const (
 	ADDR1 = "localhost:3333"
+	FILE1 = "stream/vdfile"
 	ADDR2 = "localhost:4444"
+	FILE2 = "stream/vdfile_delays"
+	ADDR3 = "localhost:5555"
+	FILE3 = "stream/vdfile_mismatch"
 )
 
-func setupTestCaseDelays(t *testing.T) func() {
+func setupTestCase(t *testing.T, addr, file string) func() {
 	//read file
-	vdfile, err := stream.ReadVDFile("stream/vdfile_delays")
+	vdfile, err := stream.ReadVDFile(file)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	//read file
+	//create stream device
 	d, err := stream.NewDevice(vdfile)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	s, err := server.New(d, ADDR2)
-	if err != nil {
-		t.Fatalf("error while creating server %v\n", err)
-	}
-
-	s.Start()
-
-	return func() {
-		s.Stop()
-	}
-}
-
-func setupTestCase(t *testing.T) func() {
-	//read file
-	vdfile, err := stream.ReadVDFile("stream/vdfile")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	//read file
-	d, err := stream.NewDevice(vdfile)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	s, err := server.New(d, ADDR1)
+	// create TCP server
+	s, err := server.New(d, addr)
 	if err != nil {
 		t.Fatalf("error while creating server %v\n", err)
 	}
@@ -72,7 +52,7 @@ func TestRun(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t)()
+	defer setupTestCase(t, ADDR1, FILE1)()
 	// connect to server
 	conn, err := net.Dial("tcp", ADDR1)
 	if err != nil {
@@ -121,7 +101,7 @@ func TestRunWrongQueries(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t)()
+	defer setupTestCase(t, ADDR1, FILE1)()
 	// connect to server
 	conn, err := net.Dial("tcp", ADDR1)
 
@@ -169,7 +149,7 @@ func TestRunWithDelays(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCaseDelays(t)()
+	defer setupTestCase(t, ADDR2, FILE2)()
 	// connect to server
 	conn, err := net.Dial("tcp", ADDR2)
 	if err != nil {
@@ -208,6 +188,59 @@ func TestRunWithDelays(t *testing.T) {
 			}
 			if elapsed >= tt.dur && elapsed < tt.dur+5*time.Microsecond {
 				t.Errorf("exp delay around: %v got: %v\n", tt.dur, elapsed)
+			}
+		})
+	}
+}
+
+func TestRunWithMismatch(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+	defer setupTestCase(t, ADDR3, FILE3)()
+	// connect to server
+	conn, err := net.Dial("tcp", ADDR3)
+	if err != nil {
+		t.Fatalf("could not connect to to server: %v\n", err)
+	}
+	defer conn.Close()
+	// set timeout for reading data
+	conn.SetReadDeadline(time.Now().Add(time.Second))
+
+	tests := []struct {
+		name  string
+		input []byte
+		want  []byte
+	}{
+		{"current check", []byte("CUR?\r\n"), []byte("CUR 300\r\n")},
+		{"psi check", []byte("PSI?\r\n"), []byte("PSI 3.30\r\n")},
+		{"version check", []byte("VER?\r\n"), []byte("version 1.0\r\n")},
+		{"mode check", []byte(":PULSE0:MODE?\r\n"), []byte("NORM\r\n")},
+		{"temp check", []byte("TEMP?\r\n"), []byte("TEMP 2.30\r\n")},
+		{"ack check", []byte("ACK?\r\n"), []byte("false\r\n")},
+		{"current set", []byte("CUR 20\r\n"), []byte("OK\r\n")},
+		{"psi set", []byte("PSI 3.46\r\n"), []byte("PSI 3.46 OK\r\n")},
+		{"mode set", []byte(":PULSE0:MODE SING\r\n"), []byte("ok\r\n")},
+		{"wrong parameter", []byte("test"), []byte("Wrong query\r\n")},
+		{"only white characters ", []byte("\t"), []byte("Wrong query\r\n")},
+		{"wrong set value", []byte("PSI test\r\n"), []byte("Wrong query\r\n")},
+		{"wrong mode", []byte(":PULSE0:MODE TEST\r\n"), []byte("Wrong query\r\n")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := conn.Write(tt.input); err != nil {
+				t.Error("could not write payload to TCP server:", err)
+			}
+
+			out := make([]byte, 128)
+			if _, err := conn.Read(out); err == nil {
+				trimmed := bytes.Trim(out, "\x00")
+				if !bytes.Equal(tt.want, trimmed) {
+					t.Errorf("exp resp: %[1]v %[1]s got: %[2]v %[2]s\n", tt.want, trimmed)
+				}
+			} else {
+				t.Error("could not read from connection")
 			}
 		})
 	}

@@ -242,22 +242,27 @@ func TestHandle(t *testing.T) {
 func TestParseTok(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name string
-		tok  string
-		exp  []byte
+		name     string
+		tok      string
+		mismatch []byte
+		exp      []byte
 	}{
-		{"current param", "CUR?", []byte("CUR 50\r\n")},
-		{"psi reps", "PSI?", []byte("PSI 24.10\r\n")},
-		{"get max", "get ch1 max?", []byte("ch1 max24.20\r\n")},
-		{"wrong cmd", "VER?", []byte(nil)},
-		{"empty token", "", []byte(nil)},
+		{"current param", "CUR?", []byte(nil), []byte("CUR 50\r\n")},
+		{"psi reps", "PSI?", []byte(nil), []byte("PSI 24.10\r\n")},
+		{"get max", "get ch1 max?", []byte(nil), []byte("ch1 max24.20\r\n")},
+		{"wrong cmd", "VER?", []byte(nil), []byte(nil)},
+		{"empty token", "", []byte(nil), []byte(nil)},
+		{"current param with mismatch", "CUR?", []byte("Wrong\r\n"), []byte("CUR 50\r\n")},
+		{"wrong param with mismatch", "Wrong param?", []byte("Wrong\r\n"), []byte("Wrong\r\n")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			dev.mismatch = tt.mismatch
 			res := dev.parseTok(tt.tok)
 			if !bytes.Equal(res, tt.exp) {
-				t.Errorf("%s: exp resp: %[2]s %[3]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
+				t.Errorf("%s: exp resp: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
 			}
+			dev.mismatch = nil
 		})
 	}
 }
