@@ -1,5 +1,5 @@
 [![Latest Release](https://img.shields.io/github/release/e9ctrl/vd.svg?style=flat-square)](https://github.com/e9ctrl/vd/releases/latest)
-[![vd](https://github.com/e9ctrl/vd/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/e9ctrl/vd/actions/workflows/go.yml)
+[![Tests](https://github.com/e9ctrl/vd/actions/workflows/tests.yml/badge.svg)](https://github.com/e9ctrl/vd/actions/workflows/tests.yml)
 [![made-with-Go](https://img.shields.io/badge/Made%20with-Go-1f425f.svg)](https://go.dev/)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Go Report](https://goreportcard.com/badge/github.com/e9ctrl/vd)](https://goreportcard.com/report/github.com/e9ctrl/vd)
