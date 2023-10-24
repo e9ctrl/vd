@@ -35,7 +35,6 @@ func (c *client) GetParameter(param string) (string, error) {
 		return "", fmt.Errorf("API error %s", body)
 	}
 	return string(body), nil
-
 }
 
 func (c *client) SetParameter(param, value string) error {
