@@ -48,7 +48,7 @@ func TestRun(t *testing.T) {
 	conn, err := net.Dial("tcp", ADDR)
 
 	if err != nil {
-		t.Fatalf("could not connec to to server: %v\n", err)
+		t.Fatalf("could not connect to to server: %v\n", err)
 	}
 	defer conn.Close()
 	// set timeout for reading data
@@ -97,7 +97,7 @@ func TestRunWrongQueries(t *testing.T) {
 	conn, err := net.Dial("tcp", ADDR)
 
 	if err != nil {
-		t.Fatalf("could not connec to to server: %v\n", err)
+		t.Fatalf("could not connect to to server: %v\n", err)
 	}
 	defer conn.Close()
 	// set timeout for reading data
