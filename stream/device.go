@@ -288,6 +288,69 @@ func (s StreamDevice) SetParameter(name string, value any) error {
 	return param.SetValue(value)
 }
 
+func (s StreamDevice) GetGlobDel(typ string) (time.Duration, error) {
+	switch typ {
+	case "res":
+		return s.globResDel, nil
+	case "ack":
+		return s.globAckDel, nil
+	default:
+		return 0, fmt.Errorf("delay %s not found", typ)
+	}
+}
+
+func (s *StreamDevice) SetGlobDel(typ, val string) error {
+	del, err := time.ParseDuration(val)
+	if err != nil {
+		return err
+	}
+	switch typ {
+	case "res":
+		s.globResDel = del
+	case "ack":
+		s.globAckDel = del
+	default:
+		return fmt.Errorf("delay %s not found", typ)
+	}
+	return nil
+}
+
+func (s StreamDevice) GetDel(typ, param string) (time.Duration, error) {
+	p := s.findStreamCommand(param)
+	if p == nil {
+		return 0, fmt.Errorf("param %s not found", param)
+	}
+	switch typ {
+	case "res":
+		return p.resDel, nil
+	case "ack":
+		return p.ackDel, nil
+	default:
+		return 0, fmt.Errorf("delay %s not found", typ)
+	}
+	return 0, nil
+}
+
+func (s *StreamDevice) SetDel(typ, param, val string) error {
+	p := s.findStreamCommand(param)
+	if p == nil {
+		return fmt.Errorf("param %s not found", param)
+	}
+	del, err := time.ParseDuration(val)
+	if err != nil {
+		return err
+	}
+	switch typ {
+	case "res":
+		p.resDel = del
+	case "ack":
+		p.ackDel = del
+	default:
+		return fmt.Errorf("delay %s not found", typ)
+	}
+	return nil
+}
+
 func getDelay(global, specific time.Duration) time.Duration {
 	if specific > 0 {
 		return specific
