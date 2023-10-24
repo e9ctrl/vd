@@ -1,0 +1,51 @@
+name: Tests
+
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "*" ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: 'go.mod'
+      - name: Install test tools
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+      - name: Linting and code verification
+        run: make audit
+      - name: Testing
+        run: make tests
+  badges:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: 'go.mod'
+      - name: generate test generate coverage
+        run: go test ./... -coverprofile=./cover.out
+      - name: check test coverage
+        id: coverage
+        uses: vladopajic/go-test-coverage@v2
+        with:
+          profile: cover.out
+          local-prefix: github.com/e9ctrl/vd
+      - name: make coverage badge
+        uses: action-badges/core@0.2.2
+        if: contains(github.ref, 'main')
+        with:
+          label: coverage
+          message: ${{ steps.coverage.outputs.badge-text }}
+          message-color: ${{ steps.coverage.outputs.badge-color }}
+          file-name: coverage.svg
+          badge-branch: badges
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
