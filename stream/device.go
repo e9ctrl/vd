@@ -328,7 +328,6 @@ func (s StreamDevice) GetDel(typ, param string) (time.Duration, error) {
 	default:
 		return 0, fmt.Errorf("delay %s not found", typ)
 	}
-	return 0, nil
 }
 
 func (s *StreamDevice) SetDel(typ, param, val string) error {
