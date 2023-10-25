@@ -44,7 +44,7 @@ Usage:
 
 func init() {
 	rootCmd.AddCommand(getCmd)
-	getCmd.Flags().StringP("apiAddr", "", "127.0.0.1:8080", "VD HTTP API address")
+	getCmd.PersistentFlags().StringP("apiAddr", "", "127.0.0.1:8080", "VD HTTP API address")
 	viper.AutomaticEnv()
 	viper.BindPFlag("apiAddr", getCmd.Flags().Lookup("apiAddr"))
 	viper.BindEnv("apiAddr", "VD_API_ADDR")
