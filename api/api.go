@@ -46,7 +46,7 @@ func (a *api) getGlobDel(w http.ResponseWriter, r *http.Request) {
 	log.API("get delay", typ)
 	// Return the value as plain text
 	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(fmt.Sprintf("%s", del)))
+	w.Write([]byte(del.String()))
 }
 
 func (a *api) setGlobDel(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +104,7 @@ func (a *api) getDel(w http.ResponseWriter, r *http.Request) {
 	log.API("get delay", typ, "of", param)
 	// Return the value as plain text
 	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(fmt.Sprintf("%s", del)))
+	w.Write([]byte(del.String()))
 }
 
 func (a *api) setDel(w http.ResponseWriter, r *http.Request) {
