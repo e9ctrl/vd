@@ -252,8 +252,8 @@ func TestParseTok(t *testing.T) {
 		{"get max", "get ch1 max?", []byte(nil), []byte("ch1 max24.20\r\n")},
 		{"wrong cmd", "VER?", []byte(nil), []byte(nil)},
 		{"empty token", "", []byte(nil), []byte(nil)},
-		{"current param with mismatch", "CUR?", []byte("Wrong\r\n"), []byte("CUR 50\r\n")},
-		{"wrong param with mismatch", "Wrong param?", []byte("Wrong\r\n"), []byte("Wrong\r\n")},
+		{"current param with mismatch", "CUR?", []byte("Wrong"), []byte("CUR 50\r\n")},
+		{"wrong param with mismatch", "Wrong param?", []byte("Wrong"), []byte("Wrong\r\n")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

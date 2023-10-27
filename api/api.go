@@ -17,6 +17,8 @@ type Device interface {
 	SetGlobDel(typ string, val string) error
 	GetDel(typ string, param string) (time.Duration, error)
 	SetDel(typ string, param string, val string) error
+	GetMismatch() []byte
+	SetMismatch(string) error
 }
 
 type api struct {
@@ -34,32 +36,25 @@ func NewHTTP(d Device, addr string) *api {
 	}
 }
 
-func (a *api) getGlobDel(w http.ResponseWriter, r *http.Request) {
-	typ := chi.URLParam(r, "type")
+func (a *api) getMismatch(w http.ResponseWriter, r *http.Request) {
+	value := a.d.GetMismatch()
 
-	del, err := a.d.GetGlobDel(typ)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s", err)
-		return
-	}
-	log.API("get delay", typ)
-	// Return the value as plain text
+	log.API("get mismatch")
 	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(del.String()))
+	w.Write(value)
 }
 
-func (a *api) setGlobDel(w http.ResponseWriter, r *http.Request) {
-	typ := chi.URLParam(r, "type")
+func (a *api) setMismatch(w http.ResponseWriter, r *http.Request) {
 	value := chi.URLParam(r, "value")
 
-	err := a.d.SetGlobDel(typ, value)
+	err := a.d.SetMismatch(value)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.API("set delay", typ, "to", value)
-	w.Write([]byte("Delay set successfully"))
+
+	log.API("set mismatch to", value)
+	w.Write([]byte("Mismatch set successfully"))
 }
 
 func (a *api) getParameter(w http.ResponseWriter, r *http.Request) {
@@ -71,8 +66,8 @@ func (a *api) getParameter(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Error: %s", err)
 		return
 	}
+
 	log.API("get", param)
-	// Return the value as plain text
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("%v", value)))
 }
@@ -86,8 +81,38 @@ func (a *api) setParameter(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	log.API("set", param, "to", value)
 	w.Write([]byte("Parameter set successfully"))
+}
+
+func (a *api) getGlobDel(w http.ResponseWriter, r *http.Request) {
+	typ := chi.URLParam(r, "type")
+
+	del, err := a.d.GetGlobDel(typ)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error: %s", err)
+		return
+	}
+
+	log.API("get delay", typ)
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(del.String()))
+}
+
+func (a *api) setGlobDel(w http.ResponseWriter, r *http.Request) {
+	typ := chi.URLParam(r, "type")
+	value := chi.URLParam(r, "value")
+
+	err := a.d.SetGlobDel(typ, value)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.API("set delay", typ, "to", value)
+	w.Write([]byte("Delay set successfully"))
 }
 
 func (a *api) getDel(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +127,6 @@ func (a *api) getDel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.API("get delay", typ, "of", param)
-	// Return the value as plain text
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(del.String()))
 }
@@ -132,6 +156,8 @@ func (a *api) Start() {
 		r.Post("/delay/{type}/{value}", a.setGlobDel)
 		r.Get("/delay/{type}/{param}", a.getDel)
 		r.Post("/delay/{type}/{param}/{value}", a.setDel)
+		r.Get("/mismatch", a.getMismatch)
+		r.Post("/mismatch/{value}", a.setMismatch)
 	})
 
 	fmt.Println("HTTP API listening on ", gchalk.BrightMagenta("http://"+a.Addr))

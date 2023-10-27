@@ -16,6 +16,8 @@ import (
 	"github.com/e9ctrl/vd/server"
 )
 
+const mismatchLimit = 255
+
 type streamCommand struct {
 	Param    string
 	Req      []byte
@@ -103,20 +105,13 @@ func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
 	w.Flush()
 	fmt.Println("")
 
-	var globalMismatch []byte
-	if len(vdfile.Mismatch) != 0 {
-		globalMismatch = append(vdfile.Mismatch, vdfile.OutTerminator...)
-	} else {
-		globalMismatch = nil
-	}
-
 	return &StreamDevice{
 		param:         vdfile.Param,
 		streamCmd:     vdfile.StreamCmd,
 		outTerminator: vdfile.OutTerminator,
 		globResDel:    vdfile.ResDelay,
 		globAckDel:    vdfile.AckDelay,
-		mismatch:      globalMismatch,
+		mismatch:      vdfile.Mismatch,
 		parser:        parser.New(buildCommandPatterns(vdfile.StreamCmd)),
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
@@ -168,11 +163,18 @@ func buildCommandPatterns(scmd []*streamCommand) []parser.CommandPattern {
 	return patterns
 }
 
+func (s StreamDevice) Mismatch() (res []byte) {
+	if len(s.mismatch) != 0 {
+		res = append(s.mismatch, s.outTerminator...)
+	}
+	return
+}
+
 func (s StreamDevice) parseTok(tok string) []byte {
 	cmd, err := s.parser.Parse(tok)
 	if err != nil {
 		log.ERR(err)
-		return s.mismatch
+		return s.Mismatch()
 	}
 
 	log.CMD(cmd)
@@ -190,7 +192,7 @@ func (s StreamDevice) parseTok(tok string) []byte {
 			if len(opts) > 0 {
 				log.INF("allowed values", opts)
 			}
-			return s.mismatch
+			return s.Mismatch()
 		}
 		val := s.param[cmd.Parameter].Value()
 		ack := s.makeAck(cmd.Parameter, val)
@@ -287,7 +289,6 @@ func (s StreamDevice) GetParameter(name string) (any, error) {
 }
 
 func (s StreamDevice) SetParameter(name string, value any) error {
-
 	param, exists := s.param[name]
 	if !exists {
 		return fmt.Errorf("parameter %s not found", name)
@@ -355,6 +356,18 @@ func (s *StreamDevice) SetDel(typ, param, val string) error {
 	default:
 		return fmt.Errorf("delay %s not found", typ)
 	}
+	return nil
+}
+
+func (s StreamDevice) GetMismatch() []byte {
+	return s.mismatch
+}
+
+func (s *StreamDevice) SetMismatch(value string) error {
+	if len(value) > mismatchLimit {
+		return fmt.Errorf("mismatch message: %s - exceeded 255 characters limit", value)
+	}
+	s.mismatch = []byte(value)
 	return nil
 }
 
