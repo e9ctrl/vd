@@ -12,12 +12,13 @@ import (
 
 // setCmd represents the set command
 var setCmd = &cobra.Command{
-	Use:   "set",
+	Use:   "set [parameter name] [value]",
 	Args:  cobra.ExactArgs(2),
 	Short: "Command to set value of any parameter",
-	Long: `The command sets value of any parameter. It communicates with REST API of the simulator and using
+	Long: `The command sets value of any parameter.
+It communicates with REST API of the simulator and using
 HTTP POST verb modifies value of the specified parameter inside the simulator.
-Usage:
+Examples:
 	vd set current 20
 	vd set voltage 3.5 --httpListenAddr 192.168.56.100:9999
 `,

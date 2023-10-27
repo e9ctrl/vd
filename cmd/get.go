@@ -12,11 +12,12 @@ import (
 
 // getCmd represents the get command
 var getCmd = &cobra.Command{
-	Use:   "get",
+	Use:   "get [parameter name]",
 	Args:  cobra.ExactArgs(1),
 	Short: "Command to get value of any parameter",
-	Long: `This command reads value of any parameter. It communicates with REST API of the simulator and using HTTP GET it reads value of the specified parameter.
-Usage:
+	Long: `This command reads value of any parameter.
+It communicates with REST API of the simulator and using HTTP GET it reads value of the specified parameter.
+Examples:
 	vd get current
 	vd get voltage --httpListenAddr 127.0.0.1:7070
 `,
