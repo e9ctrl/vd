@@ -367,3 +367,27 @@ func TestAckResponse(t *testing.T) {
 		})
 	}
 }
+
+func TestMismatch(t *testing.T) {
+	tests := []struct {
+		name     string
+		mismatch []byte
+		exp      []byte
+	}{
+		{"new mismatch", []byte("wrong param"), []byte("wrong param\r\n")},
+		{"nil mismatch", []byte(nil), []byte(nil)},
+		{"empty mismatch", []byte(""), []byte(nil)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			old := dev.mismatch
+			dev.mismatch = tt.mismatch
+			res := dev.Mismatch()
+			if !bytes.Equal(res, tt.exp) {
+				t.Errorf("%s: exp ack: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
+			}
+			dev.mismatch = old
+		})
+	}
+}
