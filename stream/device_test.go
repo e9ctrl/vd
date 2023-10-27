@@ -20,6 +20,7 @@ var myStreamDev = func() *StreamDevice {
 	vd := &VDFile{
 		InTerminator:  []byte("\r\n"),
 		OutTerminator: []byte("\r\n"),
+		Mismatch:      []byte("error"),
 	}
 	d, _ := NewDevice(vd)
 	return d
@@ -28,7 +29,6 @@ var myStreamDev = func() *StreamDevice {
 var dev = myStreamDev()
 
 func TestMain(m *testing.M) {
-
 	cmds := []*streamCommand{}
 	cmd1 := &streamCommand{
 		Param:    "current",
@@ -141,7 +141,6 @@ func TestSupportedCommands(t *testing.T) {
 
 func TestBuildCommandPatterns(t *testing.T) {
 	t.Parallel()
-
 	want := []parser.CommandPattern{
 		parser.CommandPattern{Items: lexer.ItemsFromConfig("CUR?"), Typ: parser.CommandReq, Parameter: "current"},
 		parser.CommandPattern{Items: lexer.ItemsFromConfig("VOLT?"), Typ: parser.CommandReq, Parameter: "voltage"},
@@ -220,14 +219,14 @@ func TestHandle(t *testing.T) {
 		{"current resp", []byte("CUR?\r\n"), []byte("CUR 50\r\n")},
 		{"psi reps", []byte("PSI?\r\n"), []byte("PSI 24.10\r\n")},
 		{"voltage resp", []byte("VOLT?\r\n"), []byte("VOLT 5.342\r\n")},
-		{"wrong cmd", []byte("VER?\r\n"), []byte(nil)},
+		{"wrong cmd", []byte("VER?\r\n"), []byte("error\r\n")},
 		{"empty cmd", []byte(nil), []byte(nil)},
 		{"two cmds", []byte("CUR?\r\nPSI?\r\n"), []byte("CUR 50\r\nPSI 24.10\r\n")},
 		{"three cmds", []byte("CUR?\r\nPSI?\r\nVOLT?\r\n"), []byte("CUR 50\r\nPSI 24.10\r\nVOLT 5.342\r\n")},
-		{"wrong terminator", []byte("CUR?\t"), []byte(nil)},
-		{"wrong terminators two cmds", []byte("CUR?\tVOLT?\t"), []byte(nil)},
-		{"one terminator ok one wrong", []byte("CUR?\rVOLT\r\n"), []byte(nil)},
-		{"one terminator wrong one ok", []byte("CUR?\r\nVOLT\t"), []byte("CUR 50\r\n")},
+		{"wrong terminator", []byte("CUR?\t"), []byte("error\r\n")},
+		{"wrong terminators two cmds", []byte("CUR?\tVOLT?\t"), []byte("error\r\n")},
+		{"one terminator ok one wrong", []byte("CUR?\rVOLT\r\n"), []byte("error\r\n")},
+		{"one terminator wrong one ok", []byte("CUR?\r\nVOLT\t"), []byte("CUR 50\r\nerror\r\n")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -242,33 +241,29 @@ func TestHandle(t *testing.T) {
 func TestParseTok(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name     string
-		tok      string
-		mismatch []byte
-		exp      []byte
+		name string
+		tok  string
+		exp  []byte
 	}{
-		{"current param", "CUR?", []byte(nil), []byte("CUR 50\r\n")},
-		{"psi reps", "PSI?", []byte(nil), []byte("PSI 24.10\r\n")},
-		{"get max", "get ch1 max?", []byte(nil), []byte("ch1 max24.20\r\n")},
-		{"wrong cmd", "VER?", []byte(nil), []byte(nil)},
-		{"empty token", "", []byte(nil), []byte(nil)},
-		{"current param with mismatch", "CUR?", []byte("Wrong"), []byte("CUR 50\r\n")},
-		{"wrong param with mismatch", "Wrong param?", []byte("Wrong"), []byte("Wrong\r\n")},
+		{"current param", "CUR?", []byte("CUR 50\r\n")},
+		{"psi reps", "PSI?", []byte("PSI 24.10\r\n")},
+		{"get max", "get ch1 max?", []byte("ch1 max24.20\r\n")},
+		{"wrong cmd", "VER?", []byte("error\r\n")},
+		{"empty token", "", []byte("error\r\n")},
+		{"current param with mismatch", "CUR?", []byte("CUR 50\r\n")},
+		{"wrong param with mismatch", "Wrong param?", []byte("error\r\n")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dev.mismatch = tt.mismatch
 			res := dev.parseTok(tt.tok)
 			if !bytes.Equal(res, tt.exp) {
 				t.Errorf("%s: exp resp: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
 			}
-			dev.mismatch = nil
 		})
 	}
 }
 
 func TestConstructOutput(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name  string
 		items []lexer.Item
