@@ -15,6 +15,7 @@ const (
 
 type Handler interface {
 	Handle([]byte) []byte
+	Triggered() chan []byte
 }
 
 // Server struct
@@ -43,7 +44,6 @@ func New(device Handler, address string) (*Server, error) {
 
 func (s *Server) acceptConnections() {
 	defer s.wg.Done()
-
 	for {
 		select {
 		case <-s.shutdown:
@@ -60,13 +60,24 @@ func (s *Server) acceptConnections() {
 
 func (s *Server) handleConnections() {
 	defer s.wg.Done()
-
 	for {
 		select {
 		case <-s.shutdown:
 			return
 		case conn := <-s.connection:
 			go s.handleConnection(conn)
+			go s.handleAsync(conn)
+		}
+	}
+}
+
+func (s *Server) handleAsync(conn net.Conn) {
+	for {
+		resp := <-s.d.Triggered()
+		_, writeErr := conn.Write(resp)
+		if writeErr != nil {
+			fmt.Println("error writing response", writeErr.Error())
+			break
 		}
 	}
 }

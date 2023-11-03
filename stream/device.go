@@ -43,6 +43,7 @@ type StreamDevice struct {
 	splitter      bufio.SplitFunc
 	parser        *parser.Parser
 	mismatch      []byte
+	triggered     chan []byte
 }
 
 func supportedCommands(param string, cmd []*streamCommand) (req, res, set, ack bool) {
@@ -67,7 +68,6 @@ func supportedCommands(param string, cmd []*streamCommand) (req, res, set, ack b
 		if len(c.setItems) > 0 {
 			set = true
 		}
-
 	}
 	return
 }
@@ -112,6 +112,7 @@ func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
 		globResDel:    vdfile.ResDelay,
 		globAckDel:    vdfile.AckDelay,
 		mismatch:      vdfile.Mismatch,
+		triggered:     make(chan []byte),
 		parser:        parser.New(buildCommandPatterns(vdfile.StreamCmd)),
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
@@ -252,6 +253,10 @@ func (s StreamDevice) makeAck(param string, value any) []byte {
 	return []byte(out)
 }
 
+func (s *StreamDevice) Triggered() chan []byte {
+	return s.triggered
+}
+
 func (s StreamDevice) Handle(cmd []byte) []byte {
 	r := bytes.NewReader(cmd)
 	scanner := bufio.NewScanner(r)
@@ -368,6 +373,26 @@ func (s *StreamDevice) SetMismatch(value string) error {
 		return fmt.Errorf("mismatch message: %s - exceeded 255 characters limit", value)
 	}
 	s.mismatch = []byte(value)
+	return nil
+}
+
+func (s *StreamDevice) TrigParam(param string) error {
+	p := s.findStreamCommand(param)
+	if p == nil {
+		return nil
+	}
+	val := s.param[p.Param].Value()
+	out := s.constructOutput(p.resItems, val)
+	if len(out) == 0 {
+		return nil
+	}
+	out += string(s.outTerminator)
+
+	select {
+	case s.triggered <- []byte(out):
+	default:
+		return fmt.Errorf("no TCP client available")
+	}
 	return nil
 }
 

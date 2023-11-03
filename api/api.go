@@ -19,6 +19,7 @@ type Device interface {
 	SetDel(typ string, param string, val string) error
 	GetMismatch() []byte
 	SetMismatch(string) error
+	TrigParam(string) error
 }
 
 type api struct {
@@ -146,6 +147,19 @@ func (a *api) setDel(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Delay set successfully"))
 }
 
+func (a *api) triggerParameter(w http.ResponseWriter, r *http.Request) {
+	param := chi.URLParam(r, "param")
+
+	err := a.d.TrigParam(param)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.API("trigger parameter", param)
+	w.Write([]byte("Parameter triggered successfully"))
+}
+
 func (a *api) Start() {
 	r := chi.NewRouter()
 
@@ -158,6 +172,7 @@ func (a *api) Start() {
 		r.Post("/delay/{type}/{param}/{value}", a.setDel)
 		r.Get("/mismatch", a.getMismatch)
 		r.Post("/mismatch/{value}", a.setMismatch)
+		r.Post("/trigger/{param}", a.triggerParameter)
 	})
 
 	fmt.Println("HTTP API listening on ", gchalk.BrightMagenta("http://"+a.Addr))
