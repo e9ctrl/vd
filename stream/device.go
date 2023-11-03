@@ -3,6 +3,7 @@ package stream
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -14,6 +15,11 @@ import (
 	"github.com/e9ctrl/vd/parameter"
 	"github.com/e9ctrl/vd/parser"
 	"github.com/e9ctrl/vd/server"
+)
+
+var (
+	ErrParamNotFound = errors.New("parameter not found")
+	ErrNoClient      = errors.New("no client available")
 )
 
 const mismatchLimit = 255
@@ -379,7 +385,7 @@ func (s *StreamDevice) SetMismatch(value string) error {
 func (s *StreamDevice) TrigParam(param string) error {
 	p := s.findStreamCommand(param)
 	if p == nil {
-		return nil
+		return ErrParamNotFound
 	}
 	val := s.param[p.Param].Value()
 	out := s.constructOutput(p.resItems, val)
@@ -391,7 +397,7 @@ func (s *StreamDevice) TrigParam(param string) error {
 	select {
 	case s.triggered <- []byte(out):
 	default:
-		return fmt.Errorf("no TCP client available")
+		return ErrNoClient
 	}
 	return nil
 }
