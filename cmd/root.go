@@ -56,6 +56,7 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 		}
 
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
 
 		str, err := stream.NewDevice(vdfile)
 		if err != nil {
@@ -71,7 +72,7 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 
 		srv, err := server.New(str, ip)
 		if err != nil {
-			fmt.Printf("Server creation failed %v", err)
+			fmt.Printf("TCP server creation failed %v", err)
 			os.Exit(1)
 		}
 
@@ -83,15 +84,20 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 			fmt.Println("Wrong HTTP address")
 			os.Exit(1)
 		}
-		api := api.NewHTTP(str, addr)
-		go api.Start()
+
+		a := api.NewAPI(str)
+
+		go func() {
+			err = a.Serve(ctx, addr)
+			if err != nil {
+				fmt.Printf("HTTP server failed %v", err)
+				os.Exit(1)
+			}
+		}()
 
 		<-ctx.Done()
 		srv.Stop()
-
-		api.Shutdown(ctx)
-
-		stop()
+		fmt.Println("vd stopped")
 	},
 }
 
