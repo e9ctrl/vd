@@ -10,6 +10,8 @@ import (
 
 const sampleConfig = `# This is vdfile config
 
+mismatch = "Wrong query"
+
 [delays]
 req = "1s"
 res = "1s"
