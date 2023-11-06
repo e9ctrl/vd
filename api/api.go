@@ -7,7 +7,6 @@ import (
 
 	"github.com/e9ctrl/vd/log"
 	"github.com/go-chi/chi/v5"
-	"github.com/jwalton/gchalk"
 )
 
 type Device interface {
@@ -24,17 +23,28 @@ type Device interface {
 
 type api struct {
 	d Device
-	http.Server
 }
 
-func NewHTTP(d Device, addr string) *api {
+func NewAPI(d Device) *api {
+	return &api{d: d}
+}
 
-	return &api{
-		d: d,
-		Server: http.Server{
-			Addr: addr,
-		},
-	}
+func (a *api) routes() http.Handler {
+	r := chi.NewRouter()
+
+	r.Route("/", func(r chi.Router) {
+		r.Get("/{param}", a.getParameter)
+		r.Post("/{param}/{value}", a.setParameter)
+		r.Get("/delay/{type}", a.getGlobDel)
+		r.Post("/delay/{type}/{value}", a.setGlobDel)
+		r.Get("/delay/{type}/{param}", a.getDel)
+		r.Post("/delay/{type}/{param}/{value}", a.setDel)
+		r.Get("/mismatch", a.getMismatch)
+		r.Post("/mismatch/{value}", a.setMismatch)
+		r.Post("/trigger/{param}", a.triggerParameter)
+	})
+
+	return r
 }
 func (a *api) getMismatch(w http.ResponseWriter, r *http.Request) {
 	value := a.d.GetMismatch()
@@ -104,7 +114,8 @@ func (a *api) setParameter(w http.ResponseWriter, r *http.Request) {
 
 	err := a.d.SetParameter(param, value)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error: %s", err)
 		return
 	}
 	log.API("set", param, "to", value)
@@ -135,7 +146,8 @@ func (a *api) setParamDelay(w http.ResponseWriter, r *http.Request) {
 
 	err := a.d.SetParamDelay(param, typ, value)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error: %s", err)
 		return
 	}
 
@@ -148,31 +160,11 @@ func (a *api) trigger(w http.ResponseWriter, r *http.Request) {
 
 	err := a.d.Trigger(param)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error: %s", err)
 		return
 	}
 
 	log.API("triggered parameter", param)
 	w.Write([]byte("Parameter triggered successfully"))
-}
-
-func (a *api) Start() {
-	r := chi.NewRouter()
-
-	r.Route("/", func(r chi.Router) {
-		r.Get("/{param}", a.getParameter)
-		r.Post("/{param}/{value}", a.setParameter)
-		r.Get("/delay/{type}", a.getGlobalDelay)
-		r.Post("/delay/{type}/{value}", a.setGlobalDelay)
-		r.Get("/delay/{type}/{param}", a.getParamDelay)
-		r.Post("/delay/{type}/{param}/{value}", a.setParamDelay)
-		r.Get("/mismatch", a.getMismatch)
-		r.Post("/mismatch/{value}", a.setMismatch)
-		r.Post("/trigger/{param}", a.trigger)
-	})
-
-	fmt.Println("HTTP API listening on ", gchalk.BrightMagenta("http://"+a.Addr))
-
-	a.Handler = r
-	a.ListenAndServe()
 }
