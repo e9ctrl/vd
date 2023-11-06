@@ -33,7 +33,7 @@ Examples:
 		}
 
 		c := api.NewClient(addr)
-		res, err := c.GetParameter("mismatch")
+		res, err := c.GetMismatch()
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
