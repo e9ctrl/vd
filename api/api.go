@@ -86,7 +86,8 @@ func (a *api) setGlobalDelay(w http.ResponseWriter, r *http.Request) {
 
 	err := a.d.SetGlobalDelay(typ, value)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Error: %s", err)
 		return
 	}
 	log.API("set delay", typ, "to", value)
