@@ -12,6 +12,7 @@ var prefixTX = gchalk.BrightGreen("[<--] ")
 var prefixRX = gchalk.BrightYellow("[-->] ")
 var prefixCMD = gchalk.BrightBlue("[•••] ")
 var prefixAPI = gchalk.BrightMagenta("[API] ")
+var prefixDLY = gchalk.BrightCyan("[ 💤] ")
 
 func ERR(msg ...any) {
 	fmt.Println(gchalk.BrightRed(prefixERR), msg)
@@ -23,6 +24,10 @@ func INF(msg ...any) {
 
 func API(msg ...any) {
 	fmt.Println(prefixAPI, msg)
+}
+
+func DLY(msg ...any) {
+	fmt.Println(prefixDLY, msg)
 }
 
 func printWithPrefix(prefix, str string, hex []byte) {
