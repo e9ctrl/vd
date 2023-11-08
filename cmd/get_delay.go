@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/e9ctrl/vd/api"
 	"github.com/spf13/cobra"
@@ -33,19 +34,23 @@ Examples:
 		}
 
 		c := api.NewClient(addr)
-		var param string
-		if len(args) == 1 {
-			param = fmt.Sprintf("delay/%s", args[0])
-		} else {
-			param = fmt.Sprintf("delay/%s/%s", args[0], args[1])
-		}
 
-		res, err := c.GetParameter(param)
-		if err != nil {
-			fmt.Println(err.Error())
+		var t time.Duration
+		switch len(args) {
+		case 1:
+			t, err = c.GetGlobalDelay(args[0])
+		case 2:
+			t, err = c.GetParamDelay(args[0], args[1])
+		default:
+			fmt.Println("Invalid number of arguments.")
 			os.Exit(1)
 		}
-		fmt.Printf("%s\n", res)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("%s\n", t)
 	},
 }
 
