@@ -26,8 +26,8 @@ type streamCommand struct {
 	resItems []lexer.Item
 	setItems []lexer.Item
 	ackItems []lexer.Item
-	resDel   time.Duration
-	ackDel   time.Duration
+	resDelay time.Duration
+	ackDelay time.Duration
 }
 
 // Stream device store the information of a set of parameters
@@ -224,7 +224,7 @@ func (s StreamDevice) makeResponse(param string) []byte {
 		return []byte(nil)
 	}
 	out += string(s.outTerminator)
-	s.delayRes(p.resDel)
+	s.delayRes(p.resDelay)
 	return []byte(out)
 }
 
@@ -243,11 +243,11 @@ func (s StreamDevice) makeAck(param string, value any) []byte {
 }
 
 func (s StreamDevice) delayAck(d time.Duration) {
-	delayOperation(s.globAckDelay, d, "acknowledge")
+	delayOperation(s.globAckDel, d, "acknowledge")
 }
 
 func (s StreamDevice) delayRes(d time.Duration) {
-	delayOperation(s.globResDelay, d, "response")
+	delayOperation(s.globResDel, d, "response")
 }
 
 func delayOperation(g, d time.Duration, op string) {
@@ -317,7 +317,7 @@ func (s StreamDevice) SetParameter(name string, value any) error {
 	return param.SetValue(value)
 }
 
-func (s StreamDevice) GetGlobDel(typ string) (time.Duration, error) {
+func (s StreamDevice) GetGlobalDelay(typ string) (time.Duration, error) {
 	switch typ {
 	case "res":
 		return s.globResDel, nil
@@ -328,7 +328,7 @@ func (s StreamDevice) GetGlobDel(typ string) (time.Duration, error) {
 	}
 }
 
-func (s *StreamDevice) SetGlobDel(typ, val string) error {
+func (s *StreamDevice) SetGlobalDelay(typ, val string) error {
 	del, err := time.ParseDuration(val)
 	if err != nil {
 		return err
@@ -351,9 +351,9 @@ func (s StreamDevice) GetParamDelay(typ, param string) (time.Duration, error) {
 	}
 	switch typ {
 	case "res":
-		return p.resDel, nil
+		return p.resDelay, nil
 	case "ack":
-		return p.ackDel, nil
+		return p.ackDelay, nil
 	default:
 		return 0, fmt.Errorf("delay %s not found", typ)
 	}
@@ -370,9 +370,9 @@ func (s *StreamDevice) SetParamDelay(typ, param, val string) error {
 	}
 	switch typ {
 	case "res":
-		p.resDel = del
+		p.resDelay = del
 	case "ack":
-		p.ackDel = del
+		p.ackDelay = del
 	default:
 		return fmt.Errorf("delay %s not found", typ)
 	}
