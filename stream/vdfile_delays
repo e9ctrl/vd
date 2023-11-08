@@ -4,8 +4,8 @@
 addr = "localhost:9999"
 
 [delays]
-resdel = "1s"
-ackdel = "1s"
+res = "1s"
+ack = "1s"
 
 [terminators]
 intterm = "CR LF"
@@ -16,10 +16,10 @@ name = "current"
 typ = "int"
 req = "CUR?"
 res = "CUR %d"
-resdel = "2s"
+rdl = "2s"
 set = "CUR %d"
 ack = "OK"
-ackdel = "2s"
+adl = "2s"
 val = 300
 
 [[parameter]]
@@ -27,10 +27,10 @@ name = "psi"
 typ = "float"
 req = "PSI?"
 res = "PSI %3.2f"
-resdel = "3s"
+rdl = "3s"
 set = "PSI %3.2f"
 ack = "PSI %3.2f OK"
-ackdel = "3s"
+adl = "3s"
 val = 3.3
 
 [[parameter]]

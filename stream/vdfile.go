@@ -15,21 +15,21 @@ type terminators struct {
 }
 
 type delays struct {
-	ResDel string `toml:"resdel,omitempty"`
-	AckDel string `toml:"ackdel,omitempty"`
+	ResDelay string `toml:"res,omitempty"`
+	AckDelay string `toml:"ack,omitempty"`
 }
 
 type configParameter struct {
-	Name   string `toml:"name"`
-	Typ    string `toml:"typ"`
-	Req    string `toml:"req"`
-	Res    string `toml:"res"`
-	ResDel string `toml:"resdel,omitempty"`
-	Set    string `toml:"set,omitempty"`
-	Ack    string `toml:"ack,omitempty"`
-	AckDel string `toml:"ackdel,omitempty"`
-	Val    any    `toml:"val"`
-	Opt    string `toml:"opt,omitempty"`
+	Name string `toml:"name"`
+	Typ  string `toml:"typ"`
+	Req  string `toml:"req"`
+	Res  string `toml:"res"`
+	Rdl  string `toml:"rdl,omitempty"`
+	Set  string `toml:"set,omitempty"`
+	Ack  string `toml:"ack,omitempty"`
+	Adl  string `toml:"adl,omitempty"`
+	Val  any    `toml:"val"`
+	Opt  string `toml:"opt,omitempty"`
 }
 
 type config struct {
@@ -77,8 +77,8 @@ func ReadVDFile(path string) (*VDFile, error) {
 			resItems: lexer.ItemsFromConfig(param.Res),
 			setItems: lexer.ItemsFromConfig(param.Set),
 			ackItems: lexer.ItemsFromConfig(param.Ack),
-			resDel:   parseDelays(param.ResDel),
-			ackDel:   parseDelays(param.AckDel),
+			resDelay: parseDelays(param.Rdl),
+			ackDelay: parseDelays(param.Adl),
 		}
 
 		vdfile.Param[param.Name] = currentParam
@@ -87,8 +87,8 @@ func ReadVDFile(path string) (*VDFile, error) {
 
 	vdfile.InTerminator = parseTerminator(config.Term.InTerminator)
 	vdfile.OutTerminator = parseTerminator(config.Term.OutTerminator)
-	vdfile.ResDelay = parseDelays(config.Dels.ResDel)
-	vdfile.AckDelay = parseDelays(config.Dels.AckDel)
+	vdfile.ResDelay = parseDelays(config.Dels.ResDelay)
+	vdfile.AckDelay = parseDelays(config.Dels.AckDelay)
 
 	return vdfile, nil
 }
