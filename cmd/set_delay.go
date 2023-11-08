@@ -34,14 +34,13 @@ Examples:
 		}
 
 		c := api.NewClient(addr)
-		var param string
-		if len(args) == 2 {
-			param = fmt.Sprintf("delay/%s", args[0])
-			err = c.SetParameter(param, args[1])
-		} else {
-			param = fmt.Sprintf("delay/%s/%s", args[0], args[1])
-			err = c.SetParameter(param, args[2])
+		switch len(args) {
+		case 2:
+			err = c.SetGlobalDelay(args[0], args[1])
+		case 3:
+			err = c.SetParamDelay(args[0], args[1], args[2])
 		}
+
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
