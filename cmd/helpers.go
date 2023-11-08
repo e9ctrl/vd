@@ -25,7 +25,7 @@ req = "CUR?"
 res = "CUR %d"
 rdl = "1s"
 set = "CUR %d"
-acq = "OK"
+ack = "OK"
 sdl = "100ms"
 val = 300
 
@@ -43,7 +43,7 @@ opt = "NORM|SING|BURS|DCYC"
 req = ":PULSE0:MODE?"
 res = "%s"
 set = ":PULSE0:MODE %s"
-acq = "ok"
+ack = "ok"
 val = "NORM"
 `
 
