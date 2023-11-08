@@ -47,8 +47,10 @@ name = "current"
 type = "int"
 req = "CUR?"
 res = "CUR %d"
+rdl = "1s"
 set = "CUR %d"
 ack = "OK"
+adl = "100ms"
 val = 300
 ```
 
@@ -59,17 +61,25 @@ Here's a breakdown of the configuration:
 * `req`: Client's request to the simulated device to read the value.
 * `res`: The response the simulated device sends to the client for the request.
 * `set`: Client's request to change the parameter value.
+* `rdl`: Response delay with time unit.
 * `ack`: Device's acknowledgment to the set request.
 * `val`: Contains the default value. Note that for int and float, the value should be without quotes.
+* `adl`: Acknowledgment delay with time unit.
 * `opt`: (Optional) Limits the range of values a parameter can take (see below for example of usage).
 
 Below is a sample configuration:
 ```toml
+
+[delays]
+res = "1s"
+ack = "1s"
+
 [[parameter]]
 name = "version"
 type = "string"
 req = "ver?"
 res = "%s"
+rdl = "10s"
 val = "version 1.0"
 
 [[parameter]]
@@ -79,6 +89,7 @@ req = "CUR?"
 res = "CUR %d"
 set = "CUR %d"
 ack = "OK"
+adl = "2s"
 val = 300
 
 [[parameter]]
@@ -100,6 +111,12 @@ set = "MODE %s"
 ack = "ok"
 val = "NORM"
 ```
+
+# Delays
+The `vd` tool enables the introduction of delays when sending responses to requests and acknowledging to set messages. This feature allows you to define custom wait times for the `vd` to hold off on every response and acknowledgment, enhancing the simulation of real-world network conditions or server response times.
+
+For system-wide settings, you should define the delays within a dedicated section at the beginning of the configuration file. If you wish to apply delays to specific parameters only, you can use `rdl` for response delays and `adl` for acknowledgment delays, respectively.
+
 # Installation
 `vd` is supplied as a binary file. Download the appropriate version for your operating system and you are good to go.
 
@@ -123,12 +140,37 @@ To set a new value:
 $ curl -X POST localhost:8080/temperature/36.6
 ```
 
-To make our lifes easier, `vd` comes with a built-in client. You can use it as follows:
+To make our lifes easier, `vd` comes with a built-in client.
+
+To change the value of a parameter, e.g., temperature:
 ```
 $ vd get temperature
 $ vd set temperature 36.6
 ```
 
+To change the global value of response delay:
+```
+$ vd get delay res
+$ vd set delay res 200ms
+```
+
+To change the global value of acknowledgment delay:
+```
+$ vd get delay ack
+$ vd set delay ack 200ms
+```
+
+To change the value of response delay for particular paramter, e.g., temperature:
+```
+$ vd get delay res temperature
+$ vd set delay res temperature 2s
+```
+
+To change the value of acknowledgment delay for particular paramter, e.g., temperature:
+```
+$ vd get delay ack temperature
+$ vd set delay ack temperature 2s
+```
 
 If in doubt, check the help
 ```

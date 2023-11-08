@@ -10,6 +10,10 @@ import (
 
 const sampleConfig = `# This is vdfile config
 
+[delays]
+req = "1s"
+res = "1s"
+
 [terminators]
 intterm = "CR LF"
 outterm = "CR LF"
@@ -19,8 +23,10 @@ name = "current"
 typ = "int"
 req = "CUR?"
 res = "CUR %d"
+rdl = "1s"
 set = "CUR %d"
 acq = "OK"
+sdl = "100ms"
 val = 300
 
 [[parameter]]
