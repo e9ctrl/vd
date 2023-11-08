@@ -224,7 +224,7 @@ func (s StreamDevice) makeResponse(param string) []byte {
 		return []byte(nil)
 	}
 	out += string(s.outTerminator)
-	time.Sleep(getDelay(s.globResDel, p.resDel))
+	s.delayRes(p.resDel)
 	return []byte(out)
 }
 
@@ -238,8 +238,37 @@ func (s StreamDevice) makeAck(param string, value any) []byte {
 		return []byte(nil)
 	}
 	out += string(s.outTerminator)
-	time.Sleep(getDelay(s.globAckDel, p.ackDel))
+	s.delayAck(p.ackDelay)
 	return []byte(out)
+}
+
+func (s StreamDevice) delayAck(d time.Duration) {
+	delayOperation(s.globAckDelay, d, "acknowledge")
+}
+
+func (s StreamDevice) delayRes(d time.Duration) {
+	delayOperation(s.globResDelay, d, "response")
+}
+
+func delayOperation(g, d time.Duration, op string) {
+	t := effectiveDelay(g, d)
+	if t <= 0 {
+		return
+	}
+	log.DLY("delaying", op, "by", t)
+	time.Sleep(t)
+}
+
+func effectiveDelay(g, d time.Duration) time.Duration {
+
+	if d <= 0 {
+		if g <= 0 {
+			return 0
+		}
+		d = g
+	}
+
+	return d
 }
 
 func (s StreamDevice) Handle(cmd []byte) []byte {
@@ -315,7 +344,7 @@ func (s *StreamDevice) SetGlobDel(typ, val string) error {
 	return nil
 }
 
-func (s StreamDevice) GetDel(typ, param string) (time.Duration, error) {
+func (s StreamDevice) GetParamDelay(typ, param string) (time.Duration, error) {
 	p := s.findStreamCommand(param)
 	if p == nil {
 		return 0, fmt.Errorf("param %s not found", param)
@@ -330,7 +359,7 @@ func (s StreamDevice) GetDel(typ, param string) (time.Duration, error) {
 	}
 }
 
-func (s *StreamDevice) SetDel(typ, param, val string) error {
+func (s *StreamDevice) SetParamDelay(typ, param, val string) error {
 	p := s.findStreamCommand(param)
 	if p == nil {
 		return fmt.Errorf("param %s not found", param)
@@ -348,11 +377,4 @@ func (s *StreamDevice) SetDel(typ, param, val string) error {
 		return fmt.Errorf("delay %s not found", typ)
 	}
 	return nil
-}
-
-func getDelay(global, specific time.Duration) time.Duration {
-	if specific > 0 {
-		return specific
-	}
-	return global
 }
