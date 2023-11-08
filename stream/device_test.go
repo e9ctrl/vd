@@ -288,7 +288,7 @@ func TestConstructOutput(t *testing.T) {
 	}
 }
 
-func TestGetDelay(t *testing.T) {
+func TestEffectiveDelay(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name   string
@@ -303,7 +303,7 @@ func TestGetDelay(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res := getDelay(tt.global, tt.single)
+			res := effectiveDelay(tt.global, tt.single)
 			if res != tt.exp {
 				t.Errorf("exp: %v got: %v", tt.exp, res)
 			}
