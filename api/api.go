@@ -28,7 +28,7 @@ type api struct {
 	d Device
 }
 
-func NewAPI(d Device) *api {
+func NewHttpApiServer(d Device) *api {
 	return &api{d: d}
 }
 

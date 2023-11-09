@@ -85,7 +85,7 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 			os.Exit(1)
 		}
 
-		a := api.NewAPI(str)
+		a := api.NewHttpApiServer(str)
 
 		go func() {
 			err = a.Serve(ctx, addr)
