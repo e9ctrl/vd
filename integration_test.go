@@ -15,9 +15,10 @@ import (
 const (
 	ADDR1 = "localhost:3333"
 	ADDR2 = "localhost:4444"
+	ADDR3 = "localhost:5555"
 )
 
-func setupTestCaseDelays(t *testing.T) func() {
+func setupTestCaseDelays(t *testing.T, addr string) func() {
 	//read file
 	vdfile, err := stream.ReadVDFile("stream/vdfile_delays")
 	if err != nil {
@@ -30,7 +31,7 @@ func setupTestCaseDelays(t *testing.T) func() {
 		t.Fatal(err)
 	}
 
-	s, err := server.New(d, ADDR2)
+	s, err := server.New(d, addr)
 	if err != nil {
 		t.Fatalf("error while creating server %v\n", err)
 	}
@@ -42,7 +43,7 @@ func setupTestCaseDelays(t *testing.T) func() {
 	}
 }
 
-func setupTestCase(t *testing.T) func() {
+func setupTestCase(t *testing.T, addr string) func() {
 	//read file
 	vdfile, err := stream.ReadVDFile("stream/vdfile")
 	if err != nil {
@@ -55,7 +56,7 @@ func setupTestCase(t *testing.T) func() {
 		t.Fatal(err)
 	}
 
-	s, err := server.New(d, ADDR1)
+	s, err := server.New(d, addr)
 	if err != nil {
 		t.Fatalf("error while creating server %v\n", err)
 	}
@@ -72,7 +73,7 @@ func TestRun(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t)()
+	defer setupTestCase(t, ADDR1)()
 	// connect to server
 	conn, err := net.Dial("tcp", ADDR1)
 	if err != nil {
@@ -121,9 +122,9 @@ func TestRunWrongQueries(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t)()
+	defer setupTestCase(t, ADDR2)()
 	// connect to server
-	conn, err := net.Dial("tcp", ADDR1)
+	conn, err := net.Dial("tcp", ADDR2)
 
 	if err != nil {
 		t.Fatalf("could not connect to to server: %v\n", err)
@@ -169,9 +170,9 @@ func TestRunWithDelays(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCaseDelays(t)()
+	defer setupTestCaseDelays(t, ADDR3)()
 	// connect to server
-	conn, err := net.Dial("tcp", ADDR2)
+	conn, err := net.Dial("tcp", ADDR3)
 	if err != nil {
 		t.Fatalf("could not connect to to server: %v\n", err)
 	}
