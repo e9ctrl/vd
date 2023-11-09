@@ -102,7 +102,7 @@ func (a *api) setMismatch(w http.ResponseWriter, r *http.Request) {
 
 	err := a.d.SetMismatch(value)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		errorHandler(w, err)
 		return
 	}
 
@@ -114,8 +114,7 @@ func (a *api) getGlobalDelay(w http.ResponseWriter, r *http.Request) {
 
 	del, err := a.d.GetGlobalDelay(typ)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s", err)
+		errorHandler(w, err)
 		return
 	}
 	log.API("get delay", typ)
@@ -130,8 +129,7 @@ func (a *api) setGlobalDelay(w http.ResponseWriter, r *http.Request) {
 
 	err := a.d.SetGlobalDelay(typ, value)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s", err)
+		errorHandler(w, err)
 		return
 	}
 	log.API("set delay", typ, "to", value)
@@ -143,8 +141,7 @@ func (a *api) getParameter(w http.ResponseWriter, r *http.Request) {
 
 	value, err := a.d.GetParameter(param)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s", err)
+		errorHandler(w, err)
 		return
 	}
 	log.API("get", param)
@@ -159,8 +156,7 @@ func (a *api) setParameter(w http.ResponseWriter, r *http.Request) {
 
 	err := a.d.SetParameter(param, value)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s", err)
+		errorHandler(w, err)
 		return
 	}
 	log.API("set", param, "to", value)
@@ -173,8 +169,7 @@ func (a *api) getParamDelay(w http.ResponseWriter, r *http.Request) {
 
 	del, err := a.d.GetParamDelay(param, typ)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s", err)
+		errorHandler(w, err)
 		return
 	}
 
@@ -191,8 +186,7 @@ func (a *api) setParamDelay(w http.ResponseWriter, r *http.Request) {
 
 	err := a.d.SetParamDelay(param, typ, value)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s", err)
+		errorHandler(w, err)
 		return
 	}
 
@@ -205,11 +199,15 @@ func (a *api) trigger(w http.ResponseWriter, r *http.Request) {
 
 	err := a.d.Trigger(param)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Error: %s", err)
+		errorHandler(w, err)
 		return
 	}
 
 	log.API("triggered parameter", param)
 	w.Write([]byte("Parameter triggered successfully"))
+}
+
+func errorHandler(w http.ResponseWriter, err error) {
+	w.WriteHeader(http.StatusInternalServerError)
+	fmt.Fprintf(w, "Error: %s", err)
 }
