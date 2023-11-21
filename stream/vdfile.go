@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/e9ctrl/vd/lexer"
 	"github.com/e9ctrl/vd/parameter"
+	"github.com/e9ctrl/vd/structs"
 )
 
 type terminators struct {
@@ -34,7 +34,7 @@ type configParameter struct {
 
 type config struct {
 	Term     terminators       `toml:"terminators"`
-	Dels     delays            `toml:"delays,omitempty"`
+	Delays   delays            `toml:"delays,omitempty"`
 	Params   []configParameter `toml:"parameter"`
 	Mismatch string            `toml:"mismatch,omitempty"`
 }
@@ -45,16 +45,14 @@ type VDFile struct {
 	OutTerminator []byte
 	ResDelay      time.Duration
 	AckDelay      time.Duration
-	Param         map[string]parameter.Parameter
-	StreamCmd     []*streamCommand
+	StreamCmd     map[string]*structs.StreamCommand
 	Mismatch      []byte
 }
 
 // Read VDFile from disk from the given filepath
 func ReadVDFile(path string) (*VDFile, error) {
 	vdfile := &VDFile{
-		Param:     make(map[string]parameter.Parameter),
-		StreamCmd: make([]*streamCommand, 0),
+		StreamCmd: make(map[string]*structs.StreamCommand, 0),
 	}
 
 	var config config
@@ -69,29 +67,24 @@ func ReadVDFile(path string) (*VDFile, error) {
 			return nil, err
 		}
 
-		currentCmd := &streamCommand{
-			Param:    param.Name,
+		currentCmd := &structs.StreamCommand{
+			Name:     param.Name,
+			Param:    currentParam,
 			Req:      []byte(param.Req),
 			Res:      []byte(param.Res),
 			Set:      []byte(param.Set),
 			Ack:      []byte(param.Ack),
-			reqItems: lexer.ItemsFromConfig(param.Req),
-			resItems: lexer.ItemsFromConfig(param.Res),
-			setItems: lexer.ItemsFromConfig(param.Set),
-			ackItems: lexer.ItemsFromConfig(param.Ack),
-			resDelay: parseDelays(param.Rdl),
-			ackDelay: parseDelays(param.Adl),
+			ResDelay: parseDelays(param.Rdl),
+			AckDelay: parseDelays(param.Adl),
 		}
 
-		vdfile.Param[param.Name] = currentParam
-		vdfile.StreamCmd = append(vdfile.StreamCmd, currentCmd)
+		vdfile.StreamCmd[param.Name] = currentCmd
 	}
 
 	vdfile.InTerminator = parseTerminator(config.Term.InTerminator)
 	vdfile.OutTerminator = parseTerminator(config.Term.OutTerminator)
-
-	vdfile.ResDelay = parseDelays(config.Dels.ResDelay)
-	vdfile.AckDelay = parseDelays(config.Dels.AckDelay)
+	vdfile.ResDelay = parseDelays(config.Delays.ResDelay)
+	vdfile.AckDelay = parseDelays(config.Delays.AckDelay)
 	vdfile.Mismatch = []byte(config.Mismatch)
 
 	return vdfile, nil

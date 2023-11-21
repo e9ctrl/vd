@@ -1,4 +1,4 @@
-package lexer_test
+package sstream_test
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/e9ctrl/vd/lexer"
+	lexer "github.com/e9ctrl/vd/protocols/sstream"
 )
 
 var (
