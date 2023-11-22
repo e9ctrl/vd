@@ -70,6 +70,8 @@ Here's a breakdown of the configuration:
 Below is a sample configuration:
 ```toml
 
+mismatch = "Wrong query"
+
 [delays]
 res = "1s"
 ack = "1s"
@@ -116,6 +118,9 @@ val = "NORM"
 The `vd` tool enables the introduction of delays when sending responses to requests and acknowledging to set messages. This feature allows you to define custom wait times for the `vd` to hold off on every response and acknowledgment, enhancing the simulation of real-world network conditions or server response times.
 
 For system-wide settings, you should define the delays within a dedicated section at the beginning of the configuration file. If you wish to apply delays to specific parameters only, you can use `rdl` for response delays and `adl` for acknowledgment delays, respectively.
+
+# Mismatch
+`vd` allows to specify mismatch that is sent back to the client when received string does not match any of the expected commands. It is send back to the client automatically without delay.
 
 # Installation
 `vd` is supplied as a binary file. Download the appropriate version for your operating system and you are good to go.
