@@ -13,6 +13,7 @@ var prefixRX = gchalk.BrightYellow("[-->] ")
 var prefixCMD = gchalk.BrightBlue("[•••] ")
 var prefixAPI = gchalk.BrightMagenta("[API] ")
 var prefixDLY = gchalk.BrightCyan("[ 💤] ")
+var prefixMSM = gchalk.BrightRed("[MSM] ")
 
 func ERR(msg ...any) {
 	fmt.Println(gchalk.BrightRed(prefixERR), msg)
@@ -24,6 +25,10 @@ func INF(msg ...any) {
 
 func API(msg ...any) {
 	fmt.Println(prefixAPI, msg)
+}
+
+func MSM(msg ...any) {
+	fmt.Println(prefixMSM, "[returning mismatch]", msg)
 }
 
 func DLY(msg ...any) {
