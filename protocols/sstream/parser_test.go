@@ -162,15 +162,15 @@ func TestBuildCommandPatterns(t *testing.T) {
 	cmds[cmd5.Name] = cmd5
 
 	want := []CommandPattern{
-		CommandPattern{Items: ItemsFromConfig("CUR?"), Typ: structs.CommandReq, Parameter: "current"},
-		CommandPattern{Items: ItemsFromConfig("VOLT?"), Typ: structs.CommandReq, Parameter: "voltage"},
-		CommandPattern{Items: ItemsFromConfig("PSI?"), Typ: structs.CommandReq, Parameter: "psi"},
-		CommandPattern{Items: ItemsFromConfig("CUR %d"), Typ: structs.CommandSet, Parameter: "current"},
-		CommandPattern{Items: ItemsFromConfig("PSI %3.2f"), Typ: structs.CommandSet, Parameter: "psi"},
-		CommandPattern{Items: ItemsFromConfig("VOLT %.3f"), Typ: structs.CommandSet, Parameter: "voltage"},
-		CommandPattern{Items: ItemsFromConfig("set ch1 max%2.2f"), Typ: structs.CommandSet, Parameter: "max"},
-		CommandPattern{Items: ItemsFromConfig("get ch1 max?"), Typ: structs.CommandReq, Parameter: "max"},
-		CommandPattern{Items: ItemsFromConfig("ver?"), Typ: structs.CommandReq, Parameter: "version"},
+		{Items: ItemsFromConfig("CUR?"), Typ: structs.CommandReq, Parameter: "current"},
+		{Items: ItemsFromConfig("VOLT?"), Typ: structs.CommandReq, Parameter: "voltage"},
+		{Items: ItemsFromConfig("PSI?"), Typ: structs.CommandReq, Parameter: "psi"},
+		{Items: ItemsFromConfig("CUR %d"), Typ: structs.CommandSet, Parameter: "current"},
+		{Items: ItemsFromConfig("PSI %3.2f"), Typ: structs.CommandSet, Parameter: "psi"},
+		{Items: ItemsFromConfig("VOLT %.3f"), Typ: structs.CommandSet, Parameter: "voltage"},
+		{Items: ItemsFromConfig("set ch1 max%2.2f"), Typ: structs.CommandSet, Parameter: "max"},
+		{Items: ItemsFromConfig("get ch1 max?"), Typ: structs.CommandReq, Parameter: "max"},
+		{Items: ItemsFromConfig("ver?"), Typ: structs.CommandReq, Parameter: "version"},
 	}
 	got := buildCommandPatterns(cmds)
 	opts := []cmp.Option{
