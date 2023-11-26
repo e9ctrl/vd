@@ -2,6 +2,7 @@ package stream
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"time"
 
@@ -383,6 +384,54 @@ func TestMismatch(t *testing.T) {
 				t.Errorf("%s: exp ack: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
 			}
 			dev.mismatch = old
+		})
+	}
+}
+
+func TestTrigParam(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		param  string
+		exp    []byte
+		expErr error
+	}{
+		{"version param", "version", []byte("v1.0.0\r\n"), nil},
+		{"psi param", "psi", []byte("PSI 24.10\r\n"), nil},
+		{"voltage param", "voltage", []byte("VOLT 5.342\r\n"), nil},
+		{"empty param", "", []byte(nil), ErrParamNotFound},
+		{"wrong param", "test", []byte(nil), ErrParamNotFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			readyChan := make(chan struct{})
+			resultChan := make(chan []byte)
+
+			go func() {
+				// Indicate that the goroutine is ready to read from the channel
+				close(readyChan)
+
+				res := <-dev.Triggered()
+				resultChan <- res
+			}()
+
+			// Wait for the goroutine to signal readiness
+			<-readyChan
+
+			err := dev.Trigger(tt.param)
+
+			select {
+			case res := <-resultChan:
+				if !bytes.Equal(res, tt.exp) {
+					t.Errorf("%s: exp ack: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
+				}
+			case <-time.After(2 * time.Second):
+				if !errors.Is(err, tt.expErr) {
+					t.Errorf("Timeout: Goroutine did not complete in time.")
+					t.Errorf("exp error: %v got: %v", tt.expErr, err)
+				}
+			}
 		})
 	}
 }

@@ -3,6 +3,7 @@ package stream
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -41,7 +42,13 @@ type StreamDevice struct {
 	splitter      bufio.SplitFunc
 	parser        *parser.Parser
 	mismatch      []byte
+	triggered     chan []byte
 }
+
+var (
+	ErrParamNotFound = errors.New("parameter not found")
+	ErrNoClient      = errors.New("no client available")
+)
 
 const mismatchLimit = 255
 
@@ -112,6 +119,7 @@ func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
 		globResDel:    vdfile.ResDelay,
 		globAckDel:    vdfile.AckDelay,
 		mismatch:      vdfile.Mismatch,
+		triggered:     make(chan []byte),
 		parser:        parser.New(buildCommandPatterns(vdfile.StreamCmd)),
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
@@ -142,6 +150,8 @@ func (s StreamDevice) Mismatch() (res []byte) {
 	}
 	return
 }
+
+func (s StreamDevice) Triggered() chan []byte { return s.triggered }
 
 func buildCommandPatterns(scmd []*streamCommand) []parser.CommandPattern {
 	patterns := make([]parser.CommandPattern, 0)
@@ -399,5 +409,25 @@ func (s *StreamDevice) SetMismatch(value string) error {
 		return fmt.Errorf("mismatch message: %s - exceeded 255 characters limit", value)
 	}
 	s.mismatch = []byte(value)
+	return nil
+}
+
+func (s *StreamDevice) Trigger(param string) error {
+	p := s.findStreamCommand(param)
+	if p == nil {
+		return ErrParamNotFound
+	}
+	val := s.param[p.Param].Value()
+	out := s.constructOutput(p.resItems, val)
+	if len(out) == 0 {
+		return nil
+	}
+	out += string(s.outTerminator)
+
+	select {
+	case s.triggered <- []byte(out):
+	default:
+		return ErrNoClient
+	}
 	return nil
 }

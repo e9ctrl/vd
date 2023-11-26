@@ -15,6 +15,7 @@ const (
 
 type Handler interface {
 	Handle([]byte) []byte
+	Triggered() chan []byte
 }
 
 // Server struct
@@ -67,6 +68,18 @@ func (s *Server) handleConnections() {
 			return
 		case conn := <-s.connection:
 			go s.handleConnection(conn)
+			go s.handleAsync(conn)
+		}
+	}
+}
+
+func (s *Server) handleAsync(conn net.Conn) {
+	for {
+		resp := <-s.d.Triggered()
+		_, writeErr := conn.Write(resp)
+		if writeErr != nil {
+			fmt.Println("error writing response", writeErr.Error())
+			break
 		}
 	}
 }
