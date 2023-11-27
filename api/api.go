@@ -79,13 +79,13 @@ func (a *api) routes() http.Handler {
 	r.Route("/", func(r chi.Router) {
 		r.Get("/{param}", a.getParameter)
 		r.Post("/{param}/{value}", a.setParameter)
-		r.Get("/delay/{type}", a.getGlobDel)
-		r.Post("/delay/{type}/{value}", a.setGlobDel)
-		r.Get("/delay/{type}/{param}", a.getDel)
-		r.Post("/delay/{type}/{param}/{value}", a.setDel)
+		r.Get("/delay/{type}", a.getGlobalDelay)
+		r.Post("/delay/{type}/{value}", a.setGlobalDelay)
+		r.Get("/delay/{type}/{param}", a.getParamDelay)
+		r.Post("/delay/{type}/{param}/{value}", a.setParamDelay)
 		r.Get("/mismatch", a.getMismatch)
 		r.Post("/mismatch/{value}", a.setMismatch)
-		r.Post("/trigger/{param}", a.triggerParameter)
+		r.Post("/trigger/{param}", a.trigger)
 	})
 
 	return r
@@ -167,7 +167,7 @@ func (a *api) getParamDelay(w http.ResponseWriter, r *http.Request) {
 	typ := chi.URLParam(r, "type")
 	param := chi.URLParam(r, "param")
 
-	del, err := a.d.GetParamDelay(param, typ)
+	del, err := a.d.GetParamDelay(typ, param)
 	if err != nil {
 		errorHandler(w, err)
 		return
@@ -184,7 +184,7 @@ func (a *api) setParamDelay(w http.ResponseWriter, r *http.Request) {
 	param := chi.URLParam(r, "param")
 	value := chi.URLParam(r, "value")
 
-	err := a.d.SetParamDelay(param, typ, value)
+	err := a.d.SetParamDelay(typ, param, value)
 	if err != nil {
 		errorHandler(w, err)
 		return
