@@ -3,6 +3,7 @@ package stream
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -40,7 +41,16 @@ type StreamDevice struct {
 	globAckDel    time.Duration
 	splitter      bufio.SplitFunc
 	parser        *parser.Parser
+	mismatch      []byte
+	triggered     chan []byte
 }
+
+var (
+	ErrParamNotFound = errors.New("parameter not found")
+	ErrNoClient      = errors.New("no client available")
+)
+
+const mismatchLimit = 255
 
 func supportedCommands(param string, cmd []*streamCommand) (req, res, set, ack bool) {
 
@@ -72,7 +82,6 @@ func supportedCommands(param string, cmd []*streamCommand) (req, res, set, ack b
 // Create a new stream device given the virtual device configuration file
 func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
 	// parse parameters
-
 	params := []string{}
 	for p := range vdfile.Param {
 		params = append(params, p)
@@ -109,6 +118,8 @@ func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
 		outTerminator: vdfile.OutTerminator,
 		globResDel:    vdfile.ResDelay,
 		globAckDel:    vdfile.AckDelay,
+		mismatch:      vdfile.Mismatch,
+		triggered:     make(chan []byte),
 		parser:        parser.New(buildCommandPatterns(vdfile.StreamCmd)),
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
@@ -131,6 +142,16 @@ func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
 		},
 	}, nil
 }
+func (s StreamDevice) Mismatch() (res []byte) {
+	if len(s.mismatch) != 0 {
+		log.MSM(string(s.mismatch))
+		res = append(s.mismatch, s.outTerminator...)
+		log.TX(string(s.mismatch), res)
+	}
+	return
+}
+
+func (s StreamDevice) Triggered() chan []byte { return s.triggered }
 
 func buildCommandPatterns(scmd []*streamCommand) []parser.CommandPattern {
 	patterns := make([]parser.CommandPattern, 0)
@@ -164,7 +185,7 @@ func (s StreamDevice) parseTok(tok string) []byte {
 	cmd, err := s.parser.Parse(tok)
 	if err != nil {
 		log.ERR(err)
-		return nil
+		return s.Mismatch()
 	}
 
 	log.CMD(cmd)
@@ -182,7 +203,7 @@ func (s StreamDevice) parseTok(tok string) []byte {
 			if len(opts) > 0 {
 				log.INF("allowed values", opts)
 			}
-			return []byte(nil)
+			return s.Mismatch()
 		}
 		val := s.param[cmd.Parameter].Value()
 		ack := s.makeAck(cmd.Parameter, val)
@@ -375,6 +396,38 @@ func (s *StreamDevice) SetParamDelay(typ, param, val string) error {
 		p.ackDelay = del
 	default:
 		return fmt.Errorf("delay %s not found", typ)
+	}
+	return nil
+}
+
+func (s StreamDevice) GetMismatch() []byte {
+	return s.mismatch
+}
+
+func (s *StreamDevice) SetMismatch(value string) error {
+	if len(value) > mismatchLimit {
+		return fmt.Errorf("mismatch message: %s - exceeded 255 characters limit", value)
+	}
+	s.mismatch = []byte(value)
+	return nil
+}
+
+func (s *StreamDevice) Trigger(param string) error {
+	p := s.findStreamCommand(param)
+	if p == nil {
+		return ErrParamNotFound
+	}
+	val := s.param[p.Param].Value()
+	out := s.constructOutput(p.resItems, val)
+	if len(out) == 0 {
+		return nil
+	}
+	out += string(s.outTerminator)
+
+	select {
+	case s.triggered <- []byte(out):
+	default:
+		return ErrNoClient
 	}
 	return nil
 }

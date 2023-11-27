@@ -10,16 +10,16 @@ import (
 	"github.com/spf13/viper"
 )
 
-// getCmd represents the get command
-var getCmd = &cobra.Command{
-	Use:   "get [parameter name]",
+// triggerCmd represents the trigger command
+var triggerCmd = &cobra.Command{
+	Use:   "trigger [parameter name]",
 	Args:  cobra.ExactArgs(1),
-	Short: "Command to get value of any parameter",
-	Long: `This command reads value of any parameter.
-It communicates with REST API of the simulator and using HTTP GET it reads value of the specified parameter.
+	Short: "Command to trigger the sending of the parameter value to the client ",
+	Long: `This commands causes sending the current value of the specified in the
+argument parameter name is sent to the connected TCP client."
 Examples:
-	vd get current
-	vd get voltage --httpListenAddr 127.0.0.1:7070
+	vd trigger current
+	vd trigger voltage --httpListenAddr 127.0.0.1:7070
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		addr, err := cmd.Flags().GetString("apiAddr")
@@ -34,18 +34,18 @@ Examples:
 		}
 
 		c := api.NewClient(addr)
-		res, err := c.GetParameter(args[0])
+		err = c.Trigger(args[0])
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
-		fmt.Printf("%s\n", res)
+		fmt.Println("OK")
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(getCmd)
-	getCmd.PersistentFlags().StringP("apiAddr", "", "127.0.0.1:8080", "VD HTTP API address")
+	rootCmd.AddCommand(triggerCmd)
+	triggerCmd.PersistentFlags().StringP("apiAddr", "", "127.0.0.1:8080", "VD HTTP API address")
 	viper.AutomaticEnv()
 	viper.BindPFlag("apiAddr", getCmd.Flags().Lookup("apiAddr"))
 	viper.BindEnv("apiAddr", "VD_API_ADDR")

@@ -331,7 +331,7 @@ func lexPlaceholder(l *Lexer) StateFn {
 			l.emit(ItemStringValuePlaceholder)
 			return lexStart
 		}
-		in := ".0123456789eEfFdcbtxX"
+		in := ".0123456789gGeEfFdcbtxX"
 		if l.acceptRun(in) {
 			l.emit(ItemNumberValuePlaceholder)
 			return lexStart
