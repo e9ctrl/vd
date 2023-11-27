@@ -372,9 +372,9 @@ func (s StreamDevice) GetParamDelay(typ, param string) (time.Duration, error) {
 	}
 	switch typ {
 	case "res":
-		return p.resDelay, nil
+		return effectiveDelay(s.globResDel, p.resDelay), nil
 	case "ack":
-		return p.ackDelay, nil
+		return effectiveDelay(s.globResDel, p.ackDelay), nil
 	default:
 		return 0, fmt.Errorf("delay %s not found", typ)
 	}
