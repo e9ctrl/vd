@@ -19,6 +19,7 @@ const (
 	FILE2 = "stream/vdfile_delays"
 	ADDR3 = "localhost:5555"
 	FILE3 = "stream/vdfile_mismatch"
+	ADDR4 = "localhost:6666"
 )
 
 func setupTestCase(t *testing.T, addr, file string) func() {
@@ -101,9 +102,9 @@ func TestRunWrongQueries(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t, ADDR1, FILE1)()
+	defer setupTestCase(t, ADDR2, FILE1)()
 	// connect to server
-	conn, err := net.Dial("tcp", ADDR1)
+	conn, err := net.Dial("tcp", ADDR2)
 
 	if err != nil {
 		t.Fatalf("could not connect to to server: %v\n", err)
@@ -149,9 +150,9 @@ func TestRunWithDelays(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t, ADDR2, FILE2)()
+	defer setupTestCase(t, ADDR3, FILE2)()
 	// connect to server
-	conn, err := net.Dial("tcp", ADDR2)
+	conn, err := net.Dial("tcp", ADDR3)
 	if err != nil {
 		t.Fatalf("could not connect to to server: %v\n", err)
 	}
@@ -198,9 +199,9 @@ func TestRunWithMismatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t, ADDR3, FILE3)()
+	defer setupTestCase(t, ADDR4, FILE3)()
 	// connect to server
-	conn, err := net.Dial("tcp", ADDR3)
+	conn, err := net.Dial("tcp", ADDR4)
 	if err != nil {
 		t.Fatalf("could not connect to to server: %v\n", err)
 	}
