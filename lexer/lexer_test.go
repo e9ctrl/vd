@@ -16,7 +16,7 @@ var (
 	testInput4 = "test,test"
 	testInput5 = "test {{"
 	testInput6 = "%f test"
-	testInput7 = "%5c %3.2f %2d %5.3f %8.4f %s %04d %2.5e %03X"
+	testInput7 = "%5c %3.2f %2d %5.3f %8.4f %s,%04d %2.5e %03X"
 )
 
 func TestNewLexer(t *testing.T) {
@@ -291,7 +291,6 @@ func TestItemStringError(t *testing.T) {
 	}
 }
 
-// testInput7 = "%5c %3.2f %2d %5.3f %8.4f %10.5s %6.4s %04d %3.2e %04X"
 func TestPlaceholders(t *testing.T) {
 	t.Parallel()
 	l := lexer.NewConfig(testInput7)
@@ -342,8 +341,8 @@ func TestPlaceholders(t *testing.T) {
 	if items[10].Type() != lexer.ItemStringValuePlaceholder {
 		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemStringValuePlaceholder, items[10].Type())
 	}
-	if items[11].Type() != lexer.ItemWhiteSpace {
-		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemWhiteSpace, items[11].Type())
+	if items[11].Type() != lexer.ItemCommand {
+		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemCommand, items[11].Type())
 	}
 	if items[12].Type() != lexer.ItemNumberValuePlaceholder {
 		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemNumberValuePlaceholder, items[12].Type())
