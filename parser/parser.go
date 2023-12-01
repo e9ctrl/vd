@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/e9ctrl/vd/lexer"
@@ -54,6 +55,9 @@ func (c Command) String() string {
 }
 
 func New(patterns []CommandPattern) *Parser {
+	sort.Slice(patterns, func(i, j int) bool {
+		return len(patterns[i].Items) > len(patterns[j].Items)
+	})
 	return &Parser{
 		commandPatterns: patterns,
 	}
