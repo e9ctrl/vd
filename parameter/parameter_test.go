@@ -79,6 +79,12 @@ func TestConvertStringToVal(t *testing.T) {
 		{"convert float32", "50.0", reflect.Float32, float32(50)},
 		{"convert float64", "50.0", reflect.Float64, float64(50)},
 		{"convert bool", "true", reflect.Bool, true},
+		{"convert hex int64", "0xFF", reflect.Int64, int64(255)},
+		{"convert hex wihtout 0x int64", "FF", reflect.Int64, int64(255)},
+		{"convert hex int32", "0xFF", reflect.Int32, int32(255)},
+		{"convert hex without 0x int32", "FF", reflect.Int32, int32(255)},
+		{"convert hex int", "0xFF", reflect.Int, 255},
+		{"convert hex without 0x int", "FF", reflect.Int, 255},
 	}
 
 	for _, tt := range tests {

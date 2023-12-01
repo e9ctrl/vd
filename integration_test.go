@@ -77,6 +77,10 @@ func TestRun(t *testing.T) {
 		{"current set", []byte("CUR 20\r\n"), []byte("OK\r\n")},
 		{"psi set", []byte("PSI 3.46\r\n"), []byte("PSI 3.46 OK\r\n")},
 		{"mode set", []byte(":PULSE0:MODE SING\r\n"), []byte("ok\r\n")},
+		{"hex check", []byte("HEX?\r\n"), []byte("0x0FF\r\n")},
+		{"hex 0 check", []byte("HEX0?\r\n"), []byte("0FF\r\n")},
+		{"set hex", []byte("HEX 0x03F\r\n"), []byte("HEX 0x03F\r\n")},
+		{"set hex 0", []byte("HEX0 ABC\r\n"), []byte("ABC\r\n")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -123,6 +127,7 @@ func TestRunWrongQueries(t *testing.T) {
 		{"psi wrong set", []byte("PSI test\n")},
 		{"psi wrong int", []byte("PSI 24\n")},
 		{"mode wrong set", []byte(":PULSE0:MODE TEST\n")},
+		{"set wrong hex", []byte("HEX 12.45\n")},
 		{"ack wrong set", []byte("ACK test\n")},
 		{"unknown param", []byte("TEST?\n")},
 		{"only new line", []byte("\n")},
