@@ -154,6 +154,14 @@ func convertStringToVal[T paramType](typ reflect.Kind, val string) (*T, error) {
 	case reflect.Int:
 		if intVal, err := strconv.Atoi(val); err == nil {
 			return interface{}(&intVal).(*T), nil
+		} else if hexVal, err := strconv.ParseInt(val, 16, 64); err == nil {
+			// for hex that starts with 0x
+			hexValInt := int(hexVal)
+			return interface{}(&hexValInt).(*T), nil
+		} else if hexVal, err := strconv.ParseInt(val, 0, 64); err == nil {
+			// for hex without 0x
+			hexValInt := int(hexVal)
+			return interface{}(&hexValInt).(*T), nil
 		} else {
 			return nil, ErrWrongIntVal
 		}
@@ -161,12 +169,26 @@ func convertStringToVal[T paramType](typ reflect.Kind, val string) (*T, error) {
 		if intVal, err := strconv.ParseInt(val, 10, 32); err == nil {
 			int32Val := int32(intVal)
 			return interface{}(&int32Val).(*T), nil
+		} else if hexVal, err := strconv.ParseInt(val, 16, 32); err == nil {
+			// for hex that starts with 0x
+			hexVal32 := int32(hexVal)
+			return interface{}(&hexVal32).(*T), nil
+		} else if hexVal, err := strconv.ParseInt(val, 0, 32); err == nil {
+			// for hex without 0x
+			hexVal32 := int32(hexVal)
+			return interface{}(&hexVal32).(*T), nil
 		} else {
 			return nil, ErrWrongIntVal
 		}
 	case reflect.Int64:
 		if intVal, err := strconv.ParseInt(val, 10, 64); err == nil {
 			return interface{}(&intVal).(*T), nil
+		} else if hexVal, err := strconv.ParseInt(val, 0, 64); err == nil {
+			// for hex that starts with 0x
+			return interface{}(&hexVal).(*T), nil
+		} else if hexVal, err := strconv.ParseInt(val, 16, 64); err == nil {
+			// for hex without 0x
+			return interface{}(&hexVal).(*T), nil
 		} else {
 			return nil, ErrWrongIntVal
 		}

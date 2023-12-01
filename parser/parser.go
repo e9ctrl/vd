@@ -145,7 +145,23 @@ func parseNumber(s string) string {
 	digits := "0123456789"
 	if accept("0") && accept("xX") {
 		digits = "0123456789abcdefABCDEF"
+		acceptRun(digits)
+		if isAlphaNumeric(peek()) {
+			return ""
+		}
+		return s[:pos]
 	}
+	// Is it hex without 0x
+	backupPos := pos
+	digits = "0123456789abcdfABCDF"
+	acceptRun(digits)
+	// if something left it means that it was not hex
+	// going back and start again with decimal format
+	if isAlphaNumeric(peek()) {
+		pos = backupPos
+	}
+
+	digits = "0123456789"
 	acceptRun(digits)
 	if accept(".") {
 		acceptRun(digits)
@@ -164,7 +180,7 @@ func parseNumber(s string) string {
 }
 
 func isAlphaNumeric(b byte) bool {
-	return '0' <= b && b <= '9' || 'a' <= b && b <= 'z' || 'A' <= b && b <= 'Z' || b == '_'
+	return '0' <= b && b <= '9' || 'a' <= b && b <= 'z' || 'A' <= b && b <= 'Z' || b == '_' || b == '+' || b == '-'
 }
 
 func parseString(input string) string {
