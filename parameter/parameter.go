@@ -46,21 +46,21 @@ type ConcreteParameter[T paramType] struct {
 // e.g.
 
 // Parameter constructor, the constructor will automatically create the ConcreteParameter instance base on the value passed on in the params
-func New(val any, opt string) (Parameter, error) {
-	switch reflect.TypeOf(val).Kind() {
-	case reflect.Int:
+func New(val any, opt, typ string) (Parameter, error) {
+	switch typ {
+	case "int":
 		return newParameter[int](reflect.Int, val, opt)
-	case reflect.Int32:
+	case "int32":
 		return newParameter[int32](reflect.Int32, val, opt)
-	case reflect.Int64:
+	case "int64":
 		return newParameter[int64](reflect.Int64, val, opt)
-	case reflect.Float32:
+	case "float32":
 		return newParameter[float32](reflect.Float32, val, opt)
-	case reflect.Float64:
+	case "float64":
 		return newParameter[float64](reflect.Float64, val, opt)
-	case reflect.String:
+	case "string":
 		return newParameter[string](reflect.String, val, opt)
-	case reflect.Bool:
+	case "bool":
 		return newParameter[bool](reflect.Bool, val, opt)
 	}
 

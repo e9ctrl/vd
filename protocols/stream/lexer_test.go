@@ -1,4 +1,4 @@
-package lexer_test
+package stream_test
 
 import (
 	"bytes"
@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/e9ctrl/vd/lexer"
+	lexer "github.com/e9ctrl/vd/protocols/stream"
 )
 
 var (
-	testInput1 = "test {{ abc }} %.2f test %s new%2c %3dtest"
+	testInput1 = "test {{ abc }} {%.2f:current} test {%s:string} new{%2c:p3} {%3d:val}test"
 	testInput2 = "test %zx"
 	testInput3 = "{{ name }} '"
 	testInput4 = "test,test"
@@ -24,6 +24,11 @@ func TestNewLexer(t *testing.T) {
 	l := lexer.NewConfig(testInput1)
 	if l == nil {
 		t.Errorf("output lexer should not be nil")
+	}
+
+	items := l.Items()
+	for i, item := range items {
+		t.Logf("[%d] --> %v", i, item)
 	}
 }
 
