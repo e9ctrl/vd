@@ -1,4 +1,4 @@
-package sstream
+package stream
 
 import (
 	"fmt"
@@ -15,8 +15,8 @@ const (
 	dataMode
 )
 
-const leftMeta = "{{"
-const rightMeta = "}}"
+const leftMeta = "{"
+const rightMeta = "}"
 const eof = -1
 
 const (
@@ -131,9 +131,9 @@ func ItemsFromConfig(input string) []Item {
 }
 
 // Convert string input to set of Items data
-func ItemsFromData(input string) []Item {
-	return NewData(input).Items()
-}
+// func ItemsFromData(input string) []Item {
+// 	return NewData(input).Items()
+// }
 
 func (l *Lexer) emit(t itemType) {
 	l.ItemsCh <- Item{t, l.Input[l.start:l.pos]}
@@ -279,20 +279,6 @@ func lexStart(l *Lexer) StateFn {
 	case ch == '%':
 		l.backup()
 		return lexPlaceholder
-	case ch == '{':
-		ch2 := l.peek()
-		if ch2 == '{' {
-			l.backup()
-			return lexLeftMeta
-		}
-		return lexCommand
-	case ch == '}':
-		ch2 := l.peek()
-		if ch2 == '}' {
-			l.backup()
-			return lexRightMeta
-		}
-		return lexCommand
 	default:
 		l.emit(ItemIllegal)
 		return lexStart

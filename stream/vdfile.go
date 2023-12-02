@@ -14,28 +14,24 @@ type terminators struct {
 	OutTerminator string `toml:"outterm"`
 }
 
-type delays struct {
-	ResDelay string `toml:"res,omitempty"`
-	AckDelay string `toml:"ack,omitempty"`
-}
-
 type configParameter struct {
 	Name string `toml:"name"`
 	Typ  string `toml:"typ"`
-	Req  string `toml:"req"`
-	Res  string `toml:"res"`
-	Rdl  string `toml:"rdl,omitempty"`
-	Set  string `toml:"set,omitempty"`
-	Ack  string `toml:"ack,omitempty"`
-	Adl  string `toml:"adl,omitempty"`
 	Val  any    `toml:"val"`
 	Opt  string `toml:"opt,omitempty"`
 }
 
+type configCommand struct {
+	Name string `toml:"name"`
+	Req  string `toml:"req"`
+	Res  string `toml:"res,omitempty"`
+	Dly  string `toml:"dly,omitempty"`
+}
+
 type config struct {
 	Term     terminators       `toml:"terminators"`
-	Delays   delays            `toml:"delays,omitempty"`
 	Params   []configParameter `toml:"parameter"`
+	Commands []configCommand   `toml:"command"`
 	Mismatch string            `toml:"mismatch,omitempty"`
 }
 
@@ -43,16 +39,16 @@ type config struct {
 type VDFile struct {
 	InTerminator  []byte
 	OutTerminator []byte
-	ResDelay      time.Duration
-	AckDelay      time.Duration
-	StreamCmd     map[string]*structs.StreamCommand
+	Params        map[string]parameter.Parameter
+	Commands      map[string]*structs.Command
 	Mismatch      []byte
 }
 
 // Read VDFile from disk from the given filepath
 func ReadVDFile(path string) (*VDFile, error) {
 	vdfile := &VDFile{
-		StreamCmd: make(map[string]*structs.StreamCommand, 0),
+		Params:   make(map[string]parameter.Parameter, 0),
+		Commands: make(map[string]*structs.Command, 0),
 	}
 
 	var config config
@@ -62,29 +58,28 @@ func ReadVDFile(path string) (*VDFile, error) {
 	}
 
 	for _, param := range config.Params {
-		currentParam, err := parameter.New(param.Val, param.Opt)
+		currentParam, err := parameter.New(param.Val, param.Opt, param.Typ)
 		if err != nil {
 			return nil, err
 		}
 
-		currentCmd := &structs.StreamCommand{
-			Name:     param.Name,
-			Param:    currentParam,
-			Req:      []byte(param.Req),
-			Res:      []byte(param.Res),
-			Set:      []byte(param.Set),
-			Ack:      []byte(param.Ack),
-			ResDelay: parseDelays(param.Rdl),
-			AckDelay: parseDelays(param.Adl),
+		vdfile.Params[param.Name] = currentParam
+
+	}
+
+	for _, cmd := range config.Commands {
+		currentCmd := &structs.Command{
+			Name: cmd.Name,
+			Req:  []byte(cmd.Req),
+			Res:  []byte(cmd.Res),
+			Dly:  parseDelays(cmd.Dly),
 		}
 
-		vdfile.StreamCmd[param.Name] = currentCmd
+		vdfile.Commands[cmd.Name] = currentCmd
 	}
 
 	vdfile.InTerminator = parseTerminator(config.Term.InTerminator)
 	vdfile.OutTerminator = parseTerminator(config.Term.OutTerminator)
-	vdfile.ResDelay = parseDelays(config.Delays.ResDelay)
-	vdfile.AckDelay = parseDelays(config.Delays.AckDelay)
 	vdfile.Mismatch = []byte(config.Mismatch)
 
 	return vdfile, nil

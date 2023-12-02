@@ -1,10 +1,9 @@
-package sstream
+package stream
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/e9ctrl/vd/log"
 	"github.com/e9ctrl/vd/protocols"
 	"github.com/e9ctrl/vd/structs"
 )
@@ -13,50 +12,48 @@ import (
 // seq
 type CommandPattern struct {
 	Items     []Item
-	Typ       structs.CommandType
 	Parameter string
 }
 
 type Parser struct {
-	streamCmd       map[string]*structs.StreamCommand
+	streamCmd       map[string]*structs.Command
 	commandPatterns []CommandPattern
 }
 
-func (p *Parser) Parse(input string) ([]byte, structs.CommandType, string) {
-	var cmd Command
-	for _, pattern := range p.commandPatterns {
-		match, val := checkPattern(input, pattern)
-		if !match {
-			continue
-		}
+func (p *Parser) Parse(input string) ([]byte, string) {
+	// var cmd Command
+	// for _, pattern := range p.commandPatterns {
+	// 	match, val := checkPattern(input, pattern)
+	// 	if !match {
+	// 		continue
+	// 	}
 
-		cmd = Command{
-			Typ:       pattern.Typ,
-			Parameter: pattern.Parameter,
-			Value:     val,
-		}
+	// 	cmd = Command{
+	// 		Parameter: pattern.Parameter,
+	// 		Value:     val,
+	// 	}
 
-		log.CMD(cmd)
-		if pattern.Typ == structs.CommandReq {
-			return p.makeResponse(cmd.Parameter), structs.CommandReq, cmd.Parameter
-		}
+	// 	log.CMD(cmd)
+	// 	if pattern.Typ == structs.CommandReq {
+	// 		return p.makeResponse(cmd.Parameter), structs.CommandReq, cmd.Parameter
+	// 	}
 
-		if cmd.Typ == structs.CommandSet {
-			if err := p.streamCmd[cmd.Parameter].Param.SetValue(cmd.Value); err != nil {
-				log.ERR(cmd.Parameter, err.Error())
-				opts := p.streamCmd[cmd.Parameter].Param.Opts()
-				if len(opts) > 0 {
-					log.INF("allowed values", opts)
-				}
-				return nil, structs.CommandSet, cmd.Parameter
-			}
+	// 	if cmd.Typ == structs.CommandSet {
+	// 		if err := p.streamCmd[cmd.Parameter].Param.SetValue(cmd.Value); err != nil {
+	// 			log.ERR(cmd.Parameter, err.Error())
+	// 			opts := p.streamCmd[cmd.Parameter].Param.Opts()
+	// 			if len(opts) > 0 {
+	// 				log.INF("allowed values", opts)
+	// 			}
+	// 			return nil, structs.CommandSet, cmd.Parameter
+	// 		}
 
-			return p.makeAck(cmd.Parameter), structs.CommandSet, cmd.Parameter
-		}
-	}
+	// 		return p.makeAck(cmd.Parameter), structs.CommandSet, cmd.Parameter
+	// 	}
+	// }
 
 	// return Command{}, errors.New("input does not match the command pattern")
-	return nil, structs.CommandUnknown, ""
+	return nil, ""
 }
 
 func constructOutput(items []Item, value any) []byte {
@@ -83,46 +80,45 @@ func constructOutput(items []Item, value any) []byte {
 }
 
 func (p Parser) makeResponse(param string) []byte {
-	if cmd, ok := p.streamCmd[param]; ok {
-		val := cmd.Param.Value()
-		return constructOutput(ItemsFromConfig(string(cmd.Res)), val)
-	}
+	// if cmd, ok := p.streamCmd[param]; ok {
+	// 	val := cmd.Param.Value()
+	// 	return constructOutput(ItemsFromConfig(string(cmd.Res)), val)
+	// }
 
 	return nil
 }
 
 func (p Parser) makeAck(param string) []byte {
-	if cmd, ok := p.streamCmd[param]; ok {
-		val := cmd.Param.Value()
-		return constructOutput(ItemsFromConfig(string(cmd.Ack)), val)
-	}
+	// if cmd, ok := p.streamCmd[param]; ok {
+	// 	val := cmd.Param.Value()
+	// 	return constructOutput(ItemsFromConfig(string(cmd.Ack)), val)
+	// }
 
 	return nil
 }
 
-type Command struct {
-	Typ       structs.CommandType
-	Parameter string
-	Value     any
-}
+// type Command struct {
+// 	Parameter string
+// 	Value     any
+// }
 
-func (c Command) String() string {
-	if c.Typ == structs.CommandReq {
-		return fmt.Sprintf("request for %s", c.Parameter)
-	} else if c.Typ == structs.CommandSet {
-		return fmt.Sprintf("set %s to %s", c.Parameter, c.Value)
-	}
-	return ""
-}
+// func (c Command) String() string {
+// 	if c.Typ == structs.CommandReq {
+// 		return fmt.Sprintf("request for %s", c.Parameter)
+// 	} else if c.Typ == structs.CommandSet {
+// 		return fmt.Sprintf("set %s to %s", c.Parameter, c.Value)
+// 	}
+// 	return ""
+// }
 
-func NewParser(scmd map[string]*structs.StreamCommand) protocols.Parser {
+func NewParser(scmd map[string]*structs.Command) protocols.Parser {
 	return &Parser{
 		commandPatterns: buildCommandPatterns(scmd),
 		streamCmd:       scmd,
 	}
 }
 
-func buildCommandPatterns(scmd map[string]*structs.StreamCommand) []CommandPattern {
+func buildCommandPatterns(scmd map[string]*structs.Command) []CommandPattern {
 	patterns := make([]CommandPattern, 0)
 
 	for _, cmd := range scmd {
@@ -133,23 +129,22 @@ func buildCommandPatterns(scmd map[string]*structs.StreamCommand) []CommandPatte
 		reqItems := ItemsFromConfig(string(cmd.Req))
 		patterns = append(patterns, CommandPattern{
 			Items:     reqItems,
-			Typ:       structs.CommandReq,
 			Parameter: cmd.Name,
 		})
 	}
 
-	for _, cmd := range scmd {
-		if len(cmd.Set) == 0 {
-			continue
-		}
+	// for _, cmd := range scmd {
+	// 	if len(cmd.Set) == 0 {
+	// 		continue
+	// 	}
 
-		setItems := ItemsFromConfig(string(cmd.Set))
-		patterns = append(patterns, CommandPattern{
-			Items:     setItems,
-			Typ:       structs.CommandSet,
-			Parameter: cmd.Name,
-		})
-	}
+	// 	setItems := ItemsFromConfig(string(cmd.Set))
+	// 	patterns = append(patterns, CommandPattern{
+	// 		Items:     setItems,
+	// 		Typ:       structs.CommandSet,
+	// 		Parameter: cmd.Name,
+	// 	})
+	// }
 
 	return patterns
 }

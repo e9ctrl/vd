@@ -1,4 +1,4 @@
-package sstream
+package stream
 
 import (
 	"testing"

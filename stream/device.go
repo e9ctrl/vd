@@ -5,13 +5,12 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"sort"
-	"text/tabwriter"
 	"time"
 
 	"github.com/e9ctrl/vd/log"
+	"github.com/e9ctrl/vd/parameter"
 	"github.com/e9ctrl/vd/protocols"
-	"github.com/e9ctrl/vd/protocols/sstream"
+	"github.com/e9ctrl/vd/protocols/stream"
 	"github.com/e9ctrl/vd/server"
 	"github.com/e9ctrl/vd/structs"
 )
@@ -19,10 +18,9 @@ import (
 // Stream device store the information of a set of parameters
 type StreamDevice struct {
 	server.Handler
-	streamCmd     map[string]*structs.StreamCommand
+	params        map[string]parameter.Parameter
+	commands      map[string]*structs.Command
 	outTerminator []byte
-	globResDelay  time.Duration
-	globAckDelay  time.Duration
 	splitter      bufio.SplitFunc
 	parser        protocols.Parser
 }
@@ -30,44 +28,43 @@ type StreamDevice struct {
 // Create a new stream device given the virtual device configuration file
 func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
 	// parse parameters
-	params := []string{}
-	for p := range vdfile.StreamCmd {
-		params = append(params, p)
-	}
-	sort.Strings(params)
+	// params := []string{}
+	// for p := range vdfile.StreamCmd {
+	// 	params = append(params, p)
+	// }
+	// sort.Strings(params)
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	fmt.Fprintln(w, "Parameter\t\tReq\tRes\tSet\tAck")
-	for _, p := range params {
-		req, res, set, ack := vdfile.StreamCmd[p].SupportedCommands()
+	// w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+	// fmt.Fprintln(w, "Parameter\t\tReq\tRes\tSet\tAck")
+	// for _, p := range params {
+	// 	req, res, set, ack := vdfile.StreamCmd[p].SupportedCommands()
 
-		var reqStr, resStr, setStr, ackStr string
-		if req {
-			reqStr = " ✓"
-		}
-		if res {
-			resStr = " ✓"
-		}
-		if set {
-			setStr = " ✓"
-		}
-		if ack {
-			ackStr = " ✓"
-		}
-		fmt.Fprintf(w, "%s\t\t%s\t%s\t%s\t%s\n", p, reqStr, resStr, setStr, ackStr)
+	// 	var reqStr, resStr, setStr, ackStr string
+	// 	if req {
+	// 		reqStr = " ✓"
+	// 	}
+	// 	if res {
+	// 		resStr = " ✓"
+	// 	}
+	// 	if set {
+	// 		setStr = " ✓"
+	// 	}
+	// 	if ack {
+	// 		ackStr = " ✓"
+	// 	}
+	// 	fmt.Fprintf(w, "%s\t\t%s\t%s\t%s\t%s\n", p, reqStr, resStr, setStr, ackStr)
 
-	}
-	w.Flush()
-	fmt.Println("")
+	// }
+	// w.Flush()
+	// fmt.Println("")
 
 	return &StreamDevice{
-		streamCmd:     vdfile.StreamCmd,
+		params:        vdfile.Params,
+		commands:      vdfile.Commands,
 		outTerminator: vdfile.OutTerminator,
-		globResDelay:  vdfile.ResDelay,
-		globAckDelay:  vdfile.AckDelay,
 		mismatch:      vdfile.Mismatch,
 		triggered:     make(chan []byte),
-		parser:        sstream.NewParser(vdfile.StreamCmd),
+		parser:        stream.NewParser(vdfile.Commands),
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
 				return 0, nil, nil
@@ -102,23 +99,18 @@ func (s StreamDevice) Triggered() chan []byte { return s.triggered }
 
 func (s StreamDevice) parseTok(tok string) []byte {
 	// todo fix this
-	res, typ, param := s.parser.Parse(tok)
+	res, param := s.parser.Parse(tok)
 	if res == nil {
 		return res
 	}
 
-	var cmd *structs.StreamCommand
+	var cmd *structs.Command
 	if param != "" {
-		cmd = s.streamCmd[param]
+		cmd = s.commands[param]
 	}
 
 	if cmd != nil {
-		switch typ {
-		case structs.CommandReq:
-			s.delayRes(cmd.ResDelay)
-		case structs.CommandSet:
-			s.delayAck(cmd.AckDelay)
-		}
+		s.delayRes(cmd.Dly)
 	}
 
 	strRes := string(res)
@@ -127,32 +119,9 @@ func (s StreamDevice) parseTok(tok string) []byte {
 	return res
 }
 
-func (s StreamDevice) delayAck(d time.Duration) {
-	delayOperation(s.globAckDelay, d, "acknowledge")
-}
-
 func (s StreamDevice) delayRes(d time.Duration) {
-	delayOperation(s.globResDelay, d, "response")
-}
-
-func delayOperation(g, d time.Duration, op string) {
-	t := effectiveDelay(g, d)
-	if t <= 0 {
-		return
-	}
-	log.DLY("delaying", op, "by", t)
-	time.Sleep(t)
-}
-
-func effectiveDelay(g, d time.Duration) time.Duration {
-	if d <= 0 {
-		if g <= 0 {
-			return 0
-		}
-		d = g
-	}
-
-	return d
+	log.DLY("delaying response by", d)
+	time.Sleep(d)
 }
 
 func (s StreamDevice) Handle(cmd []byte) []byte {
@@ -173,93 +142,42 @@ func (s StreamDevice) Handle(cmd []byte) []byte {
 	return buffer
 }
 
-func (s StreamDevice) findStreamCommand(name string) *structs.StreamCommand {
-	for _, c := range s.streamCmd {
-		if c.Name == name {
-			return c
-		}
-	}
-	return nil
-}
-
 func (s StreamDevice) GetParameter(name string) (any, error) {
-	cmd, exists := s.streamCmd[name]
+	param, exists := s.params[name]
 	if !exists {
 		return nil, fmt.Errorf("parameter %s not found", name)
 	}
 
-	return cmd.Param.Value(), nil
+	return param.Value(), nil
 }
 
 func (s StreamDevice) SetParameter(name string, value any) error {
-	cmd, exists := s.streamCmd[name]
+	param, exists := s.params[name]
 	if !exists {
 		return fmt.Errorf("parameter %s not found", name)
 	}
 
-	return cmd.Param.SetValue(value)
+	return param.SetValue(value)
 }
 
-func (s StreamDevice) GetGlobalDelay(typ string) (time.Duration, error) {
-	switch typ {
-	case "res":
-		return s.globResDelay, nil
-	case "ack":
-		return s.globAckDelay, nil
-	default:
-		return 0, fmt.Errorf("delay %s not found", typ)
+func (s StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
+	cmd, exists := s.commands[name]
+	if !exists {
+		return 0, fmt.Errorf("command %s not found", name)
 	}
+
+	return cmd.Dly, nil
 }
 
-func (s *StreamDevice) SetGlobalDelay(typ, val string) error {
-	del, err := time.ParseDuration(val)
-	if err != nil {
-		return err
+func (s *StreamDevice) SetCommandDelay(name, val string) error {
+	cmd, exists := s.commands[name]
+	if !exists {
+		return fmt.Errorf("command %s not found", name)
 	}
-	switch typ {
-	case "res":
-		s.globResDelay = del
-	case "ack":
-		s.globAckDelay = del
-	default:
-		return fmt.Errorf("delay %s not found", typ)
-	}
-	return nil
-}
 
-func (s StreamDevice) GetParamDelay(typ, param string) (time.Duration, error) {
-	p := s.findStreamCommand(param)
-	if p == nil {
-		return 0, fmt.Errorf("param %s not found", param)
-	}
-	switch typ {
-	case "res":
-		return p.ResDelay, nil
-	case "ack":
-		return p.AckDelay, nil
-	default:
-		return 0, fmt.Errorf("delay %s not found", typ)
-	}
-}
-
-func (s *StreamDevice) SetParamDelay(typ, param, val string) error {
-	p := s.findStreamCommand(param)
-	if p == nil {
-		return fmt.Errorf("param %s not found", param)
-	}
-	del, err := time.ParseDuration(val)
-	if err != nil {
-		return err
-	}
-	switch typ {
-	case "res":
-		p.ResDelay = del
-	case "ack":
-		p.AckDelay = del
-	default:
-		return fmt.Errorf("delay %s not found", typ)
-	}
-	return nil
+	var err error
+	cmd.Dly, err = time.ParseDuration(val)
+	return err
 }
 
 func (s StreamDevice) GetMismatch() []byte {
