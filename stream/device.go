@@ -3,6 +3,7 @@ package stream
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -23,7 +24,17 @@ type StreamDevice struct {
 	outTerminator []byte
 	splitter      bufio.SplitFunc
 	parser        protocols.Parser
+	mismatch      []byte
+	triggered     chan []byte
 }
+
+var (
+	ErrCommandNotFound = errors.New("command not found")
+	ErrParamNotFound   = errors.New("parameter not found")
+	ErrNoClient        = errors.New("no client available")
+)
+
+const mismatchLimit = 255
 
 // Create a new stream device given the virtual device configuration file
 func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
@@ -192,22 +203,23 @@ func (s *StreamDevice) SetMismatch(value string) error {
 	return nil
 }
 
-func (s *StreamDevice) Trigger(param string) error {
-	p := s.findStreamCommand(param)
-	if p == nil {
-		return ErrParamNotFound
+func (s *StreamDevice) Trigger(name string) error {
+	_, exists := s.commands[name]
+	if !exists {
+		return ErrCommandNotFound
 	}
-	val := s.param[p.Param].Value()
-	out := s.constructOutput(p.resItems, val)
-	if len(out) == 0 {
-		return nil
-	}
-	out += string(s.outTerminator)
 
-	select {
-	case s.triggered <- []byte(out):
-	default:
-		return ErrNoClient
-	}
+	// val := s.param[cmd.Param].Value()
+	// out := s.constructOutput(cmd.resItems, val)
+	// if len(out) == 0 {
+	// 	return nil
+	// }
+	// out += string(s.outTerminator)
+
+	// select {
+	// case s.triggered <- []byte(out):
+	// default:
+	// 	return ErrNoClient
+	// }
 	return nil
 }

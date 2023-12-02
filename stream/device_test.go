@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"time"
 
 	"github.com/e9ctrl/vd/parameter"
 	"github.com/e9ctrl/vd/protocols/stream"
