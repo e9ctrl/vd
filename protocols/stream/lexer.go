@@ -270,15 +270,10 @@ func lexStart(l *Lexer) StateFn {
 			return lexNumber
 		}
 		return lexStart
-	case ch == rune(ItemLeftMeta):
-		l.emit(ItemLeftMeta)
-		return lexParam
-	case ch == rune(ItemRightMeta):
-		l.emit(ItemRightMeta)
-		return lexStart
-	case ch == '%':
-		l.backup()
-		return lexPlaceholder
+	case ch == '{':
+		return lexLeftMeta
+	case ch == '}':
+		return lexRightMeta
 	default:
 		l.emit(ItemIllegal)
 		return lexStart
@@ -288,7 +283,7 @@ func lexStart(l *Lexer) StateFn {
 func lexCommand(l *Lexer) StateFn {
 	for {
 		ch := l.next()
-		if ch == scanner.EOF || isSpace(ch) || ch == '%' {
+		if ch == scanner.EOF || isSpace(ch) || ch == '{' {
 			l.backup()
 			l.emit(ItemCommand)
 			return lexStart
@@ -299,7 +294,7 @@ func lexCommand(l *Lexer) StateFn {
 func lexParam(l *Lexer) StateFn {
 	for {
 		ch := l.next()
-		if ch == scanner.EOF || isSpace(ch) {
+		if ch == scanner.EOF || isSpace(ch) || ch == '}' || ch == '%' {
 			l.backup()
 			l.emit(ItemParam)
 			return lexInsideParam
@@ -315,19 +310,18 @@ func lexPlaceholder(l *Lexer) StateFn {
 	if l.accept("%") {
 		if l.accept("s") {
 			l.emit(ItemStringValuePlaceholder)
-			return lexStart
+			return lexInsideParam
 		}
 		in := ".0123456789gGeEfFdcbtxX"
 		if l.acceptRun(in) {
 			l.emit(ItemNumberValuePlaceholder)
-			return lexStart
+			return lexInsideParam
 		}
 	}
 	return l.errorf("wrong placeholder value")
 }
 
 func lexLeftMeta(l *Lexer) StateFn {
-	l.pos += len(leftMeta)
 	l.emit(ItemLeftMeta)
 	return lexInsideParam
 }
@@ -335,7 +329,15 @@ func lexLeftMeta(l *Lexer) StateFn {
 func lexInsideParam(l *Lexer) StateFn {
 	for {
 		ch := l.next()
+		if ch == '%' {
+			l.backup()
+			return lexPlaceholder
+		}
 		if isSpace(ch) {
+			l.emit(ItemWhiteSpace)
+			continue
+		}
+		if ch == ':' {
 			l.ignore()
 			continue
 		}
@@ -348,18 +350,12 @@ func lexInsideParam(l *Lexer) StateFn {
 			return lexParam
 		}
 		if ch == '}' {
-			ch2 := l.peek()
-			if ch2 == '}' {
-				l.backup()
-				return lexRightMeta
-			}
-			return lexStart
+			return lexRightMeta
 		}
 	}
 }
 
 func lexRightMeta(l *Lexer) StateFn {
-	l.pos += len(rightMeta)
 	l.emit(ItemRightMeta)
 	return lexStart
 }
