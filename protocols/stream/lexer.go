@@ -7,7 +7,7 @@ import (
 	"unicode/utf8"
 )
 
-type itemType int
+type ItemType int
 type mode int
 
 const (
@@ -20,7 +20,7 @@ const rightMeta = "}"
 const eof = -1
 
 const (
-	ItemError itemType = iota
+	ItemError ItemType = iota
 
 	ItemCommand // this is valid for a query as well
 
@@ -39,7 +39,7 @@ const (
 	ItemIllegal
 )
 
-var typeStr = map[itemType]string{
+var typeStr = map[ItemType]string{
 	ItemError:                  "error",
 	ItemCommand:                "command",
 	ItemNumberValuePlaceholder: "number value placeholder",
@@ -55,21 +55,21 @@ var typeStr = map[itemType]string{
 }
 
 // To string representation
-func (i itemType) String() string {
+func (i ItemType) String() string {
 	if val, ok := typeStr[i]; ok {
 		return val
 	}
 
-	return "unknown itemType"
+	return "unknown ItemType"
 }
 
 type Item struct {
-	typ itemType
+	typ ItemType
 	val string
 }
 
 // Item type
-func (i Item) Type() itemType {
+func (i Item) Type() ItemType {
 	return i.typ
 }
 
@@ -135,7 +135,7 @@ func ItemsFromConfig(input string) []Item {
 // 	return NewData(input).Items()
 // }
 
-func (l *Lexer) emit(t itemType) {
+func (l *Lexer) emit(t ItemType) {
 	l.ItemsCh <- Item{t, l.Input[l.start:l.pos]}
 	l.start = l.pos
 }
