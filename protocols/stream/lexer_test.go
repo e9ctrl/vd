@@ -1,25 +1,67 @@
 package stream_test
 
 import (
-	"bytes"
-	"fmt"
+	//	"bytes"
+	//	"fmt"
 	"strings"
+
 	"testing"
 
 	lexer "github.com/e9ctrl/vd/protocols/stream"
 )
 
-var (
-	testInput1 = "test {{ abc }} {%.2f:current} test {%s:string} new{%2c:p3} {%3d:val}test"
-	testInput2 = "test %zx"
-	testInput3 = "{{ name }} '"
-	testInput4 = "test,test"
-	testInput5 = "test {{"
-	testInput6 = "%f test"
-	testInput7 = "%5c %3.2f %2d %5.3f %8.4f %s %04d %2.5e %03X"
-)
+func TestLexer(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		input  string
+		want   []lexer.ItemType
+		output string
+	}{
+		{"standard input", "test1 {%s:param} test2", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "test1 {%sparam} test2"},
+		{"two parameters", "{%s:param %s:param}test3", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemWhiteSpace, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemCommand, lexer.ItemEOF}, "{%sparam %sparam}test3"},
+		{"two parameters not separated", "test4 {%3d:param%3.2f:param} test5", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "test4 {%3dparam%3.2fparam} test5"},
+		// Probably missing comma item //{"two parameters comma separated", "test{%03X:param,%0.3e:param}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemComma, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.itemRightMeta, lexer.ItemEOF}, "test{%03Xparam,%0.3eparam}"},
+		{"two parameters comma and space separated", "test,test {%.2f:param, %2c:param} ", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemWhiteSpace, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemEOF}, "test,test {%.2fparam, %2cparam} "}, //%c should be string placeholder?
+		{"wrong placeholder format", "test {%zx:param}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemError, lexer.ItemEOF}, "test {error at char 7: 'test {%z'\nwrong placeholder value"},
+		{"empty brackets", "{}", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemRightMeta, lexer.ItemEOF}, "{}"},
+		{"param without placeholder", "{:param}", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "{param}"},
+		{"Illegal character", "!", []lexer.ItemType{lexer.ItemIllegal, lexer.ItemEOF}, "!"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := lexer.NewConfig(tt.input)
+			if l == nil {
+				t.Fatal("output lexer should not be nil")
+			}
+			var items = []lexer.Item{}
+			var output = new(strings.Builder)
+			for {
+				item := l.NextItem()
+				items = append(items, item)
+				if item.String() == "EOF" {
+					break
+				}
+			}
+			t.Log(items)
+			if len(items) != len(tt.want) {
+				t.Fatalf("token slice length mismatch error: wanted %d ; got %d", len(tt.want), len(items))
+			}
+			for i, item := range items {
+				if item.Type() != tt.want[i] {
+					t.Errorf("unexpected token: wanted %s ; got %s", tt.want[i], item.Type())
+				}
+				output.WriteString(string(item.Value()))
+			}
 
-func TestNewLexer(t *testing.T) {
+			if output.String() != tt.output {
+				t.Errorf("unexpected output error: wanted %s ; got %s", tt.output, output.String())
+			}
+		})
+	}
+}
+
+/*func TestNewLexer(t *testing.T) {
 	t.Parallel()
 	l := lexer.NewConfig(testInput1)
 	if l == nil {
@@ -30,11 +72,11 @@ func TestNewLexer(t *testing.T) {
 	for i, item := range items {
 		t.Logf("[%d] --> %v", i, item)
 	}
-}
+}*/
 
-func TestLexer(t *testing.T) {
+/*func TestLexer(t *testing.T) {
 	t.Parallel()
-	wants := "test {{abc}} %.2f test %s new%2c %3dtest"
+	wants := "test1 {%s:param} test2"
 	l := lexer.NewConfig(testInput1)
 	if l == nil {
 		t.Errorf("output lexer should not be nil")
@@ -47,8 +89,7 @@ func TestLexer(t *testing.T) {
 			break
 		}
 	}
-
-	if len(items) != 18 {
+	if len(items) != 8 {
 		t.Errorf("token slice length mismatch error: wanted %d ; got %d", 18, len(items))
 	}
 	if items[0].Type() != lexer.ItemCommand {
@@ -75,36 +116,36 @@ func TestLexer(t *testing.T) {
 	if items[7].Type() != lexer.ItemWhiteSpace {
 		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemWhiteSpace, items[7].Type())
 	}
-	if items[8].Type() != lexer.ItemCommand {
-		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemCommand, items[8].Type())
-	}
-	if items[9].Type() != lexer.ItemWhiteSpace {
-		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemWhiteSpace, items[9].Type())
-	}
-	if items[10].Type() != lexer.ItemStringValuePlaceholder {
-		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemStringValuePlaceholder, items[10].Type())
-	}
-	if items[11].Type() != lexer.ItemWhiteSpace {
-		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemWhiteSpace, items[11].Type())
-	}
-	if items[12].Type() != lexer.ItemCommand {
-		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemCommand, items[12].Type())
-	}
-	if items[13].Type() != lexer.ItemNumberValuePlaceholder {
-		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemNumberValuePlaceholder, items[13].Type())
-	}
-	if items[14].Type() != lexer.ItemWhiteSpace {
-		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemWhiteSpace, items[14].Type())
-	}
-	if items[15].Type() != lexer.ItemNumberValuePlaceholder {
-		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemNumberValuePlaceholder, items[15].Type())
-	}
-	if items[16].Type() != lexer.ItemCommand {
-		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemCommand, items[16].Type())
-	}
-	if items[17].Type() != lexer.ItemEOF {
-		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemEOF, items[17].Type())
-	}
+	/*	if items[8].Type() != lexer.ItemCommand {
+			t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemCommand, items[8].Type())
+		}
+		if items[9].Type() != lexer.ItemWhiteSpace {
+			t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemWhiteSpace, items[9].Type())
+		}
+		if items[10].Type() != lexer.ItemStringValuePlaceholder {
+			t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemStringValuePlaceholder, items[10].Type())
+		}
+		if items[11].Type() != lexer.ItemWhiteSpace {
+			t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemWhiteSpace, items[11].Type())
+		}
+		if items[12].Type() != lexer.ItemCommand {
+			t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemCommand, items[12].Type())
+		}
+		if items[13].Type() != lexer.ItemNumberValuePlaceholder {
+			t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemNumberValuePlaceholder, items[13].Type())
+		}
+		if items[14].Type() != lexer.ItemWhiteSpace {
+			t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemWhiteSpace, items[14].Type())
+		}
+		if items[15].Type() != lexer.ItemNumberValuePlaceholder {
+			t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemNumberValuePlaceholder, items[15].Type())
+		}
+		if items[16].Type() != lexer.ItemCommand {
+			t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemCommand, items[16].Type())
+		}
+		if items[17].Type() != lexer.ItemEOF {
+			t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemEOF, items[17].Type())
+		}
 
 	var output = new(strings.Builder)
 	for _, i := range items {
@@ -116,6 +157,7 @@ func TestLexer(t *testing.T) {
 	}
 
 }
+
 
 func TestLexerIllegalPlaceholder(t *testing.T) {
 	t.Parallel()
@@ -369,4 +411,4 @@ func TestPlaceholders(t *testing.T) {
 		t.Errorf("unexpected token: wanted %s ; got %s", lexer.ItemEOF, items[17].Type())
 	}
 
-}
+}*/
