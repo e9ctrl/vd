@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/e9ctrl/vd/stream"
+	"github.com/e9ctrl/vd/vdfile"
 )
 
 const (
@@ -15,7 +16,7 @@ const (
 
 func TestGetMismatch(t *testing.T) {
 	t.Parallel()
-	vdfile, err := stream.ReadVDFile(FILE3)
+	vdfile, err := vdfile.ReadVDFile(FILE3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +48,7 @@ func TestGetMismatch(t *testing.T) {
 
 func TestSetMismatch(t *testing.T) {
 	t.Parallel()
-	vdfile, err := stream.ReadVDFile(FILE3)
+	vdfile, err := vdfile.ReadVDFile(FILE3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +91,7 @@ func TestSetMismatch(t *testing.T) {
 
 func TestGetParameter(t *testing.T) {
 	t.Parallel()
-	vdfile, err := stream.ReadVDFile(FILE1)
+	vdfile, err := vdfile.ReadVDFile(FILE1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +136,7 @@ func TestGetParameter(t *testing.T) {
 
 func TestSetParameter(t *testing.T) {
 	t.Parallel()
-	vdfile, err := stream.ReadVDFile(FILE3)
+	vdfile, err := vdfile.ReadVDFile(FILE3)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +195,7 @@ func TestSetParameter(t *testing.T) {
 
 func TestGetGlobDel(t *testing.T) {
 	t.Parallel()
-	vdfile, err := stream.ReadVDFile(FILE2)
+	vdfile, err := vdfile.ReadVDFile(FILE2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,7 +240,7 @@ func TestGetGlobDel(t *testing.T) {
 
 func TestSetGlobDel(t *testing.T) {
 	t.Parallel()
-	vdfile, err := stream.ReadVDFile(FILE2)
+	vdfile, err := vdfile.ReadVDFile(FILE2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,7 +299,7 @@ func TestSetGlobDel(t *testing.T) {
 
 func TestGetDel(t *testing.T) {
 	t.Parallel()
-	vdfile, err := stream.ReadVDFile(FILE2)
+	vdfile, err := vdfile.ReadVDFile(FILE2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -347,7 +348,7 @@ func TestGetDel(t *testing.T) {
 
 func TestSetDel(t *testing.T) {
 	t.Parallel()
-	vdfile, err := stream.ReadVDFile(FILE2)
+	vdfile, err := vdfile.ReadVDFile(FILE2)
 	if err != nil {
 		t.Fatal(err)
 	}

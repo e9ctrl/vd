@@ -10,6 +10,7 @@ import (
 
 	"github.com/e9ctrl/vd/server"
 	"github.com/e9ctrl/vd/stream"
+	"github.com/e9ctrl/vd/vdfile"
 )
 
 const (
@@ -24,7 +25,7 @@ const (
 
 func setupTestCase(t *testing.T, addr, file string) func() {
 	//read file
-	vdfile, err := stream.ReadVDFile(file)
+	vdfile, err := vdfile.ReadVDFile(file)
 	if err != nil {
 		t.Fatal(err)
 	}

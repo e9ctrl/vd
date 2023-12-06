@@ -9,12 +9,13 @@ import (
 	"github.com/e9ctrl/vd/parameter"
 	"github.com/e9ctrl/vd/protocols/stream"
 	"github.com/e9ctrl/vd/structs"
+	"github.com/e9ctrl/vd/vdfile"
 
 	"testing"
 )
 
 var myStreamDev = func() *StreamDevice {
-	vd := &VDFile{
+	vd := &vdfile.VDFile{
 		InTerminator:  []byte("\r\n"),
 		OutTerminator: []byte("\r\n"),
 		Mismatch:      []byte("error"),
@@ -121,9 +122,11 @@ func TestMain(m *testing.M) {
 	}
 	commands[cmdGetVersion.Name] = cmdGetVersion
 
-	dev.commands = commands
-	dev.params = params
-	dev.parser = stream.NewParser(commands)
+	config := &vdfile.VDFile{
+		Commands: commands,
+		Params:   params,
+	}
+	dev.parser = stream.NewParser(config)
 	// run tests
 	os.Exit(m.Run())
 }
@@ -325,13 +328,13 @@ func TestMismatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			old := dev.mismatch
-			dev.mismatch = tt.mismatch
+			old := dev.vdfile.Mismatch
+			dev.vdfile.Mismatch = tt.mismatch
 			res := dev.Mismatch()
 			if !bytes.Equal(res, tt.exp) {
 				t.Errorf("%s: exp ack: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
 			}
-			dev.mismatch = old
+			dev.vdfile.Mismatch = old
 		})
 	}
 }

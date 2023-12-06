@@ -1,5 +1,5 @@
 package protocols
 
 type Parser interface {
-	Parse(token string) ([]byte, string)
+	Parse(token string) []byte
 }

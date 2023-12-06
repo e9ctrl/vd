@@ -10,6 +10,7 @@ import (
 	"github.com/e9ctrl/vd/api"
 	"github.com/e9ctrl/vd/server"
 	"github.com/e9ctrl/vd/stream"
+	"github.com/e9ctrl/vd/vdfile"
 	"github.com/jwalton/gchalk"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -49,7 +50,7 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		fmt.Printf(banner, version, website)
-		vdfile, err := stream.ReadVDFile(args[0])
+		vdfile, err := vdfile.ReadVDFile(args[0])
 		if err != nil {
 			fmt.Printf("Config loading failed %v", err)
 			os.Exit(1)

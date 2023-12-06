@@ -19,14 +19,17 @@ func TestLexer(t *testing.T) {
 		output string
 	}{
 		{"standard input", "test1 {%s:param} test2", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "test1 {%sparam} test2"},
-		{"two parameters", "{%s:param %s:param}test3", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemWhiteSpace, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemCommand, lexer.ItemEOF}, "{%sparam %sparam}test3"},
-		{"two parameters not separated", "test4 {%3d:param%3.2f:param} test5", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "test4 {%3dparam%3.2fparam} test5"},
-		// Probably missing comma item //{"two parameters comma separated", "test{%03X:param,%0.3e:param}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemComma, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.itemRightMeta, lexer.ItemEOF}, "test{%03Xparam,%0.3eparam}"},
-		{"two parameters comma and space separated", "test,test {%.2f:param, %2c:param} ", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemWhiteSpace, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemEOF}, "test,test {%.2fparam, %2cparam} "}, //%c should be string placeholder?
+		{"two parameters", "{%s:param1} {%s:param2}test3", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemCommand, lexer.ItemEOF}, "{%sparam1} {%sparam2}test3"},
+		{"two parameters not separated", "test4 {%3d:param1}{%3.2f:param2} test5", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "test4 {%3dparam1}{%3.2fparam2} test5"},
+		{"two parameters comma separated", "test{%03X:param,%0.3e:param}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemIllegal, lexer.ItemEOF}, "test{%03Xparam,"},
+		// Note: for further consideration whether %2c should be treated as string, but currently it is treated as Number placeholder
+		{"two parameters comma and space separated", "test,test {%.2f:param1} {%2c:param2} ", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemEOF}, "test,test {%.2fparam1} {%2cparam2} "}, //%c should be string placeholder?
 		{"wrong placeholder format", "test {%zx:param}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemError, lexer.ItemEOF}, "test {error at char 7: 'test {%z'\nwrong placeholder value"},
-		{"empty brackets", "{}", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemRightMeta, lexer.ItemEOF}, "{}"},
-		{"param without placeholder", "{:param}", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "{param}"},
-		{"Illegal character", "!", []lexer.ItemType{lexer.ItemIllegal, lexer.ItemEOF}, "!"},
+		{"empty brackets", "{}", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemIllegal, lexer.ItemEOF}, "{"},
+		{"empty brackets with multi whitespaces", "{   }", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemIllegal, lexer.ItemEOF}, "{"},
+		{"param without placeholder", "{:param}", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemIllegal, lexer.ItemEOF}, "{"},
+		{"placeholder without param", "{%d:}", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemRightMeta, lexer.ItemEOF}, "{%d}"},
+		{"Illegal character", "!", []lexer.ItemType{lexer.ItemIllegal, lexer.ItemEOF}, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

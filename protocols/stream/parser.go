@@ -3,64 +3,57 @@ package stream
 import (
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/e9ctrl/vd/log"
 	"github.com/e9ctrl/vd/protocols"
 	"github.com/e9ctrl/vd/structs"
+	"github.com/e9ctrl/vd/vdfile"
 )
 
 // req
 // seq
 type CommandPattern struct {
-	Items     []Item
-	Parameter string
+	reqItems []Item
+	resItems []Item
 }
 
 type Parser struct {
-	streamCmd       map[string]*structs.Command
-	commandPatterns []CommandPattern
+	vdfile          *vdfile.VDFile
+	commandPatterns map[string]CommandPattern
 }
 
-func (p *Parser) Parse(input string) ([]byte, string) {
-	// var cmd Command
-	// for _, pattern := range p.commandPatterns {
-	// 	match, val := checkPattern(input, pattern)
-	// 	if !match {
-	// 		continue
-	// 	}
+func (p *Parser) Parse(input string) []byte {
+	for cmdName, pattern := range p.commandPatterns {
+		match, values := checkPattern(input, pattern.reqItems)
+		if !match {
+			continue
+		}
 
-	// 	cmd = Command{
-	// 		Parameter: pattern.Parameter,
-	// 		Value:     val,
-	// 	}
+		if len(values) > 0 {
+			// set param
+			for name, val := range values {
+				if param, exist := p.vdfile.Params[name]; exist {
+					param.SetValue(val)
+				} else {
+					// error param not found
+				}
+			}
+		}
 
-	// 	log.CMD(cmd)
-	// 	if pattern.Typ == structs.CommandReq {
-	// 		return p.makeResponse(cmd.Parameter), structs.CommandReq, cmd.Parameter
-	// 	}
-
-	// 	if cmd.Typ == structs.CommandSet {
-	// 		if err := p.streamCmd[cmd.Parameter].Param.SetValue(cmd.Value); err != nil {
-	// 			log.ERR(cmd.Parameter, err.Error())
-	// 			opts := p.streamCmd[cmd.Parameter].Param.Opts()
-	// 			if len(opts) > 0 {
-	// 				log.INF("allowed values", opts)
-	// 			}
-	// 			return nil, structs.CommandSet, cmd.Parameter
-	// 		}
-
-	// 		return p.makeAck(cmd.Parameter), structs.CommandSet, cmd.Parameter
-	// 	}
-	// }
-
-	// return Command{}, errors.New("input does not match the command pattern")
-	return nil, ""
-}
-
-func constructOutput(items []Item, value any) []byte {
-	var out []byte
-	if value == nil {
-		return out
+		return p.makeResponse(cmdName)
 	}
+
+	return nil
+}
+
+func (p Parser) delayRes(d time.Duration) {
+	log.DLY("delaying response by", d)
+	time.Sleep(d)
+}
+
+func constructOutput(items []Item) []byte {
+	var out []byte
 
 	temp := ""
 	for _, i := range items {
@@ -71,7 +64,7 @@ func constructOutput(items []Item, value any) []byte {
 
 		case ItemNumberValuePlaceholder,
 			ItemStringValuePlaceholder:
-			temp += fmt.Sprintf(i.Value(), value)
+			temp += fmt.Sprintf(i.Value(), nil) // fix me
 		}
 	}
 
@@ -80,78 +73,44 @@ func constructOutput(items []Item, value any) []byte {
 }
 
 func (p Parser) makeResponse(param string) []byte {
-	// if cmd, ok := p.streamCmd[param]; ok {
-	// 	val := cmd.Param.Value()
-	// 	return constructOutput(ItemsFromConfig(string(cmd.Res)), val)
-	// }
+	if cmd, ok := p.vdfile.Commands[param]; ok {
+		p.delayRes(cmd.Dly)
+		return constructOutput(ItemsFromConfig(string(cmd.Res)))
+	}
 
 	return nil
 }
 
-func (p Parser) makeAck(param string) []byte {
-	// if cmd, ok := p.streamCmd[param]; ok {
-	// 	val := cmd.Param.Value()
-	// 	return constructOutput(ItemsFromConfig(string(cmd.Ack)), val)
-	// }
-
-	return nil
-}
-
-// type Command struct {
-// 	Parameter string
-// 	Value     any
-// }
-
-// func (c Command) String() string {
-// 	if c.Typ == structs.CommandReq {
-// 		return fmt.Sprintf("request for %s", c.Parameter)
-// 	} else if c.Typ == structs.CommandSet {
-// 		return fmt.Sprintf("set %s to %s", c.Parameter, c.Value)
-// 	}
-// 	return ""
-// }
-
-func NewParser(scmd map[string]*structs.Command) protocols.Parser {
+func NewParser(vdfile *vdfile.VDFile) protocols.Parser {
 	return &Parser{
-		commandPatterns: buildCommandPatterns(scmd),
-		streamCmd:       scmd,
+		commandPatterns: buildCommandPatterns(vdfile.Commands),
+		vdfile:          vdfile,
 	}
 }
 
-func buildCommandPatterns(scmd map[string]*structs.Command) []CommandPattern {
-	patterns := make([]CommandPattern, 0)
+func buildCommandPatterns(commands map[string]*structs.Command) map[string]CommandPattern {
+	patterns := map[string]CommandPattern{}
 
-	for _, cmd := range scmd {
-		if len(cmd.Req) == 0 {
-			continue
+	for key, cmd := range commands {
+		pattern := CommandPattern{}
+		if cmd.Req != nil && len(cmd.Req) > 0 {
+			pattern.reqItems = ItemsFromConfig(string(cmd.Req))
 		}
 
-		reqItems := ItemsFromConfig(string(cmd.Req))
-		patterns = append(patterns, CommandPattern{
-			Items:     reqItems,
-			Parameter: cmd.Name,
-		})
+		if cmd.Res != nil && len(cmd.Res) > 0 {
+			pattern.resItems = ItemsFromConfig(string(cmd.Res))
+		}
+
+		patterns[key] = pattern
 	}
-
-	// for _, cmd := range scmd {
-	// 	if len(cmd.Set) == 0 {
-	// 		continue
-	// 	}
-
-	// 	setItems := ItemsFromConfig(string(cmd.Set))
-	// 	patterns = append(patterns, CommandPattern{
-	// 		Items:     setItems,
-	// 		Typ:       structs.CommandSet,
-	// 		Parameter: cmd.Name,
-	// 	})
-	// }
 
 	return patterns
 }
 
-func checkPattern(input string, pattern CommandPattern) (bool, any) {
+func checkPattern(input string, items []Item) (bool, map[string]any) {
+	var values = map[string]any{}
 	var value any
-	for _, item := range pattern.Items {
+	for _, item := range items {
 		switch item.Type() {
 		case ItemCommand,
 			ItemWhiteSpace:
@@ -192,6 +151,11 @@ func checkPattern(input string, pattern CommandPattern) (bool, any) {
 			}
 			input = next
 			continue
+
+		case ItemParam:
+			if value != nil {
+				values[item.Value()] = value
+			}
 		}
 
 		return false, nil
@@ -201,7 +165,7 @@ func checkPattern(input string, pattern CommandPattern) (bool, any) {
 		return false, nil
 	}
 
-	return true, value
+	return true, values
 }
 
 func parseNumber(s string) string {

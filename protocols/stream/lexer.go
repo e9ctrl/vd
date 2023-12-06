@@ -275,8 +275,9 @@ func lexStart(l *Lexer) StateFn {
 	case ch == '}':
 		return lexRightMeta
 	default:
+		l.backup()
 		l.emit(ItemIllegal)
-		return lexStart
+		return nil
 	}
 }
 
@@ -292,30 +293,24 @@ func lexCommand(l *Lexer) StateFn {
 }
 
 func lexParam(l *Lexer) StateFn {
-	for {
-		ch := l.next()
-		if ch == scanner.EOF || isSpace(ch) || ch == '}' || ch == '%' {
-			l.backup()
-			l.emit(ItemParam)
-			return lexInsideParam
-		}
-		if ch == '}' {
-			l.backup()
-			return lexRightMeta
-		}
+	in := "_.-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	if l.acceptRun(in) {
+		l.emit(ItemParam)
 	}
+
+	return lexInsideParamPlaceholder
 }
 
 func lexPlaceholder(l *Lexer) StateFn {
 	if l.accept("%") {
 		if l.accept("s") {
 			l.emit(ItemStringValuePlaceholder)
-			return lexInsideParam
+			return lexInsideParamPlaceholder
 		}
 		in := ".0123456789gGeEfFdcbtxX"
 		if l.acceptRun(in) {
 			l.emit(ItemNumberValuePlaceholder)
-			return lexInsideParam
+			return lexInsideParamPlaceholder
 		}
 	}
 	return l.errorf("wrong placeholder value")
@@ -323,35 +318,49 @@ func lexPlaceholder(l *Lexer) StateFn {
 
 func lexLeftMeta(l *Lexer) StateFn {
 	l.emit(ItemLeftMeta)
-	return lexInsideParam
+	for isSpace(l.next()) {
+		l.ignore()
+	}
+
+	l.backup()
+
+	if l.peek() != '%' {
+		l.emit(ItemIllegal)
+		return nil
+	}
+
+	return lexInsideParamPlaceholder
 }
 
-func lexInsideParam(l *Lexer) StateFn {
+func lexInsideParamPlaceholder(l *Lexer) StateFn {
 	for {
 		ch := l.next()
 		if ch == '%' {
 			l.backup()
 			return lexPlaceholder
 		}
+
 		if isSpace(ch) {
-			l.emit(ItemWhiteSpace)
+			l.ignore()
 			continue
 		}
+
 		if ch == ':' {
 			l.ignore()
 			continue
 		}
-		if ch == scanner.EOF {
-			l.emit(ItemIllegal)
-			return lexStart
-		}
-		if isLetter(ch) {
+
+		if isAlphaNumeric(ch) {
 			l.backup()
 			return lexParam
 		}
+
 		if ch == '}' {
 			return lexRightMeta
 		}
+
+		l.emit(ItemIllegal)
+		return nil
 	}
 }
 
