@@ -15,8 +15,6 @@ const (
 	dataMode
 )
 
-const leftMeta = "{"
-const rightMeta = "}"
 const eof = -1
 
 const (
