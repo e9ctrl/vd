@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/e9ctrl/vd/parameter"
+	"github.com/e9ctrl/vd/protocols"
 	"github.com/e9ctrl/vd/protocols/stream"
 	"github.com/e9ctrl/vd/structs"
 	"github.com/e9ctrl/vd/vdfile"
@@ -126,7 +127,7 @@ func TestMain(m *testing.M) {
 		Commands: commands,
 		Params:   params,
 	}
-	dev.parser = stream.NewParser(config)
+	dev.parser, _ = stream.NewParser(config)
 	// run tests
 	os.Exit(m.Run())
 }
@@ -350,8 +351,8 @@ func TestTrigParam(t *testing.T) {
 		{"version param", "version", []byte("v1.0.0\r\n"), nil},
 		{"psi param", "psi", []byte("PSI 24.10\r\n"), nil},
 		{"voltage param", "voltage", []byte("VOLT 5.342\r\n"), nil},
-		{"empty param", "", []byte(nil), ErrParamNotFound},
-		{"wrong param", "test", []byte(nil), ErrParamNotFound},
+		{"empty param", "", []byte(nil), protocols.ErrParamNotFound},
+		{"wrong param", "test", []byte(nil), protocols.ErrParamNotFound},
 	}
 
 	for _, tt := range tests {

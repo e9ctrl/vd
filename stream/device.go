@@ -18,9 +18,7 @@ import (
 const MISMATCH_LIMIT = 255
 
 var (
-	ErrCommandNotFound = errors.New("command not found")
-	ErrParamNotFound   = errors.New("parameter not found")
-	ErrNoClient        = errors.New("no client available")
+	ErrNoClient = errors.New("no client available")
 )
 
 // Stream device store the information of a set of parameters
@@ -65,10 +63,16 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 	// w.Flush()
 	// fmt.Println("")
 
+	// make sure the parser is initialize successfully
+	parser, err := stream.NewParser(vdfile)
+	if err != nil {
+		return nil, err
+	}
+
 	return &StreamDevice{
 		vdfile:    vdfile,
 		triggered: make(chan []byte),
-		parser:    stream.NewParser(vdfile),
+		parser:    parser,
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
 				return 0, nil, nil
@@ -103,9 +107,18 @@ func (s StreamDevice) Mismatch() (res []byte) {
 func (s StreamDevice) Triggered() chan []byte { return s.triggered }
 
 func (s StreamDevice) parseTok(tok string) []byte {
-	res := s.parser.Parse(tok)
+	res, commandName, err := s.parser.Parse(tok)
+
+	if err == protocols.ErrCommandNotFound && len(s.vdfile.Mismatch) > 0 {
+		res = s.vdfile.Mismatch
+	}
+
 	if res == nil {
 		return res
+	}
+
+	if commandName != "" {
+		s.delayRes(s.vdfile.Commands[commandName].Dly)
 	}
 
 	strRes := string(res)
@@ -185,20 +198,30 @@ func (s *StreamDevice) SetMismatch(value string) error {
 func (s *StreamDevice) Trigger(name string) error {
 	_, exists := s.vdfile.Commands[name]
 	if !exists {
-		return ErrCommandNotFound
+		return protocols.ErrCommandNotFound
 	}
 
-	// val := s.param[cmd.Param].Value()
-	// out := s.constructOutput(cmd.resItems, val)
-	// if len(out) == 0 {
-	// 	return nil
-	// }
-	// out += string(s.outTerminator)
+	res, err := s.parser.Trigger(name)
+	if err != nil {
+		return err
+	}
 
-	// select {
-	// case s.triggered <- []byte(out):
-	// default:
-	// 	return ErrNoClient
-	// }
+	if res == nil {
+		return nil
+	}
+
+	res = append(res, s.vdfile.OutTerminator...)
+
+	select {
+	case s.triggered <- res:
+	default:
+		return ErrNoClient
+	}
+
 	return nil
+}
+
+func (s StreamDevice) delayRes(d time.Duration) {
+	log.DLY("delaying response by", d)
+	time.Sleep(d)
 }

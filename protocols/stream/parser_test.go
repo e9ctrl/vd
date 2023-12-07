@@ -1,212 +1,166 @@
 package stream
 
-// import (
-// 	"testing"
+import (
+	"testing"
 
-// 	"github.com/e9ctrl/vd/parameter"
-// 	"github.com/e9ctrl/vd/structs"
-// 	"github.com/google/go-cmp/cmp"
-// 	"github.com/google/go-cmp/cmp/cmpopts"
-// )
+	"github.com/e9ctrl/vd/parameter"
+)
 
-// func TestCheckPattern(t *testing.T) {
-// 	t.Parallel()
-// 	tests := []struct {
-// 		name   string
-// 		forLex string
-// 		typ    structs.CommandType
-// 		param  string
-// 		input  string
-// 		exp    bool
-// 		expVal any
-// 	}{
-// 		{"Simple req", "TEMP?", structs.CommandReq, "temperature", "TEMP?", true, nil},
-// 		{"Complex req", "get ch1 curr?", structs.CommandReq, "current", "get ch1 curr?", true, nil},
-// 		{"Simple set", "volt %3.2f", structs.CommandSet, "voltage", "volt 34.45", true, "34.45"},
-// 		{"Complex set", "set ch1 max %2d", structs.CommandSet, "max", "set ch1 max 35", true, "35"},
-// 		{"Placeholder between", "set ch1 %2.2f pow", structs.CommandSet, "power", "set ch1 34.56 pow", true, "34.56"},
-// 		{"Wrong input", "set voltage %d", structs.CommandSet, "voltage", "set voltage 20.45", true, "20.45"},
-// 		{"Command not found", "get temp?", structs.CommandReq, "temperature", "set voltage 20", false, nil},
-// 		{"Wrong value", "set current %03X", structs.CommandSet, "current", "set current test", false, nil},
-// 		{"Too many elements", "TEMP?", structs.CommandReq, "temperature", "TEMP?asdf", false, nil},
-// 	}
+func TestCheckPattern(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		forLex string
+		param  string
+		input  string
+		exp    bool
+		expVal map[string]any
+	}{
+		{"Simple req", "TEMP?", "temperature", "TEMP?", true, map[string]any{}},
+		{"Complex req", "get ch1 curr?", "current", "get ch1 curr?", true, map[string]any{}},
+		{"Simple set", "volt {%3.2f:voltage}", "voltage", "volt 34.45", true, map[string]any{"voltage": "34.45"}},
+		{"Complex set", "set ch1 max {%2d:max}", "max", "set ch1 max 35", true, map[string]any{"max": "35"}},
+		{"Placeholder between", "set ch1 {%2.2f:power} pow", "power", "set ch1 34.56 pow", true, map[string]any{"power": "34.56"}},
+		// Note: we need to more strict checking on different type of placeholder
+		// {"Wrong input", "set voltage {%d:voltage}", "voltage", "set voltage 20.45", false, map[string]any{}},
+		{"Command not found", "get temp?", "temperature", "set voltage 20", false, nil},
+		{"Wrong value", "set current {%03X:current}", "current", "set current test", false, nil},
+		{"Too many elements", "TEMP?", "temperature", "TEMP?asdf", false, nil},
+	}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			l := ItemsFromConfig(tt.forLex)
-// 			cmd := CommandPattern{
-// 				Items:     l,
-// 				Typ:       tt.typ,
-// 				Parameter: tt.param,
-// 			}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			items := ItemsFromConfig(tt.forLex)
+			t.Logf("items: %v", items)
 
-// 			got, val := checkPattern(tt.input, cmd)
-// 			if got != tt.exp {
-// 				t.Errorf("exp bool: %t got: %t\n", tt.exp, got)
-// 			}
+			got, values := checkPattern(tt.input, items)
+			if got != tt.exp {
+				t.Errorf("exp bool: %t got: %t\n", tt.exp, got)
+				return
+			}
 
-// 			if val != tt.expVal {
-// 				t.Errorf("exp value: %v got: %v\n", tt.expVal, val)
-// 			}
-// 		})
-// 	}
+			if len(values) != len(tt.expVal) {
+				t.Errorf("exp values length: %d got: %d\n", len(tt.expVal), len(values))
+				return
+			}
 
-// }
+			for expKey, expVal := range tt.expVal {
+				val, exists := values[expKey]
 
-// func TestParseNumber(t *testing.T) {
-// 	t.Parallel()
-// 	tests := []struct {
-// 		name  string
-// 		input string
-// 		exp   string
-// 	}{
-// 		{"Small scientific notation", "3e-10", "3e-10"},
-// 		{"Big scientific notation", "4.5e6", "4.5e6"},
-// 		{"Big hex", "0xFF", "0xFF"},
-// 		{"Small hex", "0xaa", "0xaa"},
-// 		{"Imaginary number", "5.2i", "5.2i"},
-// 		{"Standard float", "34.567", "34.567"},
-// 		{"Standard decimal", "20", "20"},
-// 		{"Wrong number", "23f", ""},
-// 		{"Wrong hex", "0xx43", ""},
-// 		{"Wrong scientific notation", "44e-f5", ""},
-// 	}
+				if !exists {
+					t.Errorf("expKey %s is not present", expKey)
+					return
+				}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got := parseNumber(tt.input)
-// 			if got != tt.exp {
-// 				t.Errorf("exp string: %s got: %s\n", tt.exp, got)
-// 			}
-// 		})
-// 	}
-// }
+				if expVal != val {
+					t.Errorf("exp value: %v got: %v\n", expVal, val)
+					return
+				}
+			}
+		})
+	}
 
-// func TestParseString(t *testing.T) {
-// 	t.Parallel()
-// 	tests := []struct {
-// 		name  string
-// 		input string
-// 		exp   string
-// 	}{
-// 		{"One space", "test1 test2", "test1"},
-// 		{"Two spaces", "test1 test2 test3", "test1"},
-// 		{"empty input", "", ""},
-// 	}
+}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got := parseString(tt.input)
-// 			if got != tt.exp {
-// 				t.Errorf("exp string: %s got: %s\n", tt.exp, got)
-// 			}
-// 		})
-// 	}
-// }
+func TestParseNumber(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		input string
+		exp   string
+	}{
+		{"Small scientific notation", "3e-10", "3e-10"},
+		{"Big scientific notation", "4.5e6", "4.5e6"},
+		{"Big hex", "0xFF", "0xFF"},
+		{"Small hex", "0xaa", "0xaa"},
+		{"Imaginary number", "5.2i", "5.2i"},
+		{"Standard float", "34.567", "34.567"},
+		{"Standard decimal", "20", "20"},
+		{"Wrong number", "23f", ""},
+		{"Wrong hex", "0xx43", ""},
+		{"Wrong scientific notation", "44e-f5", ""},
+	}
 
-// func TestBuildCommandPatterns(t *testing.T) {
-// 	t.Parallel()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseNumber(tt.input)
+			if got != tt.exp {
+				t.Errorf("exp string: %s got: %s\n", tt.exp, got)
+			}
+		})
+	}
+}
 
-// 	cmds := map[string]*structs.Command{}
+func TestParseString(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		input string
+		exp   string
+	}{
+		{"One space", "test1 test2", "test1"},
+		{"Two spaces", "test1 test2 test3", "test1"},
+		{"empty input", "", ""},
+	}
 
-// 	p1, _ := parameter.New(50, "")
-// 	cmd1 := &structs.Command{
-// 		Name:  "current",
-// 		Param: p1,
-// 		Req:   []byte("CUR?"),
-// 		Res:   []byte("CUR %d"),
-// 		Set:   []byte("CUR %d"),
-// 		Ack:   []byte("OK"),
-// 	}
-// 	cmds[cmd1.Name] = cmd1
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseString(tt.input)
+			if got != tt.exp {
+				t.Errorf("exp string: %s got: %s\n", tt.exp, got)
+			}
+		})
+	}
+}
 
-// 	p2, _ := parameter.New(24.10, "")
-// 	cmd2 := &structs.Command{
-// 		Name:  "psi",
-// 		Param: p2,
-// 		Req:   []byte("PSI?"),
-// 		Res:   []byte("PSI %3.2f"),
-// 		Set:   []byte("PSI %3.2f"),
-// 		Ack:   []byte("PSI %3.2f OK"),
-// 	}
-// 	cmds[cmd2.Name] = cmd2
+func TestConstructOutput(t *testing.T) {
+	t.Parallel()
+	params := map[string]parameter.Parameter{}
 
-// 	p3, _ := parameter.New(5.342, "")
-// 	cmd3 := &structs.Command{
-// 		Name:  "voltage",
-// 		Param: p3,
-// 		Req:   []byte("VOLT?"),
-// 		Res:   []byte("VOLT %.3f"),
-// 		Set:   []byte("VOLT %.3f"),
-// 		Ack:   []byte("VOLT %.3f OK"),
-// 	}
-// 	cmds[cmd3.Name] = cmd3
+	cur, err := parameter.New(20, "", "int")
+	if err == nil {
+		params["current"] = cur
+	}
 
-// 	p4, _ := parameter.New(24.20, "")
-// 	cmd4 := &structs.Command{
-// 		Name:  "max",
-// 		Param: p4,
-// 		Req:   []byte("get ch1 max?"),
-// 		Res:   []byte("ch1 max%2.2f"),
-// 		Set:   []byte("set ch1 max%2.2f"),
-// 	}
-// 	cmds[cmd4.Name] = cmd4
+	volt, err := parameter.New(1.234, "", "float64")
+	if err == nil {
+		params["voltage"] = volt
+	}
 
-// 	p5, _ := parameter.New("v1.0.0", "")
-// 	cmd5 := &structs.Command{
-// 		Name:  "version",
-// 		Param: p5,
-// 		Req:   []byte("ver?"),
-// 		Res:   []byte("%s"),
-// 	}
-// 	cmds[cmd5.Name] = cmd5
+	psi, err := parameter.New(22.34, "", "float64")
+	if err == nil {
+		params["psi"] = psi
+	}
 
-// 	want := []CommandPattern{
-// 		{Items: ItemsFromConfig("CUR?"), Typ: structs.CommandReq, Parameter: "current"},
-// 		{Items: ItemsFromConfig("VOLT?"), Typ: structs.CommandReq, Parameter: "voltage"},
-// 		{Items: ItemsFromConfig("PSI?"), Typ: structs.CommandReq, Parameter: "psi"},
-// 		{Items: ItemsFromConfig("CUR %d"), Typ: structs.CommandSet, Parameter: "current"},
-// 		{Items: ItemsFromConfig("PSI %3.2f"), Typ: structs.CommandSet, Parameter: "psi"},
-// 		{Items: ItemsFromConfig("VOLT %.3f"), Typ: structs.CommandSet, Parameter: "voltage"},
-// 		{Items: ItemsFromConfig("set ch1 max%2.2f"), Typ: structs.CommandSet, Parameter: "max"},
-// 		{Items: ItemsFromConfig("get ch1 max?"), Typ: structs.CommandReq, Parameter: "max"},
-// 		{Items: ItemsFromConfig("ver?"), Typ: structs.CommandReq, Parameter: "version"},
-// 	}
-// 	got := buildCommandPatterns(cmds)
-// 	opts := []cmp.Option{
-// 		cmp.AllowUnexported(Item{}),
-// 		cmpopts.SortSlices(func(x, y CommandPattern) bool {
-// 			return x.Items[0].Value() < y.Items[0].Value()
-// 		}),
-// 	}
+	max, err := parameter.New(11.11, "", "float64")
+	if err == nil {
+		params["max"] = max
+	}
 
-// 	if diff := cmp.Diff(want, got, opts...); diff != "" {
-// 		t.Errorf("CommandPattern mismatch (-want +got):\n%v", diff)
-// 	}
-// }
+	version, err := parameter.New("version", "", "string")
+	if err == nil {
+		params["version"] = version
+	}
 
-// func TestConstructOutput(t *testing.T) {
-// 	t.Parallel()
-// 	tests := []struct {
-// 		name  string
-// 		items []Item
-// 		value any
-// 		exp   string
-// 	}{
-// 		{"current param", ItemsFromConfig("CUR %d"), 20, "CUR 20"},
-// 		{"voltage param", ItemsFromConfig("VOLT %.3f"), 1.234, "VOLT 1.234"},
-// 		{"psi param", ItemsFromConfig("PSI %3.2f"), 22.34, "PSI 22.34"},
-// 		{"max param", ItemsFromConfig("ch1 max%2.2f"), 11.11, "ch1 max11.11"},
-// 		{"version param", ItemsFromConfig("%s"), "version", "version"},
-// 		{"empty value", ItemsFromConfig("test %d"), nil, ""},
-// 		{"empty lexer", []Item(nil), nil, ""},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			res := constructOutput(tt.items, tt.value)
-// 			if string(res) != tt.exp {
-// 				t.Errorf("exp output: %s got: %s", tt.exp, res)
-// 			}
-// 		})
-// 	}
-// }
+	tests := []struct {
+		name  string
+		items []Item
+		exp   string
+	}{
+		{"current param", ItemsFromConfig("CUR {%d:current}"), "CUR 20"},
+		{"voltage param", ItemsFromConfig("VOLT {%.3f:voltage}"), "VOLT 1.234"},
+		{"psi param", ItemsFromConfig("PSI {%3.2f:psi}"), "PSI 22.34"},
+		{"max param", ItemsFromConfig("ch1 max{%2.2f:max}"), "ch1 max11.11"},
+		{"version param", ItemsFromConfig("{%s:version}"), "version"},
+		{"empty value", ItemsFromConfig("test {%d:}"), "test "},
+		{"empty lexer", []Item(nil), ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := constructOutput(tt.items, params)
+			if string(res) != tt.exp {
+				t.Errorf("exp output: %s got: %s", tt.exp, res)
+			}
+		})
+	}
+}
