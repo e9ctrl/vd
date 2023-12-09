@@ -11,6 +11,11 @@ import (
 	"github.com/e9ctrl/vd/vdfile"
 )
 
+var (
+	ErrWrongResSyntax = errors.New("illegal syntax in response")
+	ErrWrongReqSyntax = errors.New("illegal syntax in request")
+)
+
 // req
 // seq
 type CommandPattern struct {
@@ -88,8 +93,8 @@ func buildCommandPatterns(commands map[string]*structs.Command) (map[string]Comm
 			pattern.reqItems = ItemsFromConfig(string(cmd.Req))
 
 			for _, item := range pattern.reqItems {
-				if item.typ == ItemIllegal {
-					return nil, errors.New("illegal syntax in req")
+				if item.typ == ItemIllegal || item.typ == ItemError {
+					return nil, ErrWrongReqSyntax
 				}
 			}
 		}
@@ -98,8 +103,8 @@ func buildCommandPatterns(commands map[string]*structs.Command) (map[string]Comm
 			pattern.resItems = ItemsFromConfig(string(cmd.Res))
 
 			for _, item := range pattern.resItems {
-				if item.typ == ItemIllegal {
-					return nil, errors.New("illegal syntax in res")
+				if item.typ == ItemIllegal || item.typ == ItemError {
+					return nil, ErrWrongResSyntax
 				}
 			}
 		}
