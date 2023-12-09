@@ -29,6 +29,7 @@ func TestLexer(t *testing.T) {
 		{"param without placeholder", "{:param}", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemIllegal, lexer.ItemEOF}, "{"},
 		{"placeholder without param and placeholder", "{%}", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemError, lexer.ItemEOF}, "{error at char 2: '{%}'\nwrong placeholder value"},
 		{"placeholder without param", "{%d:}", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemRightMeta, lexer.ItemEOF}, "{%d}"},
+		{"wrong placeholder", "{%3z.2f:param}", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemError, lexer.ItemEOF}, "{error at char 3: '{%3z'\nwrong placeholder value"},
 		{"placeholder without param and colon", "{%d}", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemRightMeta, lexer.ItemEOF}, "{%d}"},
 		{"placeholder without param with whitespaces", "{ %d: }", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemRightMeta, lexer.ItemEOF}, "{%d}"},
 		{"placeholder without param with more whitespaces", "{   %d:   }", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemRightMeta, lexer.ItemEOF}, "{%d}"},
@@ -53,6 +54,7 @@ func TestLexer(t *testing.T) {
 				}
 			}
 			if len(items) != len(tt.want) {
+
 				t.Fatalf("token slice length mismatch error: wanted %d ; got %d", len(tt.want), len(items))
 			}
 			for i, item := range items {

@@ -307,8 +307,11 @@ func lexPlaceholder(l *Lexer) StateFn {
 		}
 		in := ".0123456789gGeEfFdcbtxX"
 		if l.acceptRun(in) {
-			l.emit(ItemNumberValuePlaceholder)
-			return lexInsideParamPlaceholder
+			ch := l.peek()
+			if ch == ':' || ch == '}' {
+				l.emit(ItemNumberValuePlaceholder)
+				return lexInsideParamPlaceholder
+			}
 		}
 	}
 	return l.errorf("wrong placeholder value")
