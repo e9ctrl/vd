@@ -34,7 +34,10 @@ func (p *Parser) Parse(input string) ([]byte, string, error) {
 			// set params
 			for name, val := range values {
 				if param, exist := p.vdfile.Params[name]; exist {
-					param.SetValue(val)
+					err := param.SetValue(val)
+					if err != nil {
+						return nil, cmdName, err
+					}
 				} else {
 					// error param not found
 					// todo: we might need to wrap the errors to provide more info
