@@ -128,11 +128,6 @@ func ItemsFromConfig(input string) []Item {
 	return NewConfig(input).Items()
 }
 
-// Convert string input to set of Items data
-// func ItemsFromData(input string) []Item {
-// 	return NewData(input).Items()
-// }
-
 func (l *Lexer) emit(t ItemType) {
 	l.ItemsCh <- Item{t, l.Input[l.start:l.pos]}
 	l.start = l.pos

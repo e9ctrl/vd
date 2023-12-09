@@ -62,7 +62,6 @@ func (p *Parser) Trigger(cmdName string) ([]byte, error) {
 	if !exist {
 		return nil, protocols.ErrCommandNotFound
 	}
-
 	return p.makeResponse(pattern.resItems), nil
 }
 
@@ -226,10 +225,6 @@ func parseNumber(s string) string {
 	return s[:pos]
 }
 
-// func isAlphaNumeric(b byte) bool {
-// 	return '0' <= b && b <= '9' || 'a' <= b && b <= 'z' || 'A' <= b && b <= 'Z' || b == '_'
-// }
-
 func parseString(input string) string {
 	var output string
 	for _, c := range input {
@@ -251,7 +246,6 @@ func constructOutput(items []Item, params map[string]parameter.Parameter) []byte
 		temp   string
 		format string
 	)
-
 	for _, i := range items {
 		switch i.Type() {
 		case ItemCommand,
@@ -269,7 +263,6 @@ func constructOutput(items []Item, params map[string]parameter.Parameter) []byte
 			temp += fmt.Sprintf(format, params[i.Value()].Value())
 		}
 	}
-
 	out = []byte(temp)
 	return out
 }
