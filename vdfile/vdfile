@@ -71,7 +71,7 @@ res = "TEMP {%.2f:temp}"
 [[command]]
 name = "get_version"
 req = "VER?"
-res = "{%s"version}"
+res = "{%s:version}"
 
 [[command]]
 name = "get_mode"

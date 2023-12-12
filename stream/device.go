@@ -111,14 +111,20 @@ func (s StreamDevice) parseTok(tok string) []byte {
 
 	if err == protocols.ErrCommandNotFound && len(s.vdfile.Mismatch) > 0 {
 		res = s.vdfile.Mismatch
+	} else if err != nil {
+		log.ERR("parse return with error %w", err)
 	}
 
 	if res == nil {
 		return res
 	}
 
-	if commandName != "" {
-		s.delayRes(s.vdfile.Commands[commandName].Dly)
+	if commandName != "" && s.vdfile != nil {
+		if cmd, exist := s.vdfile.Commands[commandName]; exist {
+			s.delayRes(cmd.Dly)
+		} else {
+			log.ERR("command name %s not found", commandName)
+		}
 	}
 
 	strRes := string(res)
@@ -178,9 +184,13 @@ func (s *StreamDevice) SetCommandDelay(name, val string) error {
 		return fmt.Errorf("command %s not found", name)
 	}
 
-	var err error
-	cmd.Dly, err = time.ParseDuration(val)
-	return err
+	if val, err := time.ParseDuration(val); err == nil {
+		cmd.Dly = val
+	} else {
+		return err
+	}
+
+	return nil
 }
 
 func (s StreamDevice) GetMismatch() []byte {

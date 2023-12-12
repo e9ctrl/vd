@@ -26,3 +26,17 @@ func TestParseTerminator(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateRandomDelayVDFile(t *testing.T) {
+	config, err := DecodeVDFile("vdfile")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	config = GenerateRandomDelay(config)
+	err = WriteVDFile("vdfile_random_delay", config)
+	if err != nil {
+		t.Error(err)
+	}
+}

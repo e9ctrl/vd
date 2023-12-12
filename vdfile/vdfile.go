@@ -1,6 +1,9 @@
 package vdfile
 
 import (
+	"bytes"
+	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -28,7 +31,7 @@ type configCommand struct {
 	Dly  string `toml:"dly,omitempty"`
 }
 
-type config struct {
+type Config struct {
 	Term     terminators       `toml:"terminators"`
 	Params   []configParameter `toml:"parameter"`
 	Commands []configCommand   `toml:"command"`
@@ -46,21 +49,24 @@ type VDFile struct {
 
 // Read VDFile from disk from the given filepath
 func ReadVDFile(path string) (*VDFile, error) {
+	config, err := DecodeVDFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed decoding file with err %w", err)
+	}
+
+	return ReadVDFileFromConfig(config)
+}
+
+func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 	vdfile := &VDFile{
 		Params:   make(map[string]parameter.Parameter, 0),
 		Commands: make(map[string]*structs.Command, 0),
 	}
 
-	var config config
-	_, err := toml.DecodeFile(path, &config)
-	if err != nil {
-		return vdfile, err
-	}
-
 	for _, param := range config.Params {
 		currentParam, err := parameter.New(param.Val, param.Opt, param.Typ)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Val, err)
 		}
 
 		vdfile.Params[param.Name] = currentParam
@@ -83,6 +89,25 @@ func ReadVDFile(path string) (*VDFile, error) {
 	vdfile.Mismatch = []byte(config.Mismatch)
 
 	return vdfile, nil
+}
+
+func DecodeVDFile(path string) (Config, error) {
+	var config Config
+	_, err := toml.DecodeFile(path, &config)
+
+	return config, err
+}
+
+func WriteVDFile(path string, config Config) error {
+	var buf = bytes.Buffer{}
+	var encoder = toml.NewEncoder(&buf)
+
+	err := encoder.Encode(config)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, buf.Bytes(), os.ModePerm)
 }
 
 func parseDelays(line string) time.Duration {

@@ -60,8 +60,8 @@ func (c *client) SetParameter(param, value string) error {
 	return nil
 }
 
-func (c *client) GetGlobalDelay(typ string) (time.Duration, error) {
-	resp, err := http.Get("http://" + c.url + "/delay/" + typ)
+func (c *client) GetCommandDelay(commandName string) (time.Duration, error) {
+	resp, err := http.Get("http://" + c.url + "/delay/" + commandName)
 	if err != nil {
 		return 0, err
 	}
@@ -82,52 +82,8 @@ func (c *client) GetGlobalDelay(typ string) (time.Duration, error) {
 	return time.ParseDuration(string(body))
 }
 
-func (c *client) SetGlobalDelay(typ, value string) error {
-	resp, err := http.Post("http://"+c.url+"/delay/"+typ+"/"+value, "text/plain", nil)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("API error %s", body)
-	}
-
-	return nil
-}
-
-func (c *client) GetParamDelay(param, typ string) (time.Duration, error) {
-	resp, err := http.Get("http://" + c.url + "/delay/" + typ + "/" + param)
-	if err != nil {
-		return 0, err
-	}
-
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return 0, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("API error %s", body)
-	}
-
-	return time.ParseDuration(string(body))
-}
-
-func (c *client) SetParamDelay(param, typ, value string) error {
-	resp, err := http.Post("http://"+c.url+"/delay/"+typ+"/"+param+"/"+value, "text/plain", nil)
+func (c *client) SetCommandDelay(commandName, value string) error {
+	resp, err := http.Post("http://"+c.url+"/delay/"+commandName+"/"+value, "text/plain", nil)
 	if err != nil {
 		return err
 	}

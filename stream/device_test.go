@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 	params := map[string]parameter.Parameter{}
 	commands := map[string]*structs.Command{}
 
-	p1, err := parameter.New(50, "", "int")
+	p1, err := parameter.New("50", "", "int")
 	if err != nil {
 		panic(err)
 	}
@@ -51,7 +51,7 @@ func TestMain(m *testing.M) {
 	}
 	commands[cmdSetCurrent.Name] = cmdSetCurrent
 
-	p2, err := parameter.New(24.10, "", "float32")
+	p2, err := parameter.New(24.10, "", "float64")
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +71,7 @@ func TestMain(m *testing.M) {
 	}
 	commands[cmdSetPsi.Name] = cmdSetPsi
 
-	p3, err := parameter.New(5.342, "", "float32")
+	p3, err := parameter.New(5.342, "", "float")
 	if err != nil {
 		panic(err)
 	}
@@ -89,9 +89,9 @@ func TestMain(m *testing.M) {
 		Req:  []byte("VOLT {%.3f:voltage}"),
 		Res:  []byte("VOLT {%.3f:voltage} OK"),
 	}
-	commands[cmdSetCurrent.Name] = cmdSetVoltage
+	commands[cmdSetVoltage.Name] = cmdSetVoltage
 
-	p4, err := parameter.New(24.20, "", "float32")
+	p4, err := parameter.New(24.20, "", "float")
 	if err != nil {
 		panic(err)
 	}
@@ -123,11 +123,9 @@ func TestMain(m *testing.M) {
 	}
 	commands[cmdGetVersion.Name] = cmdGetVersion
 
-	config := &vdfile.VDFile{
-		Commands: commands,
-		Params:   params,
-	}
-	dev.parser, _ = stream.NewParser(config)
+	dev.vdfile.Commands = commands
+	dev.vdfile.Params = params
+	dev.parser, _ = stream.NewParser(dev.vdfile)
 	// run tests
 	os.Exit(m.Run())
 }
@@ -161,52 +159,6 @@ func TestMain(m *testing.M) {
 // 				t.Errorf("ack expected %t got %t", tt.exp[3], gotAck)
 // 			}
 
-// 		})
-// 	}
-// }
-
-// func TestFindStreamCommand(t *testing.T) {
-// 	t.Parallel()
-// 	cmds := map[string]*structs.Command{}
-// 	cmd1 := &structs.Command{
-// 		Name: "test1",
-// 	}
-// 	cmds[cmd1.Name] = cmd1
-
-// 	cmd2 := &structs.Command{
-// 		Name: "test2",
-// 	}
-// 	cmds[cmd2.Name] = cmd2
-
-// 	dev := &StreamDevice{
-// 		commands: cmds,
-// 	}
-
-// 	tests := []struct {
-// 		name  string
-// 		param string
-// 		exp   *structs.Command
-// 	}{
-// 		{"proper parameter", "test1", nil},
-// 		{"wrong parameter", "test", nil},
-// 		{"empty parameter", "", nil},
-// 		{"empty list of cmds", "test", nil},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			if tt.name == "empty list of cmds" {
-// 				dev.commands = map[string]*structs.Command{}
-// 			}
-// 			res := dev.findStreamCommand(tt.param)
-// 			if tt.name == "proper parameter" {
-// 				if res.Name != tt.param {
-// 					t.Errorf("exp param name: %s got: %s\n", tt.name, res.Name)
-// 				}
-// 			} else {
-// 				if res != tt.exp {
-// 					t.Errorf("%s: exp resp: %v got: %v\n", tt.name, tt.exp, res)
-// 				}
-// 			}
 // 		})
 // 	}
 // }
@@ -278,39 +230,19 @@ func TestMakeResponse(t *testing.T) {
 		{"psi parma", "psi", "PSI?", []byte("PSI 24.10\r\n")},
 		{"max param", "max", "get ch1 max?", []byte("ch1 max24.20\r\n")},
 		{"version param", "version", "ver?", []byte("v1.0.0\r\n")},
-		{"empty param", "", "", []byte(nil)},
+		{"empty param", "", "", []byte("error\r\n")},
+		{"current param", "current", "CUR 30", []byte("OK\r\n")},
+		{"voltage param", "voltage", "VOLT 2.367", []byte("VOLT 2.367 OK\r\n")},
+		{"voltage param empty value", "voltage", "", []byte("error\r\n")},
+		{"psi param", "psi", "PSI 24.56", []byte("PSI 24.56 OK\r\n")},
+		{"wrong param", "test", "20", []byte("error\r\n")},
+		{"empty value", "current", "", []byte("error\r\n")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			res := dev.parseTok(tt.req)
 			if !bytes.Equal(res, tt.exp) {
 				t.Errorf("%s: exp resp: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
-			}
-		})
-	}
-}
-
-func TestAckResponse(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name  string
-		param string
-		set   string
-		exp   []byte
-	}{
-		{"current param", "current", "CUR 30", []byte("OK\r\n")},
-		{"voltage param", "voltage", "VOLT 2.367", []byte("VOLT 2.367 OK\r\n")},
-		{"voltage param empty value", "voltage", "", []byte(nil)},
-		{"psi param", "psi", "PSI 24.56", []byte("PSI 24.56 OK\r\n")},
-		{"param without ack", "version", "", []byte(nil)},
-		{"wrong param", "test", "20", []byte(nil)},
-		{"empty value", "current", "", []byte(nil)},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			res := dev.parseTok(tt.set)
-			if !bytes.Equal(res, tt.exp) {
-				t.Errorf("%s: exp ack: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
 			}
 		})
 	}
@@ -340,19 +272,19 @@ func TestMismatch(t *testing.T) {
 	}
 }
 
-func TestTrigParam(t *testing.T) {
+func TestTriggerCommand(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name   string
-		param  string
-		exp    []byte
-		expErr error
+		name    string
+		command string
+		exp     []byte
+		expErr  error
 	}{
-		{"version param", "version", []byte("v1.0.0\r\n"), nil},
-		{"psi param", "psi", []byte("PSI 24.10\r\n"), nil},
-		{"voltage param", "voltage", []byte("VOLT 5.342\r\n"), nil},
-		{"empty param", "", []byte(nil), protocols.ErrParamNotFound},
-		{"wrong param", "test", []byte(nil), protocols.ErrParamNotFound},
+		{"version command", "get_version", []byte("v1.0.0\r\n"), nil},
+		{"psi command", "get_psi", []byte("PSI 24.10\r\n"), nil},
+		{"voltage command", "get_voltage", []byte("VOLT 5.342\r\n"), nil},
+		{"empty command", "", []byte(nil), protocols.ErrCommandNotFound},
+		{"wrong command", "test", []byte(nil), protocols.ErrCommandNotFound},
 	}
 
 	for _, tt := range tests {
@@ -371,7 +303,7 @@ func TestTrigParam(t *testing.T) {
 			// Wait for the goroutine to signal readiness
 			<-readyChan
 
-			err := dev.Trigger(tt.param)
+			err := dev.Trigger(tt.command)
 
 			select {
 			case res := <-resultChan:

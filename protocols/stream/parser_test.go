@@ -33,6 +33,7 @@ func TestParse(t *testing.T) {
 		{"set psi command", "PSI 30.42", []byte("PSI 30.42 OK"), "set_psi", nil},
 		{"empty command", "", []byte(""), "", protocols.ErrCommandNotFound},
 		{"non-existent command", "test 30.0", []byte(nil), "", protocols.ErrCommandNotFound},
+		{"set current command", "CUR 30", []byte("OK"), "set_current", nil},
 		{"wrong value of the command", "CUR 30.0", []byte(nil), "set_current", parameter.ErrWrongIntVal},
 		{"set command with opt", ":PULSE0:MODE SING", []byte("ok"), "set_mode", nil},
 		{"wrong opt of the command", ":PULSE0:MODE TEST", []byte(nil), "set_mode", parameter.ErrValNotAllowed},
@@ -120,27 +121,27 @@ func TestBuildCommandPatterns(t *testing.T) {
 	exp := map[string]CommandPattern{}
 
 	p1 := CommandPattern{
-		reqItems: []Item{Item{typ: ItemCommand, val: "get"}, Item{typ: ItemWhiteSpace, val: " "}, Item{typ: ItemCommand, val: "curr?"}},
-		resItems: []Item{Item{typ: ItemCommand, val: "curr"}, Item{typ: ItemWhiteSpace, val: " "}, Item{typ: ItemLeftMeta, val: "{"}, Item{typ: ItemNumberValuePlaceholder, val: "%3.2f"}, Item{typ: ItemParam, val: "current"}, Item{typ: ItemRightMeta, val: "}"}},
+		reqItems: []Item{{typ: ItemCommand, val: "get"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "curr?"}},
+		resItems: []Item{{typ: ItemCommand, val: "curr"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%3.2f"}, {typ: ItemParam, val: "current"}, {typ: ItemRightMeta, val: "}"}},
 	}
 	exp["current_get"] = p1
 
 	p2 := CommandPattern{
-		reqItems: []Item{Item{typ: ItemCommand, val: "set"}, Item{typ: ItemWhiteSpace, val: " "}, Item{typ: ItemCommand, val: "curr"}, Item{typ: ItemWhiteSpace, val: " "}, Item{typ: ItemLeftMeta, val: "{"}, Item{typ: ItemNumberValuePlaceholder, val: "%02d"}, Item{typ: ItemParam, val: "current"}, Item{typ: ItemRightMeta, val: "}"}},
-		resItems: []Item{Item{typ: ItemCommand, val: "ok"}},
+		reqItems: []Item{{typ: ItemCommand, val: "set"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "curr"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%02d"}, {typ: ItemParam, val: "current"}, {typ: ItemRightMeta, val: "}"}},
+		resItems: []Item{{typ: ItemCommand, val: "ok"}},
 	}
 
 	exp["current_set"] = p2
 
 	p3 := CommandPattern{
-		reqItems: []Item{Item{typ: ItemCommand, val: "VER?"}},
-		resItems: []Item{Item{typ: ItemLeftMeta, val: "{"}, Item{typ: ItemStringValuePlaceholder, val: "%s"}, Item{typ: ItemParam, val: "version"}, Item{typ: ItemRightMeta, val: "}"}},
+		reqItems: []Item{{typ: ItemCommand, val: "VER?"}},
+		resItems: []Item{{typ: ItemLeftMeta, val: "{"}, {typ: ItemStringValuePlaceholder, val: "%s"}, {typ: ItemParam, val: "version"}, {typ: ItemRightMeta, val: "}"}},
 	}
 
 	exp["version_get"] = p3
 
 	p4 := CommandPattern{
-		reqItems: []Item{Item{typ: ItemCommand, val: "set"}, Item{typ: ItemWhiteSpace, val: " "}, Item{typ: ItemLeftMeta, val: "{"}, Item{typ: ItemNumberValuePlaceholder, val: "%03X"}, Item{typ: ItemParam, val: "psi"}, Item{typ: ItemRightMeta, val: "}"}, Item{typ: ItemWhiteSpace, val: " "}, Item{typ: ItemCommand, val: "psi"}},
+		reqItems: []Item{{typ: ItemCommand, val: "set"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%03X"}, {typ: ItemParam, val: "psi"}, {typ: ItemRightMeta, val: "}"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "psi"}},
 	}
 	exp["psi_set"] = p4
 
