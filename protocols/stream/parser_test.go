@@ -332,7 +332,7 @@ func TestConstructOutput(t *testing.T) {
 	t.Parallel()
 	params := map[string]parameter.Parameter{}
 
-	cur, err := parameter.New(20, "", "int")
+	cur, err := parameter.New("20", "", "int64")
 	if err == nil {
 		params["current"] = cur
 	}
