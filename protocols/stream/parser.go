@@ -41,6 +41,9 @@ func (p *Parser) Parse(input string) ([]byte, string, error) {
 				if param, exist := p.vdfile.Params[name]; exist {
 					err := param.SetValue(val)
 					if err != nil {
+						if err == parameter.ErrValNotAllowed {
+							return nil, cmdName, errors.Join(protocols.ErrWrongSetVal, err)
+						}
 						return nil, cmdName, err
 					}
 				} else {
