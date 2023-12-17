@@ -30,6 +30,7 @@ func TestParse(t *testing.T) {
 	}{
 		{"get command int", "CUR?", []byte("CUR 300"), "get_current", nil},
 		{"get command str", "VER?", []byte("version 1.0"), "get_version", nil},
+		{"get status two params", "S?", []byte("version 1.0 - 2.3"), "get_status", nil},
 		{"set psi command", "PSI 30.42", []byte("PSI 30.42 OK"), "set_psi", nil},
 		{"empty command", "", []byte(""), "", protocols.ErrCommandNotFound},
 		{"non-existent command", "test 30.0", []byte(nil), "", protocols.ErrCommandNotFound},
@@ -74,6 +75,7 @@ func TestTrigger(t *testing.T) {
 	}{
 		{"current param", "get_current", []byte("CUR 300"), nil},
 		{"version param", "get_version", []byte("version 1.0"), nil},
+		{"two params", "get_status", []byte("version 1.0 - 2.3"), nil},
 		{"psi param", "get_psi", []byte("PSI 3.30"), nil},
 		{"empty command", "", []byte(nil), protocols.ErrCommandNotFound},
 		{"non-existent command", "test", []byte(nil), protocols.ErrCommandNotFound},
@@ -113,10 +115,17 @@ func TestBuildCommandPatterns(t *testing.T) {
 		Name: "psi_set",
 		Req:  []byte("set {%03X:psi} psi"),
 	}
+	cmd5 := &structs.Command{
+		Name: "get_status",
+		Req:  []byte("S?"),
+		Res:  []byte("{%s:version} - {%.1f:temp}"),
+	}
+
 	input["current_get"] = cmd1
 	input["current_set"] = cmd2
 	input["version_get"] = cmd3
 	input["psi_set"] = cmd4
+	input["get_status"] = cmd5
 
 	exp := map[string]CommandPattern{}
 
@@ -144,6 +153,12 @@ func TestBuildCommandPatterns(t *testing.T) {
 		reqItems: []Item{{typ: ItemCommand, val: "set"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%03X"}, {typ: ItemParam, val: "psi"}, {typ: ItemRightMeta, val: "}"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "psi"}},
 	}
 	exp["psi_set"] = p4
+
+	p5 := CommandPattern{
+		reqItems: []Item{{typ: ItemCommand, val: "S?"}},
+		resItems: []Item{{typ: ItemLeftMeta, val: "{"}, {typ: ItemStringValuePlaceholder, val: "%s"}, {typ: ItemParam, val: "version"}, {typ: ItemRightMeta, val: "}"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "-"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%.1f"}, {typ: ItemParam, val: "temp"}, {typ: ItemRightMeta, val: "}"}},
+	}
+	exp["get_status"] = p5
 
 	cmdPattern, err := buildCommandPatterns(input)
 	if err != nil {
@@ -227,21 +242,21 @@ func TestCheckPattern(t *testing.T) {
 	tests := []struct {
 		name   string
 		forLex string
-		param  string
 		input  string
 		exp    bool
 		expVal map[string]any
 	}{
-		{"Simple req", "TEMP?", "temperature", "TEMP?", true, map[string]any{}},
-		{"Complex req", "get ch1 curr?", "current", "get ch1 curr?", true, map[string]any{}},
-		{"Simple set", "volt {%3.2f:voltage}", "voltage", "volt 34.45", true, map[string]any{"voltage": "34.45"}},
-		{"Complex set", "set ch1 max {%2d:max}", "max", "set ch1 max 35", true, map[string]any{"max": "35"}},
-		{"Placeholder between", "set ch1 {%2.2f:power} pow", "power", "set ch1 34.56 pow", true, map[string]any{"power": "34.56"}},
+		{"Simple req", "TEMP?", "TEMP?", true, map[string]any{}},
+		{"test", "get two 2", "get two 2", true, map[string]any{}},
+		{"Complex req", "get ch1 curr?", "get ch1 curr?", true, map[string]any{}},
+		{"Simple set", "volt {%3.2f:voltage}", "volt 34.45", true, map[string]any{"voltage": "34.45"}},
+		{"Complex set", "set ch1 max {%2d:max}", "set ch1 max 35", true, map[string]any{"max": "35"}},
+		{"Placeholder between", "set ch1 {%2.2f:power} pow", "set ch1 34.56 pow", true, map[string]any{"power": "34.56"}},
 		// Note: we need to more strict checking on different type of placeholder
-		// {"Wrong input", "set voltage {%d:voltage}", "voltage", "set voltage 20.45", false, map[string]any{}},
-		{"Command not found", "get temp?", "temperature", "set voltage 20", false, nil},
-		{"Wrong value", "set current {%03X:current}", "current", "set current test", false, nil},
-		{"Too many elements", "TEMP?", "temperature", "TEMP?asdf", false, nil},
+		// {"Wrong input", "set voltage {%d:voltage}", "set voltage 20.45", false, map[string]any{}},
+		{"Command not found", "get temp?", "set voltage 20", false, nil},
+		{"Wrong value", "set current {%03X:current}", "set current test", false, nil},
+		{"Too many elements", "TEMP?", "TEMP?asdf", false, nil},
 	}
 
 	for _, tt := range tests {
@@ -369,6 +384,7 @@ func TestConstructOutput(t *testing.T) {
 		{"version param", ItemsFromConfig("{%s:version}"), "version"},
 		{"empty value", ItemsFromConfig("test {%d:}"), "test "},
 		{"empty lexer", []Item(nil), ""},
+		{"two params", ItemsFromConfig("{%s:version} - {%2.2f:max}"), "version - 11.11"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

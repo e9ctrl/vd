@@ -314,6 +314,7 @@ func TestParseTok(t *testing.T) {
 		{"psi cmd", "PSI?", []byte("PSI 24.10\r\n")},
 		{"version cmd", "ver?", []byte("v1.0.0\r\n")},
 		{"empty request", "", []byte("error\r\n")},
+		{"two params cmd", "get two 2", []byte("ver: v1.0.0 off: 53.4\r\n")},
 		{"set current2 cmd", "CUR2 30", []byte("OK\r\n")},
 		{"set voltage2 cmd", "VOLT2 2.367", []byte("VOLT2 2.367 OK\r\n")},
 		{"wrong request", "20", []byte("error\r\n")},
@@ -345,6 +346,7 @@ func TestTriggerCommand(t *testing.T) {
 		{"status command", "get_status", []byte("stop\r\n"), nil},
 		{"mode command", "get_mode", []byte("true\r\n"), nil},
 		{"two params command", "get_two_params", []byte("v1.0.0 53.4\r\n"), nil},
+		{"two params command2 ", "get_two_params_2", []byte("ver: v1.0.0 off: 53.4\r\n"), nil},
 		{"empty command", "", []byte(nil), protocols.ErrCommandNotFound},
 		{"wrong command", "test", []byte(nil), protocols.ErrCommandNotFound},
 	}

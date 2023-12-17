@@ -101,3 +101,8 @@ res = "{%t:ack}"
 [[command]]
 name = "set_ack"
 req = "ACK {%t:ack}"
+
+[[command]]
+name = "get_status"
+req = "S?"
+res = "{%s:version} - {%.1f:temp}"

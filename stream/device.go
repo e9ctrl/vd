@@ -77,7 +77,6 @@ func (s StreamDevice) Triggered() chan []byte { return s.triggered }
 
 func (s StreamDevice) parseTok(tok string) []byte {
 	res, commandName, err := s.parser.Parse(tok)
-
 	if (err == protocols.ErrCommandNotFound || errors.Is(err, protocols.ErrWrongSetVal)) && len(s.vdfile.Mismatch) > 0 {
 		res = s.vdfile.Mismatch
 	} else if err != nil {

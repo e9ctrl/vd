@@ -56,7 +56,6 @@ func (p *Parser) Parse(input string) ([]byte, string, error) {
 
 		return p.makeResponse(pattern.resItems), cmdName, nil
 	}
-
 	return nil, "", protocols.ErrCommandNotFound
 }
 
