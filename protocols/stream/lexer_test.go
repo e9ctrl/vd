@@ -17,6 +17,8 @@ func TestLexer(t *testing.T) {
 	}{
 		{"standard input", "test1 {%s:param} test2", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "test1 {%sparam} test2"},
 		{"two parameters", "{%s:param1} {%s:param2}test3", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemCommand, lexer.ItemEOF}, "{%sparam1} {%sparam2}test3"},
+		{"two parameters separated with text", "test: {%s:param1} test2: {%s:param2} test3", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "test: {%sparam1} test2: {%sparam2} test3"},
+		{"two parameters separated with -", "{%f:param1} - {%d:param2}", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "{%fparam1} - {%dparam2}"},
 		{"two parameters not separated", "test4 {%3d:param1}{%3.2f:param2} test5", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "test4 {%3dparam1}{%3.2fparam2} test5"},
 		{"two parameters comma separated", "test{%03X:param,%0.3e:param}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemIllegal, lexer.ItemEOF}, "test{%03Xparam,"},
 		{"two parameters comma separated without second param", "test{%03X:param,%0.3e:}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemIllegal, lexer.ItemEOF}, "test{%03Xparam,"},
@@ -37,6 +39,7 @@ func TestLexer(t *testing.T) {
 		{"one parameter with more whitespaces", "{   %d:param   }", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "{%dparam}"},
 
 		{"Illegal character", "!", []lexer.ItemType{lexer.ItemIllegal, lexer.ItemEOF}, ""},
+		{"number as a command", "get two 2", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "get two 2"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

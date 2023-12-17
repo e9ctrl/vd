@@ -240,7 +240,7 @@ func isNumber(ch rune) bool {
 }
 
 func isSpecialChar(ch rune) bool {
-	return ch == '?' || ch == ':' || ch == '*' || ch == '='
+	return ch == '?' || ch == ':' || ch == '*' || ch == '=' || ch == '-'
 }
 
 func isSpace(ch rune) bool {
@@ -262,6 +262,7 @@ func lexStart(l *Lexer) StateFn {
 		if l.mode == dataMode {
 			return lexNumber
 		}
+		l.emit(ItemCommand)
 		return lexStart
 	case ch == '{':
 		return lexLeftMeta
