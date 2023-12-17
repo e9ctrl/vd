@@ -32,37 +32,6 @@ type StreamDevice struct {
 
 // Create a new stream device given the virtual device configuration file
 func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
-	// parse parameters
-	// params := []string{}
-	// for p := range vdfile.StreamCmd {
-	// 	params = append(params, p)
-	// }
-	// sort.Strings(params)
-
-	// w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	// fmt.Fprintln(w, "Parameter\t\tReq\tRes\tSet\tAck")
-	// for _, p := range params {
-	// 	req, res, set, ack := vdfile.StreamCmd[p].SupportedCommands()
-
-	// 	var reqStr, resStr, setStr, ackStr string
-	// 	if req {
-	// 		reqStr = " ✓"
-	// 	}
-	// 	if res {
-	// 		resStr = " ✓"
-	// 	}
-	// 	if set {
-	// 		setStr = " ✓"
-	// 	}
-	// 	if ack {
-	// 		ackStr = " ✓"
-	// 	}
-	// 	fmt.Fprintf(w, "%s\t\t%s\t%s\t%s\t%s\n", p, reqStr, resStr, setStr, ackStr)
-
-	// }
-	// w.Flush()
-	// fmt.Println("")
-
 	// make sure the parser is initialize successfully
 	parser, err := stream.NewParser(vdfile)
 	if err != nil {
