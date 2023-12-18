@@ -33,6 +33,7 @@ func TestParse(t *testing.T) {
 		{"get command int", "CUR?", []byte("CUR 300"), "get_current", nil},
 		{"get command str", "VER?", []byte("version 1.0"), "get_version", nil},
 		{"get status two params", "S?", []byte("version 1.0 - 2.3"), "get_status", nil},
+		{"get status two params with new line", "get status ch 3", []byte("mode: NORM\npsi: 3.30"), "get_status_3", nil},
 		{"set psi command", "PSI 30.42", []byte("PSI 30.42 OK"), "set_psi", nil},
 		{"empty command", "", []byte(""), "", protocols.ErrCommandNotFound},
 		{"non-existent command", "test 30.0", []byte(nil), "", protocols.ErrCommandNotFound},
@@ -78,6 +79,7 @@ func TestTrigger(t *testing.T) {
 		{"current param", "get_current", []byte("CUR 300"), nil},
 		{"version param", "get_version", []byte("version 1.0"), nil},
 		{"two params", "get_status", []byte("version 1.0 - 2.3"), nil},
+		{"two params with new line", "get_status_3", []byte("mode: NORM\npsi: 3.30"), nil},
 		{"psi param", "get_psi", []byte("PSI 3.30"), nil},
 		{"empty command", "", []byte(nil), protocols.ErrCommandNotFound},
 		{"non-existent command", "test", []byte(nil), protocols.ErrCommandNotFound},
@@ -122,12 +124,18 @@ func TestBuildCommandPatterns(t *testing.T) {
 		Req:  []byte("S?"),
 		Res:  []byte("{%s:version} - {%.1f:temp}"),
 	}
+	cmd6 := &structs.Command{
+		Name: "get_status_3",
+		Req:  []byte("get stat?"),
+		Res:  []byte("{%s:version}\n{%.1f:temp}"),
+	}
 
 	input["current_get"] = cmd1
 	input["current_set"] = cmd2
 	input["version_get"] = cmd3
 	input["psi_set"] = cmd4
 	input["get_status"] = cmd5
+	input["get_stat"] = cmd6
 
 	exp := map[string]CommandPattern{}
 
@@ -161,6 +169,12 @@ func TestBuildCommandPatterns(t *testing.T) {
 		resItems: []Item{{typ: ItemLeftMeta, val: "{"}, {typ: ItemStringValuePlaceholder, val: "%s"}, {typ: ItemParam, val: "version"}, {typ: ItemRightMeta, val: "}"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "-"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%.1f"}, {typ: ItemParam, val: "temp"}, {typ: ItemRightMeta, val: "}"}},
 	}
 	exp["get_status"] = p5
+
+	p6 := CommandPattern{
+		reqItems: []Item{{typ: ItemCommand, val: "get"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "stat?"}},
+		resItems: []Item{{typ: ItemLeftMeta, val: "{"}, {typ: ItemStringValuePlaceholder, val: "%s"}, {typ: ItemParam, val: "version"}, {typ: ItemRightMeta, val: "}"}, {typ: ItemEscape, val: "\n"}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%.1f"}, {typ: ItemParam, val: "temp"}, {typ: ItemRightMeta, val: "}"}},
+	}
+	exp["get_stat"] = p6
 
 	cmdPattern, err := buildCommandPatterns(input)
 	if err != nil {

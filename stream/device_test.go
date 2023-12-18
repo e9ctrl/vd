@@ -261,6 +261,13 @@ func TestMain(m *testing.M) {
 	}
 	commands[cmdSetVoltage2.Name] = cmdSetVoltage2
 
+	cmdGetStat := &structs.Command{
+		Name: "get_stat",
+		Req:  []byte("get stat"),
+		Res:  []byte("{%s:version}\n{%.1f:offset}"),
+	}
+	commands[cmdGetStat.Name] = cmdGetStat
+
 	dev.vdfile.Commands = commands
 	dev.vdfile.Params = params
 	dev.parser, _ = stream.NewParser(dev.vdfile)
@@ -292,7 +299,9 @@ func TestHandle(t *testing.T) {
 		{"wrong set cmd", []byte("set ch1 maxwrong\r\n"), []byte("error\r\n")},
 		{"one cmd two params", []byte("get two\r\n"), []byte("v1.0.0 53.4\r\n")},
 		{"one cmd two params 2", []byte("get two 2\r\n"), []byte("ver: v1.0.0 off: 53.4\r\n")},
+		{"with newline in reps", []byte("get stat\r\n"), []byte("v1.0.0\n53.4\r\n")},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			res := dev.Handle(tt.cmd)

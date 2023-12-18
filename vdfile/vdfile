@@ -109,6 +109,11 @@ req = "get status ch 2"
 res = "mode: {%s:mode} psi: {%3.2f:psi}"
 
 [[command]]
+name = "get_status_3"
+req = "get status ch 3"
+res = "mode: {%s:mode}\npsi: {%3.2f:psi}"
+
+[[command]]
 name = "set_two_params"
 req = "set mode {%s:mode} psi {%3.2f:psi}"
 res = "ok"

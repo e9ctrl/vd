@@ -263,7 +263,11 @@ func constructOutput(items []Item, params map[string]parameter.Parameter) []byte
 			// i.Value() hold the parameter name
 			// which the parameter instance itself can be retrieve from the vdfile.Params
 			temp += fmt.Sprintf(format, params[i.Value()].Value())
+
+		case ItemEscape:
+			temp += i.Value()
 		}
+
 	}
 	out = []byte(temp)
 	return out

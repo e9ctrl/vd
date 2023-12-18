@@ -35,6 +35,7 @@ const (
 
 	ItemEOF
 	ItemIllegal
+	ItemEscape
 )
 
 var typeStr = map[ItemType]string{
@@ -50,6 +51,7 @@ var typeStr = map[ItemType]string{
 	ItemEOF:        "eof",
 	ItemIllegal:    "illegal",
 	ItemNumber:     "number",
+	ItemEscape:     "escape value",
 }
 
 // To string representation
@@ -247,6 +249,11 @@ func isSpace(ch rune) bool {
 	return ch == ' '
 }
 
+func isEscape(ch rune) bool {
+	// \f form feed \r carriage return \v vertical tab \t horizontal tab \n line feed or newline
+	return ch == '\f' || ch == '\n' || ch == '\t' || ch == '\r' || ch == '\v'
+}
+
 // This is the initial state and base state
 func lexStart(l *Lexer) StateFn {
 	switch ch := l.next(); {
@@ -268,6 +275,9 @@ func lexStart(l *Lexer) StateFn {
 		return lexLeftMeta
 	case ch == '}':
 		return lexRightMeta
+	case isEscape(ch):
+		l.emit(ItemEscape)
+		return lexStart
 	default:
 		l.backup()
 		l.emit(ItemIllegal)

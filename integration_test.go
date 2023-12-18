@@ -114,6 +114,7 @@ func TestRun(t *testing.T) {
 		{"get status", []byte("S?\r\n"), []byte("version 1.0 - 2.3\r\n")},
 		{"set two params", []byte("set mode BURS psi 4.56\r\n"), []byte("ok\r\n")},
 		{"get status ch2", []byte("get status ch 2\r\n"), []byte("mode: BURS psi: 4.56\r\n")},
+		{"get status ch3", []byte("get status ch 3\r\n"), []byte("mode: BURS\npsi: 4.56\r\n")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

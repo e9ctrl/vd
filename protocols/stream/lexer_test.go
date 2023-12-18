@@ -38,7 +38,9 @@ func TestLexer(t *testing.T) {
 		{"one parameter with whitespaces", "{ %d:param }", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "{%dparam}"},
 		{"one parameter with more whitespaces", "{   %d:param   }", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "{%dparam}"},
 
-		{"Illegal character", "!", []lexer.ItemType{lexer.ItemIllegal, lexer.ItemEOF}, ""},
+		{"illegal character", "!", []lexer.ItemType{lexer.ItemIllegal, lexer.ItemEOF}, ""},
+		{"illegal escape", "\a", []lexer.ItemType{lexer.ItemIllegal, lexer.ItemEOF}, ""},
+		{"new line between params", "val: {%s:param}\n{%s:param}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEscape, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "val: {%sparam}\n{%sparam}"},
 		{"number as a command", "get two 2", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "get two 2"},
 	}
 	for _, tt := range tests {
@@ -56,6 +58,7 @@ func TestLexer(t *testing.T) {
 					break
 				}
 			}
+			t.Log(items)
 			if len(items) != len(tt.want) {
 
 				t.Fatalf("token slice length mismatch error: wanted %d ; got %d", len(tt.want), len(items))
