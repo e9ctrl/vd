@@ -1,41 +1,49 @@
 # This is toml config file
-
-[simulator]
-addr = "localhost:9999"
-
-[delays]
-res = "1s"
-ack = "1s"
-
 [terminators]
 intterm = "CR LF"
 outterm = "CR LF"
 
 [[parameter]]
 name = "current"
-typ = "int"
-req = "CUR?"
-res = "CUR %d"
-rdl = "2s"
-set = "CUR %d"
-ack = "OK"
-adl = "2s"
+typ = "int64"
 val = 300
+
+[[command]]
+name = "get_current"
+req = "CUR?"
+res = "CUR {%d:current}"
+dly = "2s"
+
+[[command]]
+name = "set_current"
+req = "CUR {%d:current}"
+res = "OK"
+dly = "2s"
 
 [[parameter]]
 name = "psi"
 typ = "float"
-req = "PSI?"
-res = "PSI %3.2f"
-rdl = "3s"
-set = "PSI %3.2f"
-ack = "PSI %3.2f OK"
-adl = "3s"
 val = 3.3
+
+[[command]]
+name = "get_psi"
+req = "PSI?"
+res = "PSI {%3.2f:psi}"
+dly = "3s"
+
+[[command]]
+name = "set_spi"
+req = "PSI {%3.2f:psi}"
+res = "PSI {%3.2f:psi} OK"
+dly = "3s"
 
 [[parameter]]
 name = "temp"
 typ = "float"
-req = "TEMP?"
-res = "TEMP %.2f"
 val = 2.3
+
+[[command]]
+name = "get_temp"
+req = "TEMP?"
+res = "TEMP {%.2f:temp}"
+dly = "1s"

@@ -15,11 +15,11 @@ import (
 
 const (
 	ADDR1 = "localhost:3333"
-	FILE1 = "stream/vdfile"
+	FILE1 = "vdfile/vdfile"
 	ADDR2 = "localhost:4444"
-	FILE2 = "stream/vdfile_delays"
+	FILE2 = "vdfile/vdfile_delays"
 	ADDR3 = "localhost:5555"
-	FILE3 = "stream/vdfile_mismatch"
+	FILE3 = "vdfile/vdfile_mismatch"
 	ADDR4 = "localhost:6666"
 )
 
@@ -78,6 +78,9 @@ func TestRun(t *testing.T) {
 		{"current set", []byte("CUR 20\r\n"), []byte("OK\r\n")},
 		{"psi set", []byte("PSI 3.46\r\n"), []byte("PSI 3.46 OK\r\n")},
 		{"mode set", []byte(":PULSE0:MODE SING\r\n"), []byte("ok\r\n")},
+		{"get status", []byte("S?\r\n"), []byte("version 1.0 - 2.3\r\n")},
+		{"set two params", []byte("set mode BURS psi 4.56\r\n"), []byte("ok\r\n")},
+		{"get status ch2", []byte("get status ch 2\r\n"), []byte("mode: BURS psi: 4.56\r\n")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

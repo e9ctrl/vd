@@ -8,59 +8,95 @@ outterm = "CR LF"
 
 [[parameter]]
 name = "current"
-typ = "int"
-req = "CUR?"
-res = "CUR %d"
-set = "CUR %d"
-ack = "OK"
+typ = "int64"
 val = 300
+
+[[command]]
+name = "get_current"
+req = "CUR?"
+res = "CUR {%d:current}"
+
+[[command]]
+name = "set_current"
+req = "CUR {%d:current}"
+res = "OK"
 
 [[parameter]]
 name = "psi"
 typ = "float"
-req = "PSI?"
-res = "PSI %3.2f"
-set = "PSI %3.2f"
-ack = "PSI %3.2f OK"
 val = 3.3
+
+[[command]]
+name = "get_psi"
+req = "PSI?"
+res = "PSI {%3.2f:psi}"
+
+[[command]]
+name = "set_spi"
+req = "PSI {%3.2f:psi}"
+res = "PSI {%3.2f:psi} OK"
 
 [[parameter]]
 name = "temp"
 typ = "float"
-req = "TEMP?"
-res = "TEMP %.2f"
 val = 2.3
+
+[[command]]
+name = "get_temp"
+req = "TEMP?"
+res = "TEMP {%.2f:temp}"
 
 [[parameter]]
 name = "version" 
 typ = "string"
-req = "VER?"
-res = "%s"
 val = "version 1.0"
+
+[[command]]
+name = "get_version"
+req = "VER?"
+res = "{%s:version}"
 
 [[parameter]]
 name = "mode" 
 typ = "string"
-opt = "NORM|SING|BURS|DCYC"
-req = ":PULSE0:MODE?"
-res = "%s"
-set = ":PULSE0:MODE %s"
-ack = "ok"
 val = "NORM"
+opt = "NORM|SING|BURS|DCYC"
+
+[[command]]
+name = "get_mode"
+req = ":PULSE0:MODE?"
+res = "{%s:mode}"
+
+[[command]]
+name = "set_mode"
+req = ":PULSE0:MODE {%s:mode}"
+res = "ok"
 
 [[parameter]]
 name = "ff"
 typ = "int"
-req = "FF?"
-res = "%d"
-set = "F%d"
-ack = "ok"
 val = 4
+
+[[command]]
+name = "geT_ff"
+req = "FF?"
+res = "{%d:ff}"
+
+[[command]]
+name = "set_ff"
+set = "F{%d:ff}"
+ack = "ok"
 
 [[parameter]]
 name = "ack"
 typ = "bool"
-req = "ACK?"
-res = "%t"
-set = "ACK %t"
 val = false
+
+[[command]]
+name = "get_ack"
+req = "ACK?"
+res = "{%t:ack}"
+
+[[command]]
+name = "set_ack"
+req = "ACK {%t:ack}"
