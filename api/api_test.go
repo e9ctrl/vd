@@ -8,13 +8,11 @@ import (
 	"github.com/e9ctrl/vd/vdfile"
 )
 
-const (
-	FILE1 = "../vdfile/vdfile"
-	FILE3 = "../vdfile/vdfile_mismatch"
-)
+const FILE1 = "../vdfile/vdfile"
 
 var (
-	vdfileDelay vdfile.Config
+	vdfileDelay    vdfile.Config
+	vdfileMismatch vdfile.Config
 )
 
 func init() {
@@ -33,11 +31,13 @@ func init() {
 	}
 
 	vdfileDelay = config
+	config.Mismatch = "Wrong query"
+	vdfileMismatch = config
 }
 
 func TestGetMismatch(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFile(FILE3)
+	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileMismatch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestGetMismatch(t *testing.T) {
 
 func TestSetMismatch(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFile(FILE3)
+	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileMismatch)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestSetMismatch(t *testing.T) {
 
 func TestGetParameter(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFile(FILE1)
+	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileDelay)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +157,7 @@ func TestGetParameter(t *testing.T) {
 
 func TestSetParameter(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFile(FILE3)
+	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileMismatch)
 	if err != nil {
 		t.Fatal(err)
 	}

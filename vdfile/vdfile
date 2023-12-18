@@ -1,8 +1,4 @@
 # This is toml config file
-
-[simulator]
-addr = "localhost:9999"
-
 [terminators]
 intterm = "CR LF"
 outterm = "CR LF"

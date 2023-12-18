@@ -11,9 +11,11 @@ import (
 	"github.com/e9ctrl/vd/vdfile"
 )
 
+const FILE1 = "../../vdfile/vdfile"
+
 func TestParse(t *testing.T) {
 	t.Parallel()
-	vd, err := vdfile.ReadVDFile("../../vdfile/vdfile")
+	vd, err := vdfile.ReadVDFile(FILE1)
 	if err != nil {
 		t.Fatalf("error while parsing test file: %v", err)
 	}
@@ -58,7 +60,7 @@ func TestParse(t *testing.T) {
 
 func TestTrigger(t *testing.T) {
 	t.Parallel()
-	vd, err := vdfile.ReadVDFile("../../vdfile/vdfile")
+	vd, err := vdfile.ReadVDFile(FILE1)
 	if err != nil {
 		t.Fatalf("error while parsing test file: %v", err)
 	}
