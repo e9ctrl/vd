@@ -67,10 +67,14 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 }
 
 func (s *StreamDevice) Mismatch() (res []byte) {
-	if len(s.vdfile.Mismatch) != 0 {
-		log.MSM(string(s.vdfile.Mismatch))
-		res = s.appendOutTerminator(s.vdfile.Mismatch)
-		log.TX(string(s.vdfile.Mismatch), res)
+	s.lock.Lock()
+	mis := s.vdfile.Mismatch
+	s.lock.Unlock()
+
+	if len(mis) != 0 {
+		log.MSM(string(mis))
+		res = s.appendOutTerminator(mis)
+		log.TX(string(mis), res)
 	}
 	return
 }
@@ -79,8 +83,13 @@ func (s *StreamDevice) Triggered() chan []byte { return s.triggered }
 
 func (s *StreamDevice) parseTok(tok string) []byte {
 	res, commandName, err := s.parser.Parse(tok)
-	if (err == protocols.ErrCommandNotFound || errors.Is(err, protocols.ErrWrongSetVal)) && len(s.vdfile.Mismatch) > 0 {
-		res = s.vdfile.Mismatch
+
+	s.lock.Lock()
+	mis := s.vdfile.Mismatch
+	s.lock.Unlock()
+
+	if (err == protocols.ErrCommandNotFound || errors.Is(err, protocols.ErrWrongSetVal)) && len(mis) > 0 {
+		res = mis
 	} else if err != nil {
 		log.ERR("parse return with error %w", err)
 	}
@@ -89,6 +98,7 @@ func (s *StreamDevice) parseTok(tok string) []byte {
 		return res
 	}
 
+	s.lock.Lock()
 	if commandName != "" && s.vdfile != nil {
 		if cmd, exist := s.vdfile.Commands[commandName]; exist {
 			s.delayRes(cmd.Dly)
@@ -96,7 +106,7 @@ func (s *StreamDevice) parseTok(tok string) []byte {
 			log.ERR("command name %s not found", commandName)
 		}
 	}
-
+	s.lock.Unlock()
 	strRes := string(res)
 	res = s.appendOutTerminator(res)
 	log.TX(strRes, res)
@@ -122,7 +132,9 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 }
 
 func (s *StreamDevice) GetParameter(name string) (any, error) {
+	s.lock.Lock()
 	param, exists := s.vdfile.Params[name]
+	s.lock.Unlock()
 	if !exists {
 		return nil, fmt.Errorf("parameter %s not found", name)
 	}
@@ -131,7 +143,9 @@ func (s *StreamDevice) GetParameter(name string) (any, error) {
 }
 
 func (s *StreamDevice) SetParameter(name string, value any) error {
+	s.lock.Lock()
 	param, exists := s.vdfile.Params[name]
+	s.lock.Unlock()
 	if !exists {
 		return fmt.Errorf("parameter %s not found", name)
 	}
@@ -140,7 +154,9 @@ func (s *StreamDevice) SetParameter(name string, value any) error {
 }
 
 func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
+	s.lock.Lock()
 	cmd, exists := s.vdfile.Commands[name]
+	s.lock.Unlock()
 	if !exists {
 		return 0, fmt.Errorf("command %s not found", name)
 	}
@@ -149,7 +165,9 @@ func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 }
 
 func (s *StreamDevice) SetCommandDelay(name, val string) error {
+	s.lock.Lock()
 	cmd, exists := s.vdfile.Commands[name]
+	s.lock.Unlock()
 	if !exists {
 		return fmt.Errorf("command %s not found", name)
 	}
@@ -164,19 +182,27 @@ func (s *StreamDevice) SetCommandDelay(name, val string) error {
 }
 
 func (s *StreamDevice) GetMismatch() []byte {
-	return s.vdfile.Mismatch
+	s.lock.Lock()
+	mis := s.vdfile.Mismatch
+	s.lock.Unlock()
+	return mis
+	//return s.vdfile.Mismatch
 }
 
 func (s *StreamDevice) SetMismatch(value string) error {
 	if len(value) > MISMATCH_LIMIT {
 		return fmt.Errorf("mismatch message: %s - exceeded 255 characters limit", value)
 	}
+	s.lock.Lock()
 	s.vdfile.Mismatch = []byte(value)
+	s.lock.Unlock()
 	return nil
 }
 
 func (s *StreamDevice) Trigger(name string) error {
+	s.lock.Lock()
 	_, exists := s.vdfile.Commands[name]
+	s.lock.Unlock()
 	if !exists {
 		return protocols.ErrCommandNotFound
 	}
