@@ -1,4 +1,4 @@
-package stream
+package vdfile
 
 import (
 	"bytes"
@@ -24,5 +24,19 @@ func TestParseTerminator(t *testing.T) {
 				t.Errorf("%s: exp value: %v got %v\n", tt.name, tt.exp, res)
 			}
 		})
+	}
+}
+
+func TestGenerateRandomDelayVDFile(t *testing.T) {
+	config, err := DecodeVDFile("vdfile")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	config = GenerateRandomDelay(config)
+	err = WriteVDFile("vdfile_random_delay", config)
+	if err != nil {
+		t.Error(err)
 	}
 }

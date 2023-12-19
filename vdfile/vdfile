@@ -1,0 +1,149 @@
+# This is toml config file
+[terminators]
+intterm = "CR LF"
+outterm = "CR LF"
+
+[[parameter]]
+name = "current"
+typ = "int"
+val = 300
+
+[[parameter]]
+name = "psi"
+typ = "float"
+val = 3.3
+
+[[parameter]]
+name = "temp"
+typ = "float"
+val = 2.3
+
+[[parameter]]
+name = "version" 
+typ = "string"
+val = "version 1.0"
+
+[[parameter]]
+name = "mode" 
+typ = "string"
+opt = "NORM|SING|BURS|DCYC"
+val = "NORM"
+
+[[parameter]]
+name = "ff"
+typ = "int"
+val = 4
+
+[[parameter]]
+name = "ack"
+typ = "bool"
+val = false
+
+[[parameter]]
+name = "hex"
+typ = "int64"
+val = 255
+
+[[parameter]]
+name = "hex0"
+typ = "int64"
+val = 255
+
+[[command]]
+name = "get_current"
+req = "CUR?"
+res = "CUR {%d:current}"
+
+[[command]]
+name = "set_current"
+req = "CUR {%d:current}"
+res = "OK"
+
+[[command]]
+name = "get_psi"
+req = "PSI?"
+res = "PSI {%3.2f:psi}"
+
+[[command]]
+name = "set_psi"
+req = "PSI {%3.2f:psi}"
+res = "PSI {%3.2f:psi} OK"
+
+[[command]]
+name = "get_temp"
+req = "TEMP?"
+res = "TEMP {%.2f:temp}"
+
+[[command]]
+name = "get_version"
+req = "VER?"
+res = "{%s:version}"
+
+[[command]]
+name = "get_mode"
+req = ":PULSE0:MODE?"
+res = "{%s:mode}"
+
+[[command]]
+name = "set_mode"
+req = ":PULSE0:MODE {%s:mode}"
+res = "ok"
+
+[[command]]
+name = "get_ff"
+req = "FF?"
+res = "{%d:ff}"
+
+[[command]]
+name = "set_ff"
+req = "F{%d:ff}"
+res = "ok"
+
+[[command]]
+name = "get_ack"
+req = "ACK?"
+res = "{%t:ack}"
+
+[[command]]
+name = "set_ack"
+req = "ACK {%t:ack}"
+
+[[command]]
+name = "get_status"
+req = "S?"
+res = "{%s:version} - {%.1f:temp}"
+
+[[command]]
+name = "get_status_2"
+req = "get status ch 2"
+res = "mode: {%s:mode} psi: {%3.2f:psi}"
+
+[[command]]
+name = "get_status_3"
+req = "get status ch 3"
+res = "mode: {%s:mode}\npsi: {%3.2f:psi}"
+
+[[command]]
+name = "set_two_params"
+req = "set mode {%s:mode} psi {%3.2f:psi}"
+res = "ok"
+
+[[command]]
+name = "get_hex"
+req = "HEX?"
+res = "0x{%03X:hex}"
+
+[[command]]
+name = "set_hex"
+req = "HEX 0x{%03X:hex}"
+res = "HEX 0x{%03X:hex}"
+
+[[command]]
+name = "get_hex0"
+req = "HEX0?"
+res = "{%03X:hex0}"
+
+[[command]]
+name = "set_hex0"
+req = "HEX0 {%3X:hex0}"
+res = "{%03X:hex0}"

@@ -1,4 +1,4 @@
-package lexer
+package stream
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"unicode/utf8"
 )
 
-type itemType int
+type ItemType int
 type mode int
 
 const (
@@ -15,12 +15,10 @@ const (
 	dataMode
 )
 
-const leftMeta = "{{"
-const rightMeta = "}}"
 const eof = -1
 
 const (
-	ItemError itemType = iota
+	ItemError ItemType = iota
 
 	ItemCommand // this is valid for a query as well
 
@@ -37,9 +35,10 @@ const (
 
 	ItemEOF
 	ItemIllegal
+	ItemEscape
 )
 
-var typeStr = map[itemType]string{
+var typeStr = map[ItemType]string{
 	ItemError:                  "error",
 	ItemCommand:                "command",
 	ItemNumberValuePlaceholder: "number value placeholder",
@@ -52,24 +51,25 @@ var typeStr = map[itemType]string{
 	ItemEOF:        "eof",
 	ItemIllegal:    "illegal",
 	ItemNumber:     "number",
+	ItemEscape:     "escape value",
 }
 
 // To string representation
-func (i itemType) String() string {
+func (i ItemType) String() string {
 	if val, ok := typeStr[i]; ok {
 		return val
 	}
 
-	return "unknown itemType"
+	return "unknown ItemType"
 }
 
 type Item struct {
-	typ itemType
+	typ ItemType
 	val string
 }
 
 // Item type
-func (i Item) Type() itemType {
+func (i Item) Type() ItemType {
 	return i.typ
 }
 
@@ -130,12 +130,7 @@ func ItemsFromConfig(input string) []Item {
 	return NewConfig(input).Items()
 }
 
-// Convert string input to set of Items data
-func ItemsFromData(input string) []Item {
-	return NewData(input).Items()
-}
-
-func (l *Lexer) emit(t itemType) {
+func (l *Lexer) emit(t ItemType) {
 	l.ItemsCh <- Item{t, l.Input[l.start:l.pos]}
 	l.start = l.pos
 }
@@ -247,11 +242,16 @@ func isNumber(ch rune) bool {
 }
 
 func isSpecialChar(ch rune) bool {
-	return ch == '?' || ch == ':' || ch == '*' || ch == '='
+	return ch == '?' || ch == ':' || ch == '*' || ch == '=' || ch == '-'
 }
 
 func isSpace(ch rune) bool {
 	return ch == ' '
+}
+
+func isEscape(ch rune) bool {
+	// \f form feed \r carriage return \v vertical tab \t horizontal tab \n line feed or newline
+	return ch == '\f' || ch == '\n' || ch == '\t' || ch == '\r' || ch == '\v'
 }
 
 // This is the initial state and base state
@@ -269,40 +269,25 @@ func lexStart(l *Lexer) StateFn {
 		if l.mode == dataMode {
 			return lexNumber
 		}
-		return lexStart
-	case ch == rune(ItemLeftMeta):
-		l.emit(ItemLeftMeta)
-		return lexParam
-	case ch == rune(ItemRightMeta):
-		l.emit(ItemRightMeta)
-		return lexStart
-	case ch == '%':
-		l.backup()
-		return lexPlaceholder
+		return lexCommand
 	case ch == '{':
-		ch2 := l.peek()
-		if ch2 == '{' {
-			l.backup()
-			return lexLeftMeta
-		}
-		return lexCommand
+		return lexLeftMeta
 	case ch == '}':
-		ch2 := l.peek()
-		if ch2 == '}' {
-			l.backup()
-			return lexRightMeta
-		}
-		return lexCommand
-	default:
-		l.emit(ItemIllegal)
+		return lexRightMeta
+	case isEscape(ch):
+		l.emit(ItemEscape)
 		return lexStart
+	default:
+		l.backup()
+		l.emit(ItemIllegal)
+		return nil
 	}
 }
 
 func lexCommand(l *Lexer) StateFn {
 	for {
 		ch := l.next()
-		if ch == scanner.EOF || isSpace(ch) || ch == '%' {
+		if ch == scanner.EOF || isSpace(ch) || ch == '{' {
 			l.backup()
 			l.emit(ItemCommand)
 			return lexStart
@@ -311,69 +296,81 @@ func lexCommand(l *Lexer) StateFn {
 }
 
 func lexParam(l *Lexer) StateFn {
-	for {
-		ch := l.next()
-		if ch == scanner.EOF || isSpace(ch) {
-			l.backup()
-			l.emit(ItemParam)
-			return lexInsideParam
-		}
-		if ch == '}' {
-			l.backup()
-			return lexRightMeta
-		}
+	in := "_.-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	if l.acceptRun(in) {
+		l.emit(ItemParam)
 	}
+
+	return lexInsideParamPlaceholder
 }
 
 func lexPlaceholder(l *Lexer) StateFn {
 	if l.accept("%") {
 		if l.accept("s") {
 			l.emit(ItemStringValuePlaceholder)
-			return lexStart
+			return lexInsideParamPlaceholder
 		}
 		in := ".0123456789gGeEfFdcbtxX"
 		if l.acceptRun(in) {
-			l.emit(ItemNumberValuePlaceholder)
-			return lexStart
+			ch := l.peek()
+			if ch == ':' || ch == '}' {
+				l.emit(ItemNumberValuePlaceholder)
+				return lexInsideParamPlaceholder
+			}
 		}
 	}
 	return l.errorf("wrong placeholder value")
 }
 
 func lexLeftMeta(l *Lexer) StateFn {
-	l.pos += len(leftMeta)
 	l.emit(ItemLeftMeta)
-	return lexInsideParam
+	for isSpace(l.next()) {
+		l.ignore()
+	}
+
+	l.backup()
+
+	if l.peek() != '%' {
+		l.emit(ItemIllegal)
+		return nil
+	}
+
+	return lexInsideParamPlaceholder
 }
 
-func lexInsideParam(l *Lexer) StateFn {
+func lexInsideParamPlaceholder(l *Lexer) StateFn {
 	for {
 		ch := l.next()
+		if ch == '%' {
+			l.backup()
+			return lexPlaceholder
+		}
+
 		if isSpace(ch) {
 			l.ignore()
 			continue
 		}
-		if ch == scanner.EOF {
-			l.emit(ItemIllegal)
-			return lexStart
+
+		if ch == ':' {
+			l.ignore()
+			continue
 		}
-		if isLetter(ch) {
+
+		if isAlphaNumeric(ch) {
 			l.backup()
 			return lexParam
 		}
+
 		if ch == '}' {
-			ch2 := l.peek()
-			if ch2 == '}' {
-				l.backup()
-				return lexRightMeta
-			}
-			return lexStart
+			return lexRightMeta
 		}
+
+		l.emit(ItemIllegal)
+		return nil
 	}
 }
 
 func lexRightMeta(l *Lexer) StateFn {
-	l.pos += len(rightMeta)
 	l.emit(ItemRightMeta)
 	return lexStart
 }
