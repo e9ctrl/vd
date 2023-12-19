@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/e9ctrl/vd/log"
@@ -28,6 +29,7 @@ type StreamDevice struct {
 	splitter  bufio.SplitFunc
 	parser    protocols.Parser
 	triggered chan []byte
+	lock      sync.RWMutex
 }
 
 // Create a new stream device given the virtual device configuration file
@@ -64,7 +66,7 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 	}, nil
 }
 
-func (s StreamDevice) Mismatch() (res []byte) {
+func (s *StreamDevice) Mismatch() (res []byte) {
 	if len(s.vdfile.Mismatch) != 0 {
 		log.MSM(string(s.vdfile.Mismatch))
 		res = s.appendOutTerminator(s.vdfile.Mismatch)
@@ -73,9 +75,9 @@ func (s StreamDevice) Mismatch() (res []byte) {
 	return
 }
 
-func (s StreamDevice) Triggered() chan []byte { return s.triggered }
+func (s *StreamDevice) Triggered() chan []byte { return s.triggered }
 
-func (s StreamDevice) parseTok(tok string) []byte {
+func (s *StreamDevice) parseTok(tok string) []byte {
 	res, commandName, err := s.parser.Parse(tok)
 	if (err == protocols.ErrCommandNotFound || errors.Is(err, protocols.ErrWrongSetVal)) && len(s.vdfile.Mismatch) > 0 {
 		res = s.vdfile.Mismatch
@@ -101,7 +103,7 @@ func (s StreamDevice) parseTok(tok string) []byte {
 	return res
 }
 
-func (s StreamDevice) Handle(cmd []byte) []byte {
+func (s *StreamDevice) Handle(cmd []byte) []byte {
 	r := bytes.NewReader(cmd)
 	scanner := bufio.NewScanner(r)
 	scanner.Split(s.splitter)
@@ -119,7 +121,7 @@ func (s StreamDevice) Handle(cmd []byte) []byte {
 	return buffer
 }
 
-func (s StreamDevice) GetParameter(name string) (any, error) {
+func (s *StreamDevice) GetParameter(name string) (any, error) {
 	param, exists := s.vdfile.Params[name]
 	if !exists {
 		return nil, fmt.Errorf("parameter %s not found", name)
@@ -137,7 +139,7 @@ func (s *StreamDevice) SetParameter(name string, value any) error {
 	return param.SetValue(value)
 }
 
-func (s StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
+func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 	cmd, exists := s.vdfile.Commands[name]
 	if !exists {
 		return 0, fmt.Errorf("command %s not found", name)
@@ -161,7 +163,7 @@ func (s *StreamDevice) SetCommandDelay(name, val string) error {
 	return nil
 }
 
-func (s StreamDevice) GetMismatch() []byte {
+func (s *StreamDevice) GetMismatch() []byte {
 	return s.vdfile.Mismatch
 }
 
@@ -199,16 +201,19 @@ func (s *StreamDevice) Trigger(name string) error {
 	return nil
 }
 
-func (s StreamDevice) delayRes(d time.Duration) {
+func (s *StreamDevice) delayRes(d time.Duration) {
 	log.DLY("delaying response by", d)
 	time.Sleep(d)
 }
 
-func (s StreamDevice) appendOutTerminator(res []byte) []byte {
+func (s *StreamDevice) appendOutTerminator(res []byte) []byte {
 	// we need to copy the result into a new slice to avoid
 	// race condition when running in parallel
+
+	s.lock.Lock()
 	res = append(res, s.vdfile.OutTerminator...)
 	output := make([]byte, len(res))
 	copy(output, res)
+	s.lock.Unlock()
 	return output
 }
