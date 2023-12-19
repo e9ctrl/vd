@@ -269,8 +269,7 @@ func lexStart(l *Lexer) StateFn {
 		if l.mode == dataMode {
 			return lexNumber
 		}
-		l.emit(ItemCommand)
-		return lexStart
+		return lexCommand
 	case ch == '{':
 		return lexLeftMeta
 	case ch == '}':

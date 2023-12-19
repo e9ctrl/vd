@@ -39,6 +39,16 @@ name = "ack"
 typ = "bool"
 val = false
 
+[[parameter]]
+name = "hex"
+typ = "int64"
+val = 255
+
+[[parameter]]
+name = "hex0"
+typ = "int64"
+val = 255
+
 [[command]]
 name = "get_current"
 req = "CUR?"
@@ -117,3 +127,23 @@ res = "mode: {%s:mode}\npsi: {%3.2f:psi}"
 name = "set_two_params"
 req = "set mode {%s:mode} psi {%3.2f:psi}"
 res = "ok"
+
+[[command]]
+name = "get_hex"
+req = "HEX?"
+res = "0x{%03X:hex}"
+
+[[command]]
+name = "set_hex"
+req = "HEX 0x{%03X:hex}"
+res = "HEX 0x{%03X:hex}"
+
+[[command]]
+name = "get_hex0"
+req = "HEX0?"
+res = "{%03X:hex0}"
+
+[[command]]
+name = "set_hex0"
+req = "HEX0 {%3X:hex0}"
+res = "{%03X:hex0}"

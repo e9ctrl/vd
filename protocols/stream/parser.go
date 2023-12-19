@@ -116,6 +116,10 @@ func buildCommandPatterns(commands map[string]*structs.Command) (map[string]Comm
 	return patterns, nil
 }
 
+func isAlphaNumericParse(b byte) bool {
+	return '0' <= b && b <= '9' || 'a' <= b && b <= 'z' || 'A' <= b && b <= 'Z' || b == '_' || b == '+' || b == '-'
+}
+
 func checkPattern(input string, items []Item) (bool, map[string]any) {
 	var values = map[string]any{}
 	var value any
@@ -154,7 +158,6 @@ func checkPattern(input string, items []Item) (bool, map[string]any) {
 		case ItemNumberValuePlaceholder:
 			out := parseNumber(input)
 			value = out
-
 			next, found := strings.CutPrefix(input, out)
 			if !found {
 				return false, nil
@@ -209,7 +212,23 @@ func parseNumber(s string) string {
 	digits := "0123456789"
 	if accept("0") && accept("xX") {
 		digits = "0123456789abcdefABCDEF"
+		acceptRun(digits)
+		if isAlphaNumericParse(peek()) {
+			return ""
+		}
+		return s[:pos]
 	}
+	// Is it hex without 0x
+	backupPos := pos
+	digits = "0123456789abcdfABCDF"
+	acceptRun(digits)
+	// if something left it means that it was not hex
+	// going back and start again with decimal format
+	if isAlphaNumericParse(peek()) {
+		pos = backupPos
+	}
+
+	digits = "0123456789"
 	acceptRun(digits)
 	if accept(".") {
 		acceptRun(digits)
@@ -221,7 +240,7 @@ func parseNumber(s string) string {
 	// Is it imaginary?
 	accept("i")
 	// Next thing mustn't be alphanumeric.
-	if isAlphaNumeric(rune(peek())) {
+	if isAlphaNumericParse(peek()) {
 		return ""
 	}
 	return s[:pos]

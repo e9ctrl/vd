@@ -42,6 +42,7 @@ func TestLexer(t *testing.T) {
 		{"illegal escape", "\a", []lexer.ItemType{lexer.ItemIllegal, lexer.ItemEOF}, ""},
 		{"new line between params", "val: {%s:param}\n{%s:param}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEscape, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "val: {%sparam}\n{%sparam}"},
 		{"number as a command", "get two 2", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "get two 2"},
+		{"hex command", "HEX 0x{%03X:hex}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "HEX 0x{%03Xhex}"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -60,7 +61,6 @@ func TestLexer(t *testing.T) {
 			}
 			t.Log(items)
 			if len(items) != len(tt.want) {
-
 				t.Fatalf("token slice length mismatch error: wanted %d ; got %d", len(tt.want), len(items))
 			}
 			for i, item := range items {

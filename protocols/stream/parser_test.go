@@ -41,6 +41,7 @@ func TestParse(t *testing.T) {
 		{"wrong value of the command", "CUR 30.0", []byte(nil), "set_current", parameter.ErrWrongIntVal},
 		{"set command with opt", ":PULSE0:MODE SING", []byte("ok"), "set_mode", nil},
 		{"wrong opt of the command", ":PULSE0:MODE TEST", []byte(nil), "set_mode", parameter.ErrValNotAllowed},
+		{"set hex", "HEX 0x03F", []byte("HEX 0x03F"), "set_hex", nil},
 	}
 
 	for _, tt := range tests {
@@ -83,6 +84,7 @@ func TestTrigger(t *testing.T) {
 		{"psi param", "get_psi", []byte("PSI 3.30"), nil},
 		{"empty command", "", []byte(nil), protocols.ErrCommandNotFound},
 		{"non-existent command", "test", []byte(nil), protocols.ErrCommandNotFound},
+		{"hex param", "get_hex", []byte("0x0FF"), nil},
 	}
 
 	for _, tt := range tests {
@@ -125,9 +127,21 @@ func TestBuildCommandPatterns(t *testing.T) {
 		Res:  []byte("{%s:version} - {%.1f:temp}"),
 	}
 	cmd6 := &structs.Command{
-		Name: "get_status_3",
+		Name: "get_stat",
 		Req:  []byte("get stat?"),
 		Res:  []byte("{%s:version}\n{%.1f:temp}"),
+	}
+
+	cmd7 := &structs.Command{
+		Name: "get_hex",
+		Req:  []byte("HEX?"),
+		Res:  []byte("0x{%03X:hex}"),
+	}
+
+	cmd8 := &structs.Command{
+		Name: "set_hex",
+		Req:  []byte("HEX 0x{%03X:hex}"),
+		Res:  []byte("HEX 0x{%03X:hex}"),
 	}
 
 	input["current_get"] = cmd1
@@ -136,6 +150,8 @@ func TestBuildCommandPatterns(t *testing.T) {
 	input["psi_set"] = cmd4
 	input["get_status"] = cmd5
 	input["get_stat"] = cmd6
+	input["get_hex"] = cmd7
+	input["set_hex"] = cmd8
 
 	exp := map[string]CommandPattern{}
 
@@ -175,6 +191,18 @@ func TestBuildCommandPatterns(t *testing.T) {
 		resItems: []Item{{typ: ItemLeftMeta, val: "{"}, {typ: ItemStringValuePlaceholder, val: "%s"}, {typ: ItemParam, val: "version"}, {typ: ItemRightMeta, val: "}"}, {typ: ItemEscape, val: "\n"}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%.1f"}, {typ: ItemParam, val: "temp"}, {typ: ItemRightMeta, val: "}"}},
 	}
 	exp["get_stat"] = p6
+
+	p8 := CommandPattern{
+		reqItems: []Item{{typ: ItemCommand, val: "HEX"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "0x"}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%03X"}, {typ: ItemParam, val: "hex"}, {typ: ItemRightMeta, val: "}"}},
+		resItems: []Item{{typ: ItemCommand, val: "HEX"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "0x"}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%03X"}, {typ: ItemParam, val: "hex"}, {typ: ItemRightMeta, val: "}"}},
+	}
+	exp["set_hex"] = p8
+
+	p7 := CommandPattern{
+		reqItems: []Item{{typ: ItemCommand, val: "HEX?"}},
+		resItems: []Item{{typ: ItemCommand, val: "0x"}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%03X"}, {typ: ItemParam, val: "hex"}, {typ: ItemRightMeta, val: "}"}},
+	}
+	exp["get_hex"] = p7
 
 	cmdPattern, err := buildCommandPatterns(input)
 	if err != nil {
@@ -268,11 +296,12 @@ func TestCheckPattern(t *testing.T) {
 		{"Simple set", "volt {%3.2f:voltage}", "volt 34.45", true, map[string]any{"voltage": "34.45"}},
 		{"Complex set", "set ch1 max {%2d:max}", "set ch1 max 35", true, map[string]any{"max": "35"}},
 		{"Placeholder between", "set ch1 {%2.2f:power} pow", "set ch1 34.56 pow", true, map[string]any{"power": "34.56"}},
-		// Note: we need to more strict checking on different type of placeholder
-		// {"Wrong input", "set voltage {%d:voltage}", "set voltage 20.45", false, map[string]any{}},
+		//Note: we need to more strict checking on different type of placeholder
+		//{"Wrong input", "set voltage {%d:voltage}", "set voltage 20.45", false, map[string]any{}},
 		{"Command not found", "get temp?", "set voltage 20", false, nil},
 		{"Wrong value", "set current {%03X:current}", "set current test", false, nil},
 		{"Too many elements", "TEMP?", "TEMP?asdf", false, nil},
+		{"Set hex", "HEX 0x{%03X:hex}", "HEX 0x03F", true, map[string]any{"hex": "03F"}},
 	}
 
 	for _, tt := range tests {
@@ -322,7 +351,6 @@ func TestParseNumber(t *testing.T) {
 		{"Imaginary number", "5.2i", "5.2i"},
 		{"Standard float", "34.567", "34.567"},
 		{"Standard decimal", "20", "20"},
-		{"Wrong number", "23f", ""},
 		{"Wrong hex", "0xx43", ""},
 		{"Wrong scientific notation", "44e-f5", ""},
 	}
@@ -388,6 +416,11 @@ func TestConstructOutput(t *testing.T) {
 		params["version"] = version
 	}
 
+	hex, err := parameter.New("30", "", "int64")
+	if err == nil {
+		params["hex"] = hex
+	}
+
 	tests := []struct {
 		name  string
 		items []Item
@@ -401,6 +434,7 @@ func TestConstructOutput(t *testing.T) {
 		{"empty value", ItemsFromConfig("test {%d:}"), "test "},
 		{"empty lexer", []Item(nil), ""},
 		{"two params", ItemsFromConfig("{%s:version} - {%2.2f:max}"), "version - 11.11"},
+		{"hex param", ItemsFromConfig("HEX 0x{%03X:hex}"), "HEX 0x01E"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
