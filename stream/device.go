@@ -67,7 +67,7 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 func (s StreamDevice) Mismatch() (res []byte) {
 	if len(s.vdfile.Mismatch) != 0 {
 		log.MSM(string(s.vdfile.Mismatch))
-		res = append(s.vdfile.Mismatch, s.vdfile.OutTerminator...)
+		res = s.appendOutTerminator(s.vdfile.Mismatch)
 		log.TX(string(s.vdfile.Mismatch), res)
 	}
 	return
@@ -96,7 +96,7 @@ func (s StreamDevice) parseTok(tok string) []byte {
 	}
 
 	strRes := string(res)
-	res = append(res, s.vdfile.OutTerminator...)
+	res = s.appendOutTerminator(res)
 	log.TX(strRes, res)
 	return res
 }
@@ -128,7 +128,7 @@ func (s StreamDevice) GetParameter(name string) (any, error) {
 	return param.Value(), nil
 }
 
-func (s StreamDevice) SetParameter(name string, value any) error {
+func (s *StreamDevice) SetParameter(name string, value any) error {
 	param, exists := s.vdfile.Params[name]
 	if !exists {
 		return fmt.Errorf("parameter %s not found", name)
@@ -188,7 +188,7 @@ func (s *StreamDevice) Trigger(name string) error {
 		return nil
 	}
 
-	res = append(res, s.vdfile.OutTerminator...)
+	res = s.appendOutTerminator(res)
 
 	select {
 	case s.triggered <- res:
@@ -202,4 +202,13 @@ func (s *StreamDevice) Trigger(name string) error {
 func (s StreamDevice) delayRes(d time.Duration) {
 	log.DLY("delaying response by", d)
 	time.Sleep(d)
+}
+
+func (s StreamDevice) appendOutTerminator(res []byte) []byte {
+	// we need to copy the result into a new slice to avoid
+	// race condition when running in parallel
+	res = append(res, s.vdfile.OutTerminator...)
+	output := make([]byte, len(res))
+	copy(output, res)
+	return output
 }
