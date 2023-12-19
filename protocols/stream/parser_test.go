@@ -1,212 +1,413 @@
 package stream
 
-// import (
-// 	"testing"
+import (
+	"bytes"
+	"errors"
+	"testing"
 
-// 	"github.com/e9ctrl/vd/parameter"
-// 	"github.com/e9ctrl/vd/structs"
-// 	"github.com/google/go-cmp/cmp"
-// 	"github.com/google/go-cmp/cmp/cmpopts"
-// )
+	"github.com/e9ctrl/vd/parameter"
+	"github.com/e9ctrl/vd/protocols"
+	"github.com/e9ctrl/vd/structs"
+	"github.com/e9ctrl/vd/vdfile"
+)
 
-// func TestCheckPattern(t *testing.T) {
-// 	t.Parallel()
-// 	tests := []struct {
-// 		name   string
-// 		forLex string
-// 		typ    structs.CommandType
-// 		param  string
-// 		input  string
-// 		exp    bool
-// 		expVal any
-// 	}{
-// 		{"Simple req", "TEMP?", structs.CommandReq, "temperature", "TEMP?", true, nil},
-// 		{"Complex req", "get ch1 curr?", structs.CommandReq, "current", "get ch1 curr?", true, nil},
-// 		{"Simple set", "volt %3.2f", structs.CommandSet, "voltage", "volt 34.45", true, "34.45"},
-// 		{"Complex set", "set ch1 max %2d", structs.CommandSet, "max", "set ch1 max 35", true, "35"},
-// 		{"Placeholder between", "set ch1 %2.2f pow", structs.CommandSet, "power", "set ch1 34.56 pow", true, "34.56"},
-// 		{"Wrong input", "set voltage %d", structs.CommandSet, "voltage", "set voltage 20.45", true, "20.45"},
-// 		{"Command not found", "get temp?", structs.CommandReq, "temperature", "set voltage 20", false, nil},
-// 		{"Wrong value", "set current %03X", structs.CommandSet, "current", "set current test", false, nil},
-// 		{"Too many elements", "TEMP?", structs.CommandReq, "temperature", "TEMP?asdf", false, nil},
-// 	}
+const FILE1 = "../../vdfile/vdfile"
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			l := ItemsFromConfig(tt.forLex)
-// 			cmd := CommandPattern{
-// 				Items:     l,
-// 				Typ:       tt.typ,
-// 				Parameter: tt.param,
-// 			}
+func TestParse(t *testing.T) {
+	t.Parallel()
+	vd, err := vdfile.ReadVDFile(FILE1)
+	if err != nil {
+		t.Fatalf("error while parsing test file: %v", err)
+	}
+	p, err := NewParser(vd)
+	if err != nil {
+		t.Fatalf("error while creating parser: %v", err)
+	}
+	tests := []struct {
+		name   string
+		in     string
+		exp    []byte
+		expCmd string
+		expErr error
+	}{
+		{"get command int", "CUR?", []byte("CUR 300"), "get_current", nil},
+		{"get command str", "VER?", []byte("version 1.0"), "get_version", nil},
+		{"get status two params", "S?", []byte("version 1.0 - 2.3"), "get_status", nil},
+		{"get status two params with new line", "get status ch 3", []byte("mode: NORM\npsi: 3.30"), "get_status_3", nil},
+		{"set psi command", "PSI 30.42", []byte("PSI 30.42 OK"), "set_psi", nil},
+		{"empty command", "", []byte(""), "", protocols.ErrCommandNotFound},
+		{"non-existent command", "test 30.0", []byte(nil), "", protocols.ErrCommandNotFound},
+		{"set current command", "CUR 30", []byte("OK"), "set_current", nil},
+		{"wrong value of the command", "CUR 30.0", []byte(nil), "set_current", parameter.ErrWrongIntVal},
+		{"set command with opt", ":PULSE0:MODE SING", []byte("ok"), "set_mode", nil},
+		{"wrong opt of the command", ":PULSE0:MODE TEST", []byte(nil), "set_mode", parameter.ErrValNotAllowed},
+	}
 
-// 			got, val := checkPattern(tt.input, cmd)
-// 			if got != tt.exp {
-// 				t.Errorf("exp bool: %t got: %t\n", tt.exp, got)
-// 			}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, cmdName, err := p.Parse(tt.in)
+			if !errors.Is(err, tt.expErr) {
+				t.Errorf("exp error: %v got: %v", tt.expErr, err)
+			}
+			if !bytes.Equal(tt.exp, res) {
+				t.Errorf("exp response: %s got: %s", tt.exp, res)
+			}
+			if tt.expCmd != cmdName {
+				t.Errorf("exp cmd name: %s got: %s", tt.expCmd, cmdName)
+			}
+		})
+	}
+}
 
-// 			if val != tt.expVal {
-// 				t.Errorf("exp value: %v got: %v\n", tt.expVal, val)
-// 			}
-// 		})
-// 	}
+func TestTrigger(t *testing.T) {
+	t.Parallel()
+	vd, err := vdfile.ReadVDFile(FILE1)
+	if err != nil {
+		t.Fatalf("error while parsing test file: %v", err)
+	}
+	p, err := NewParser(vd)
+	if err != nil {
+		t.Fatalf("error while creating parser: %v", err)
+	}
 
-// }
+	tests := []struct {
+		name   string
+		cmd    string
+		exp    []byte
+		expErr error
+	}{
+		{"current param", "get_current", []byte("CUR 300"), nil},
+		{"version param", "get_version", []byte("version 1.0"), nil},
+		{"two params", "get_status", []byte("version 1.0 - 2.3"), nil},
+		{"two params with new line", "get_status_3", []byte("mode: NORM\npsi: 3.30"), nil},
+		{"psi param", "get_psi", []byte("PSI 3.30"), nil},
+		{"empty command", "", []byte(nil), protocols.ErrCommandNotFound},
+		{"non-existent command", "test", []byte(nil), protocols.ErrCommandNotFound},
+	}
 
-// func TestParseNumber(t *testing.T) {
-// 	t.Parallel()
-// 	tests := []struct {
-// 		name  string
-// 		input string
-// 		exp   string
-// 	}{
-// 		{"Small scientific notation", "3e-10", "3e-10"},
-// 		{"Big scientific notation", "4.5e6", "4.5e6"},
-// 		{"Big hex", "0xFF", "0xFF"},
-// 		{"Small hex", "0xaa", "0xaa"},
-// 		{"Imaginary number", "5.2i", "5.2i"},
-// 		{"Standard float", "34.567", "34.567"},
-// 		{"Standard decimal", "20", "20"},
-// 		{"Wrong number", "23f", ""},
-// 		{"Wrong hex", "0xx43", ""},
-// 		{"Wrong scientific notation", "44e-f5", ""},
-// 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, err := p.Trigger(tt.cmd)
+			if !errors.Is(err, tt.expErr) {
+				t.Errorf("exp error: %v got: %v", tt.expErr, err)
+			}
+			if !bytes.Equal(tt.exp, res) {
+				t.Errorf("exp response: %s got: %s", tt.exp, res)
+			}
+		})
+	}
+}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got := parseNumber(tt.input)
-// 			if got != tt.exp {
-// 				t.Errorf("exp string: %s got: %s\n", tt.exp, got)
-// 			}
-// 		})
-// 	}
-// }
+func TestBuildCommandPatterns(t *testing.T) {
+	input := map[string]*structs.Command{}
+	cmd1 := &structs.Command{
+		Name: "current_get",
+		Req:  []byte("get curr?"),
+		Res:  []byte("curr {%3.2f:current}"),
+	}
+	cmd2 := &structs.Command{
+		Name: "current_set",
+		Req:  []byte("set curr {%02d:current}"),
+		Res:  []byte("ok"),
+	}
+	cmd3 := &structs.Command{
+		Name: "version_get",
+		Req:  []byte("VER?"),
+		Res:  []byte("{%s:version}"),
+	}
+	cmd4 := &structs.Command{
+		Name: "psi_set",
+		Req:  []byte("set {%03X:psi} psi"),
+	}
+	cmd5 := &structs.Command{
+		Name: "get_status",
+		Req:  []byte("S?"),
+		Res:  []byte("{%s:version} - {%.1f:temp}"),
+	}
+	cmd6 := &structs.Command{
+		Name: "get_status_3",
+		Req:  []byte("get stat?"),
+		Res:  []byte("{%s:version}\n{%.1f:temp}"),
+	}
 
-// func TestParseString(t *testing.T) {
-// 	t.Parallel()
-// 	tests := []struct {
-// 		name  string
-// 		input string
-// 		exp   string
-// 	}{
-// 		{"One space", "test1 test2", "test1"},
-// 		{"Two spaces", "test1 test2 test3", "test1"},
-// 		{"empty input", "", ""},
-// 	}
+	input["current_get"] = cmd1
+	input["current_set"] = cmd2
+	input["version_get"] = cmd3
+	input["psi_set"] = cmd4
+	input["get_status"] = cmd5
+	input["get_stat"] = cmd6
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got := parseString(tt.input)
-// 			if got != tt.exp {
-// 				t.Errorf("exp string: %s got: %s\n", tt.exp, got)
-// 			}
-// 		})
-// 	}
-// }
+	exp := map[string]CommandPattern{}
 
-// func TestBuildCommandPatterns(t *testing.T) {
-// 	t.Parallel()
+	p1 := CommandPattern{
+		reqItems: []Item{{typ: ItemCommand, val: "get"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "curr?"}},
+		resItems: []Item{{typ: ItemCommand, val: "curr"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%3.2f"}, {typ: ItemParam, val: "current"}, {typ: ItemRightMeta, val: "}"}},
+	}
+	exp["current_get"] = p1
 
-// 	cmds := map[string]*structs.Command{}
+	p2 := CommandPattern{
+		reqItems: []Item{{typ: ItemCommand, val: "set"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "curr"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%02d"}, {typ: ItemParam, val: "current"}, {typ: ItemRightMeta, val: "}"}},
+		resItems: []Item{{typ: ItemCommand, val: "ok"}},
+	}
 
-// 	p1, _ := parameter.New(50, "")
-// 	cmd1 := &structs.Command{
-// 		Name:  "current",
-// 		Param: p1,
-// 		Req:   []byte("CUR?"),
-// 		Res:   []byte("CUR %d"),
-// 		Set:   []byte("CUR %d"),
-// 		Ack:   []byte("OK"),
-// 	}
-// 	cmds[cmd1.Name] = cmd1
+	exp["current_set"] = p2
 
-// 	p2, _ := parameter.New(24.10, "")
-// 	cmd2 := &structs.Command{
-// 		Name:  "psi",
-// 		Param: p2,
-// 		Req:   []byte("PSI?"),
-// 		Res:   []byte("PSI %3.2f"),
-// 		Set:   []byte("PSI %3.2f"),
-// 		Ack:   []byte("PSI %3.2f OK"),
-// 	}
-// 	cmds[cmd2.Name] = cmd2
+	p3 := CommandPattern{
+		reqItems: []Item{{typ: ItemCommand, val: "VER?"}},
+		resItems: []Item{{typ: ItemLeftMeta, val: "{"}, {typ: ItemStringValuePlaceholder, val: "%s"}, {typ: ItemParam, val: "version"}, {typ: ItemRightMeta, val: "}"}},
+	}
 
-// 	p3, _ := parameter.New(5.342, "")
-// 	cmd3 := &structs.Command{
-// 		Name:  "voltage",
-// 		Param: p3,
-// 		Req:   []byte("VOLT?"),
-// 		Res:   []byte("VOLT %.3f"),
-// 		Set:   []byte("VOLT %.3f"),
-// 		Ack:   []byte("VOLT %.3f OK"),
-// 	}
-// 	cmds[cmd3.Name] = cmd3
+	exp["version_get"] = p3
 
-// 	p4, _ := parameter.New(24.20, "")
-// 	cmd4 := &structs.Command{
-// 		Name:  "max",
-// 		Param: p4,
-// 		Req:   []byte("get ch1 max?"),
-// 		Res:   []byte("ch1 max%2.2f"),
-// 		Set:   []byte("set ch1 max%2.2f"),
-// 	}
-// 	cmds[cmd4.Name] = cmd4
+	p4 := CommandPattern{
+		reqItems: []Item{{typ: ItemCommand, val: "set"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%03X"}, {typ: ItemParam, val: "psi"}, {typ: ItemRightMeta, val: "}"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "psi"}},
+	}
+	exp["psi_set"] = p4
 
-// 	p5, _ := parameter.New("v1.0.0", "")
-// 	cmd5 := &structs.Command{
-// 		Name:  "version",
-// 		Param: p5,
-// 		Req:   []byte("ver?"),
-// 		Res:   []byte("%s"),
-// 	}
-// 	cmds[cmd5.Name] = cmd5
+	p5 := CommandPattern{
+		reqItems: []Item{{typ: ItemCommand, val: "S?"}},
+		resItems: []Item{{typ: ItemLeftMeta, val: "{"}, {typ: ItemStringValuePlaceholder, val: "%s"}, {typ: ItemParam, val: "version"}, {typ: ItemRightMeta, val: "}"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "-"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%.1f"}, {typ: ItemParam, val: "temp"}, {typ: ItemRightMeta, val: "}"}},
+	}
+	exp["get_status"] = p5
 
-// 	want := []CommandPattern{
-// 		{Items: ItemsFromConfig("CUR?"), Typ: structs.CommandReq, Parameter: "current"},
-// 		{Items: ItemsFromConfig("VOLT?"), Typ: structs.CommandReq, Parameter: "voltage"},
-// 		{Items: ItemsFromConfig("PSI?"), Typ: structs.CommandReq, Parameter: "psi"},
-// 		{Items: ItemsFromConfig("CUR %d"), Typ: structs.CommandSet, Parameter: "current"},
-// 		{Items: ItemsFromConfig("PSI %3.2f"), Typ: structs.CommandSet, Parameter: "psi"},
-// 		{Items: ItemsFromConfig("VOLT %.3f"), Typ: structs.CommandSet, Parameter: "voltage"},
-// 		{Items: ItemsFromConfig("set ch1 max%2.2f"), Typ: structs.CommandSet, Parameter: "max"},
-// 		{Items: ItemsFromConfig("get ch1 max?"), Typ: structs.CommandReq, Parameter: "max"},
-// 		{Items: ItemsFromConfig("ver?"), Typ: structs.CommandReq, Parameter: "version"},
-// 	}
-// 	got := buildCommandPatterns(cmds)
-// 	opts := []cmp.Option{
-// 		cmp.AllowUnexported(Item{}),
-// 		cmpopts.SortSlices(func(x, y CommandPattern) bool {
-// 			return x.Items[0].Value() < y.Items[0].Value()
-// 		}),
-// 	}
+	p6 := CommandPattern{
+		reqItems: []Item{{typ: ItemCommand, val: "get"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "stat?"}},
+		resItems: []Item{{typ: ItemLeftMeta, val: "{"}, {typ: ItemStringValuePlaceholder, val: "%s"}, {typ: ItemParam, val: "version"}, {typ: ItemRightMeta, val: "}"}, {typ: ItemEscape, val: "\n"}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%.1f"}, {typ: ItemParam, val: "temp"}, {typ: ItemRightMeta, val: "}"}},
+	}
+	exp["get_stat"] = p6
 
-// 	if diff := cmp.Diff(want, got, opts...); diff != "" {
-// 		t.Errorf("CommandPattern mismatch (-want +got):\n%v", diff)
-// 	}
-// }
+	cmdPattern, err := buildCommandPatterns(input)
+	if err != nil {
+		t.Fatalf("building pattern should not fail: %v", err)
+	}
 
-// func TestConstructOutput(t *testing.T) {
-// 	t.Parallel()
-// 	tests := []struct {
-// 		name  string
-// 		items []Item
-// 		value any
-// 		exp   string
-// 	}{
-// 		{"current param", ItemsFromConfig("CUR %d"), 20, "CUR 20"},
-// 		{"voltage param", ItemsFromConfig("VOLT %.3f"), 1.234, "VOLT 1.234"},
-// 		{"psi param", ItemsFromConfig("PSI %3.2f"), 22.34, "PSI 22.34"},
-// 		{"max param", ItemsFromConfig("ch1 max%2.2f"), 11.11, "ch1 max11.11"},
-// 		{"version param", ItemsFromConfig("%s"), "version", "version"},
-// 		{"empty value", ItemsFromConfig("test %d"), nil, ""},
-// 		{"empty lexer", []Item(nil), nil, ""},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			res := constructOutput(tt.items, tt.value)
-// 			if string(res) != tt.exp {
-// 				t.Errorf("exp output: %s got: %s", tt.exp, res)
-// 			}
-// 		})
-// 	}
-// }
+	for expKey, expVal := range exp {
+		val, exists := cmdPattern[expKey]
+
+		if !exists {
+			t.Errorf("expKey %s is not present", expKey)
+			return
+		}
+		for i, req := range val.reqItems {
+			if req.Type() != expVal.reqItems[i].Type() {
+				t.Errorf("param %s exp type %v on position %d got: %v", expKey, expVal.reqItems[i].Type(), i, req.Type())
+			}
+			if req.Value() != expVal.reqItems[i].Value() {
+				t.Errorf("param %s exp value %v on position %d got: %v", expKey, expVal.reqItems[i].Value(), i, req.Value())
+			}
+		}
+		for i, res := range val.resItems {
+			if res.Type() != expVal.resItems[i].Type() {
+				t.Errorf("param %s exp type %v on position %d got: %v", expKey, expVal.resItems[i].Type(), i, res.Type())
+			}
+			if res.Value() != expVal.resItems[i].Value() {
+				t.Errorf("param %s exp value %v on position %d got: %v", expKey, expVal.resItems[i].Value(), i, res.Value())
+			}
+		}
+	}
+}
+
+func TestBuildCommandPatternsEmptyCmds(t *testing.T) {
+	cmdPattern, err := buildCommandPatterns(nil)
+	if err != nil {
+		t.Fatalf("building pattern should not fail: %v", err)
+	}
+	if len(cmdPattern) != 0 {
+		t.Error("patterns should be empty")
+	}
+}
+
+func TestBuildCommandPatternsReqErr(t *testing.T) {
+	input := map[string]*structs.Command{}
+	cmd1 := &structs.Command{
+		Name: "current_get",
+		Req:  []byte("get curr{}?"),
+		Res:  []byte("curr {%3.2f:current}"),
+	}
+	input["current_get"] = cmd1
+
+	cmdPattern, err := buildCommandPatterns(input)
+	if cmdPattern != nil {
+		t.Error("patterns should be empty")
+	}
+	if !errors.Is(ErrWrongReqSyntax, err) {
+		t.Errorf("exp error: %v got %v", ErrWrongReqSyntax, err)
+	}
+}
+
+func TestBuildCommandPatternsResErr(t *testing.T) {
+	input := map[string]*structs.Command{}
+	cmd1 := &structs.Command{
+		Name: "current_get",
+		Req:  []byte("get curr?"),
+		Res:  []byte("curr {%3z.2f:current}"),
+	}
+	input["current_get"] = cmd1
+
+	cmdPattern, err := buildCommandPatterns(input)
+	if cmdPattern != nil {
+		t.Error("patterns should be empty")
+	}
+	if !errors.Is(ErrWrongResSyntax, err) {
+		t.Errorf("exp error: %v got %v", ErrWrongResSyntax, err)
+	}
+}
+
+func TestCheckPattern(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name   string
+		forLex string
+		input  string
+		exp    bool
+		expVal map[string]any
+	}{
+		{"Simple req", "TEMP?", "TEMP?", true, map[string]any{}},
+		{"test", "get two 2", "get two 2", true, map[string]any{}},
+		{"Complex req", "get ch1 curr?", "get ch1 curr?", true, map[string]any{}},
+		{"Simple set", "volt {%3.2f:voltage}", "volt 34.45", true, map[string]any{"voltage": "34.45"}},
+		{"Complex set", "set ch1 max {%2d:max}", "set ch1 max 35", true, map[string]any{"max": "35"}},
+		{"Placeholder between", "set ch1 {%2.2f:power} pow", "set ch1 34.56 pow", true, map[string]any{"power": "34.56"}},
+		// Note: we need to more strict checking on different type of placeholder
+		// {"Wrong input", "set voltage {%d:voltage}", "set voltage 20.45", false, map[string]any{}},
+		{"Command not found", "get temp?", "set voltage 20", false, nil},
+		{"Wrong value", "set current {%03X:current}", "set current test", false, nil},
+		{"Too many elements", "TEMP?", "TEMP?asdf", false, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			items := ItemsFromConfig(tt.forLex)
+
+			got, values := checkPattern(tt.input, items)
+			if got != tt.exp {
+				t.Errorf("exp bool: %t got: %t\n", tt.exp, got)
+				return
+			}
+
+			if len(values) != len(tt.expVal) {
+				t.Errorf("exp values length: %d got: %d\n", len(tt.expVal), len(values))
+				return
+			}
+
+			for expKey, expVal := range tt.expVal {
+				val, exists := values[expKey]
+
+				if !exists {
+					t.Errorf("expKey %s is not present", expKey)
+					return
+				}
+
+				if expVal != val {
+					t.Errorf("exp value: %v got: %v\n", expVal, val)
+					return
+				}
+			}
+		})
+	}
+
+}
+
+func TestParseNumber(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		input string
+		exp   string
+	}{
+		{"Small scientific notation", "3e-10", "3e-10"},
+		{"Big scientific notation", "4.5e6", "4.5e6"},
+		{"Big hex", "0xFF", "0xFF"},
+		{"Small hex", "0xaa", "0xaa"},
+		{"Imaginary number", "5.2i", "5.2i"},
+		{"Standard float", "34.567", "34.567"},
+		{"Standard decimal", "20", "20"},
+		{"Wrong number", "23f", ""},
+		{"Wrong hex", "0xx43", ""},
+		{"Wrong scientific notation", "44e-f5", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseNumber(tt.input)
+			if got != tt.exp {
+				t.Errorf("exp string: %s got: %s\n", tt.exp, got)
+			}
+		})
+	}
+}
+
+func TestParseString(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		input string
+		exp   string
+	}{
+		{"One space", "test1 test2", "test1"},
+		{"Two spaces", "test1 test2 test3", "test1"},
+		{"empty input", "", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseString(tt.input)
+			if got != tt.exp {
+				t.Errorf("exp string: %s got: %s\n", tt.exp, got)
+			}
+		})
+	}
+}
+
+func TestConstructOutput(t *testing.T) {
+	t.Parallel()
+	params := map[string]parameter.Parameter{}
+
+	cur, err := parameter.New("20", "", "int64")
+	if err == nil {
+		params["current"] = cur
+	}
+
+	volt, err := parameter.New(1.234, "", "float64")
+	if err == nil {
+		params["voltage"] = volt
+	}
+
+	psi, err := parameter.New(22.34, "", "float64")
+	if err == nil {
+		params["psi"] = psi
+	}
+
+	max, err := parameter.New(11.11, "", "float64")
+	if err == nil {
+		params["max"] = max
+	}
+
+	version, err := parameter.New("version", "", "string")
+	if err == nil {
+		params["version"] = version
+	}
+
+	tests := []struct {
+		name  string
+		items []Item
+		exp   string
+	}{
+		{"current param", ItemsFromConfig("CUR {%d:current}"), "CUR 20"},
+		{"voltage param", ItemsFromConfig("VOLT {%.3f:voltage}"), "VOLT 1.234"},
+		{"psi param", ItemsFromConfig("PSI {%3.2f:psi}"), "PSI 22.34"},
+		{"max param", ItemsFromConfig("ch1 max{%2.2f:max}"), "ch1 max11.11"},
+		{"version param", ItemsFromConfig("{%s:version}"), "version"},
+		{"empty value", ItemsFromConfig("test {%d:}"), "test "},
+		{"empty lexer", []Item(nil), ""},
+		{"two params", ItemsFromConfig("{%s:version} - {%2.2f:max}"), "version - 11.11"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := constructOutput(tt.items, params)
+			if string(res) != tt.exp {
+				t.Errorf("exp output: %s got: %s", tt.exp, res)
+			}
+		})
+	}
+}

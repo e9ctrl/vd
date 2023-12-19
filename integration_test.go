@@ -10,21 +10,55 @@ import (
 
 	"github.com/e9ctrl/vd/server"
 	"github.com/e9ctrl/vd/stream"
+	"github.com/e9ctrl/vd/vdfile"
+)
+
+var (
+	vdfileBase     vdfile.Config
+	vdfileDelay    vdfile.Config
+	vdfileMismatch vdfile.Config
 )
 
 const (
+	FILE1 = "vdfile/vdfile"
 	ADDR1 = "localhost:3333"
-	FILE1 = "stream/vdfile"
 	ADDR2 = "localhost:4444"
-	FILE2 = "stream/vdfile_delays"
 	ADDR3 = "localhost:5555"
-	FILE3 = "stream/vdfile_mismatch"
 	ADDR4 = "localhost:6666"
 )
 
-func setupTestCase(t *testing.T, addr, file string) func() {
-	//read file
-	vdfile, err := stream.ReadVDFile(file)
+func init() {
+	config, err := vdfile.DecodeVDFile(FILE1)
+	if err != nil {
+		panic(err)
+	}
+
+	vdfileBase = config
+
+	config1, _ := vdfile.DecodeVDFile(FILE1)
+	for i := 0; i < len(config1.Commands); i++ {
+		switch config1.Commands[i].Name {
+		case "get_psi":
+			config1.Commands[i].Dly = "3s"
+		case "get_temp":
+			config1.Commands[i].Dly = "1s"
+		case "set_psi":
+			config1.Commands[i].Dly = "3s"
+		case "get_current":
+			config1.Commands[i].Dly = "2s"
+		case "set_current":
+			config1.Commands[i].Dly = "2s"
+		}
+	}
+	vdfileDelay = config1
+
+	config2, _ := vdfile.DecodeVDFile(FILE1)
+	config2.Mismatch = "Wrong query"
+	vdfileMismatch = config2
+}
+
+func setupTestCase(t *testing.T, addr string, vd vdfile.Config) func() {
+	vdfile, err := vdfile.ReadVDFileFromConfig(vd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +87,7 @@ func TestRun(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t, ADDR1, FILE1)()
+	defer setupTestCase(t, ADDR1, vdfileBase)()
 	// connect to server
 	conn, err := net.Dial("tcp", ADDR1)
 	if err != nil {
@@ -77,6 +111,10 @@ func TestRun(t *testing.T) {
 		{"current set", []byte("CUR 20\r\n"), []byte("OK\r\n")},
 		{"psi set", []byte("PSI 3.46\r\n"), []byte("PSI 3.46 OK\r\n")},
 		{"mode set", []byte(":PULSE0:MODE SING\r\n"), []byte("ok\r\n")},
+		{"get status", []byte("S?\r\n"), []byte("version 1.0 - 2.3\r\n")},
+		{"set two params", []byte("set mode BURS psi 4.56\r\n"), []byte("ok\r\n")},
+		{"get status ch2", []byte("get status ch 2\r\n"), []byte("mode: BURS psi: 4.56\r\n")},
+		{"get status ch3", []byte("get status ch 3\r\n"), []byte("mode: BURS\npsi: 4.56\r\n")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -102,7 +140,7 @@ func TestRunWrongQueries(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t, ADDR2, FILE1)()
+	defer setupTestCase(t, ADDR2, vdfileBase)()
 	// connect to server
 	conn, err := net.Dial("tcp", ADDR2)
 
@@ -150,7 +188,7 @@ func TestRunWithDelays(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t, ADDR3, FILE2)()
+	defer setupTestCase(t, ADDR3, vdfileDelay)()
 	// connect to server
 	conn, err := net.Dial("tcp", ADDR3)
 	if err != nil {
@@ -199,7 +237,7 @@ func TestRunWithMismatch(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t, ADDR4, FILE3)()
+	defer setupTestCase(t, ADDR4, vdfileMismatch)()
 	// connect to server
 	conn, err := net.Dial("tcp", ADDR4)
 	if err != nil {

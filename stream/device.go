@@ -9,73 +9,39 @@ import (
 	"time"
 
 	"github.com/e9ctrl/vd/log"
-	"github.com/e9ctrl/vd/parameter"
 	"github.com/e9ctrl/vd/protocols"
 	"github.com/e9ctrl/vd/protocols/stream"
 	"github.com/e9ctrl/vd/server"
-	"github.com/e9ctrl/vd/structs"
+	"github.com/e9ctrl/vd/vdfile"
+)
+
+const MISMATCH_LIMIT = 255
+
+var (
+	ErrNoClient = errors.New("no client available")
 )
 
 // Stream device store the information of a set of parameters
 type StreamDevice struct {
 	server.Handler
-	params        map[string]parameter.Parameter
-	commands      map[string]*structs.Command
-	outTerminator []byte
-	splitter      bufio.SplitFunc
-	parser        protocols.Parser
-	mismatch      []byte
-	triggered     chan []byte
+	vdfile    *vdfile.VDFile
+	splitter  bufio.SplitFunc
+	parser    protocols.Parser
+	triggered chan []byte
 }
 
-var (
-	ErrCommandNotFound = errors.New("command not found")
-	ErrParamNotFound   = errors.New("parameter not found")
-	ErrNoClient        = errors.New("no client available")
-)
-
-const mismatchLimit = 255
-
 // Create a new stream device given the virtual device configuration file
-func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
-	// parse parameters
-	// params := []string{}
-	// for p := range vdfile.StreamCmd {
-	// 	params = append(params, p)
-	// }
-	// sort.Strings(params)
-
-	// w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
-	// fmt.Fprintln(w, "Parameter\t\tReq\tRes\tSet\tAck")
-	// for _, p := range params {
-	// 	req, res, set, ack := vdfile.StreamCmd[p].SupportedCommands()
-
-	// 	var reqStr, resStr, setStr, ackStr string
-	// 	if req {
-	// 		reqStr = " ✓"
-	// 	}
-	// 	if res {
-	// 		resStr = " ✓"
-	// 	}
-	// 	if set {
-	// 		setStr = " ✓"
-	// 	}
-	// 	if ack {
-	// 		ackStr = " ✓"
-	// 	}
-	// 	fmt.Fprintf(w, "%s\t\t%s\t%s\t%s\t%s\n", p, reqStr, resStr, setStr, ackStr)
-
-	// }
-	// w.Flush()
-	// fmt.Println("")
+func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
+	// make sure the parser is initialize successfully
+	parser, err := stream.NewParser(vdfile)
+	if err != nil {
+		return nil, err
+	}
 
 	return &StreamDevice{
-		params:        vdfile.Params,
-		commands:      vdfile.Commands,
-		outTerminator: vdfile.OutTerminator,
-		mismatch:      vdfile.Mismatch,
-		triggered:     make(chan []byte),
-		parser:        stream.NewParser(vdfile.Commands),
+		vdfile:    vdfile,
+		triggered: make(chan []byte),
+		parser:    parser,
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
 				return 0, nil, nil
@@ -97,11 +63,12 @@ func NewDevice(vdfile *VDFile) (*StreamDevice, error) {
 		},
 	}, nil
 }
+
 func (s StreamDevice) Mismatch() (res []byte) {
-	if len(s.mismatch) != 0 {
-		log.MSM(string(s.mismatch))
-		res = append(s.mismatch, s.outTerminator...)
-		log.TX(string(s.mismatch), res)
+	if len(s.vdfile.Mismatch) != 0 {
+		log.MSM(string(s.vdfile.Mismatch))
+		res = append(s.vdfile.Mismatch, s.vdfile.OutTerminator...)
+		log.TX(string(s.vdfile.Mismatch), res)
 	}
 	return
 }
@@ -109,30 +76,29 @@ func (s StreamDevice) Mismatch() (res []byte) {
 func (s StreamDevice) Triggered() chan []byte { return s.triggered }
 
 func (s StreamDevice) parseTok(tok string) []byte {
-	// todo fix this
-	res, param := s.parser.Parse(tok)
-	if res == nil {
+	res, commandName, err := s.parser.Parse(tok)
+	if (err == protocols.ErrCommandNotFound || errors.Is(err, protocols.ErrWrongSetVal)) && len(s.vdfile.Mismatch) > 0 {
+		res = s.vdfile.Mismatch
+	} else if err != nil {
+		log.ERR("parse return with error %w", err)
+	}
+
+	if len(res) == 0 {
 		return res
 	}
 
-	var cmd *structs.Command
-	if param != "" {
-		cmd = s.commands[param]
-	}
-
-	if cmd != nil {
-		s.delayRes(cmd.Dly)
+	if commandName != "" && s.vdfile != nil {
+		if cmd, exist := s.vdfile.Commands[commandName]; exist {
+			s.delayRes(cmd.Dly)
+		} else {
+			log.ERR("command name %s not found", commandName)
+		}
 	}
 
 	strRes := string(res)
-	res = append(res, s.outTerminator...)
+	res = append(res, s.vdfile.OutTerminator...)
 	log.TX(strRes, res)
 	return res
-}
-
-func (s StreamDevice) delayRes(d time.Duration) {
-	log.DLY("delaying response by", d)
-	time.Sleep(d)
 }
 
 func (s StreamDevice) Handle(cmd []byte) []byte {
@@ -154,7 +120,7 @@ func (s StreamDevice) Handle(cmd []byte) []byte {
 }
 
 func (s StreamDevice) GetParameter(name string) (any, error) {
-	param, exists := s.params[name]
+	param, exists := s.vdfile.Params[name]
 	if !exists {
 		return nil, fmt.Errorf("parameter %s not found", name)
 	}
@@ -163,7 +129,7 @@ func (s StreamDevice) GetParameter(name string) (any, error) {
 }
 
 func (s StreamDevice) SetParameter(name string, value any) error {
-	param, exists := s.params[name]
+	param, exists := s.vdfile.Params[name]
 	if !exists {
 		return fmt.Errorf("parameter %s not found", name)
 	}
@@ -172,7 +138,7 @@ func (s StreamDevice) SetParameter(name string, value any) error {
 }
 
 func (s StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
-	cmd, exists := s.commands[name]
+	cmd, exists := s.vdfile.Commands[name]
 	if !exists {
 		return 0, fmt.Errorf("command %s not found", name)
 	}
@@ -181,45 +147,59 @@ func (s StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 }
 
 func (s *StreamDevice) SetCommandDelay(name, val string) error {
-	cmd, exists := s.commands[name]
+	cmd, exists := s.vdfile.Commands[name]
 	if !exists {
 		return fmt.Errorf("command %s not found", name)
 	}
 
-	var err error
-	cmd.Dly, err = time.ParseDuration(val)
-	return err
+	if val, err := time.ParseDuration(val); err == nil {
+		cmd.Dly = val
+	} else {
+		return err
+	}
+
+	return nil
 }
 
 func (s StreamDevice) GetMismatch() []byte {
-	return s.mismatch
+	return s.vdfile.Mismatch
 }
 
 func (s *StreamDevice) SetMismatch(value string) error {
-	if len(value) > mismatchLimit {
+	if len(value) > MISMATCH_LIMIT {
 		return fmt.Errorf("mismatch message: %s - exceeded 255 characters limit", value)
 	}
-	s.mismatch = []byte(value)
+	s.vdfile.Mismatch = []byte(value)
 	return nil
 }
 
 func (s *StreamDevice) Trigger(name string) error {
-	_, exists := s.commands[name]
+	_, exists := s.vdfile.Commands[name]
 	if !exists {
-		return ErrCommandNotFound
+		return protocols.ErrCommandNotFound
 	}
 
-	// val := s.param[cmd.Param].Value()
-	// out := s.constructOutput(cmd.resItems, val)
-	// if len(out) == 0 {
-	// 	return nil
-	// }
-	// out += string(s.outTerminator)
+	res, err := s.parser.Trigger(name)
+	if err != nil {
+		return err
+	}
 
-	// select {
-	// case s.triggered <- []byte(out):
-	// default:
-	// 	return ErrNoClient
-	// }
+	if res == nil {
+		return nil
+	}
+
+	res = append(res, s.vdfile.OutTerminator...)
+
+	select {
+	case s.triggered <- res:
+	default:
+		return ErrNoClient
+	}
+
 	return nil
+}
+
+func (s StreamDevice) delayRes(d time.Duration) {
+	log.DLY("delaying response by", d)
+	time.Sleep(d)
 }

@@ -15,8 +15,8 @@ import (
 type Device interface {
 	GetParameter(param string) (any, error)
 	SetParameter(param string, val any) error
-	GetCommandDelay(param string) (time.Duration, error)
-	SetCommandDelay(param string, val string) error
+	GetCommandDelay(commandName string) (time.Duration, error)
+	SetCommandDelay(commandName string, val string) error
 	GetMismatch() []byte
 	SetMismatch(string) error
 	Trigger(param string) error
@@ -77,8 +77,8 @@ func (a *api) routes() http.Handler {
 	r.Route("/", func(r chi.Router) {
 		r.Get("/{param}", a.getParameter)
 		r.Post("/{param}/{value}", a.setParameter)
-		r.Get("/delay/{type}/{param}", a.getParamDelay)
-		r.Post("/delay/{type}/{param}/{value}", a.setParamDelay)
+		r.Get("/delay/{command}", a.getCommandDelay)
+		r.Post("/delay/{command}/{value}", a.setCommandDelay)
 		r.Get("/mismatch", a.getMismatch)
 		r.Post("/mismatch/{value}", a.setMismatch)
 		r.Post("/trigger/{param}", a.trigger)
@@ -133,32 +133,32 @@ func (a *api) setParameter(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Parameter set successfully"))
 }
 
-func (a *api) getParamDelay(w http.ResponseWriter, r *http.Request) {
-	param := chi.URLParam(r, "param")
+func (a *api) getCommandDelay(w http.ResponseWriter, r *http.Request) {
+	commandName := chi.URLParam(r, "command")
 
-	del, err := a.d.GetCommandDelay(param)
+	del, err := a.d.GetCommandDelay(commandName)
 	if err != nil {
 		errorHandler(w, err)
 		return
 	}
 
-	log.API("get delay of", param)
+	log.API("get delay of", commandName)
 	// Return the value as plain text
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(del.String()))
 }
 
-func (a *api) setParamDelay(w http.ResponseWriter, r *http.Request) {
-	param := chi.URLParam(r, "param")
+func (a *api) setCommandDelay(w http.ResponseWriter, r *http.Request) {
+	commandName := chi.URLParam(r, "command")
 	value := chi.URLParam(r, "value")
 
-	err := a.d.SetCommandDelay(param, value)
+	err := a.d.SetCommandDelay(commandName, value)
 	if err != nil {
 		errorHandler(w, err)
 		return
 	}
 
-	log.API("set delay of", param, "to", value)
+	log.API("set delay of", commandName, "to", value)
 	w.Write([]byte("Delay set successfully"))
 }
 

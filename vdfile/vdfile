@@ -1,8 +1,4 @@
 # This is toml config file
-
-[simulator]
-addr = "localhost:9999"
-
 [terminators]
 intterm = "CR LF"
 outterm = "CR LF"
@@ -71,7 +67,7 @@ res = "TEMP {%.2f:temp}"
 [[command]]
 name = "get_version"
 req = "VER?"
-res = "{%s"version}"
+res = "{%s:version}"
 
 [[command]]
 name = "get_mode"
@@ -101,3 +97,23 @@ res = "{%t:ack}"
 [[command]]
 name = "set_ack"
 req = "ACK {%t:ack}"
+
+[[command]]
+name = "get_status"
+req = "S?"
+res = "{%s:version} - {%.1f:temp}"
+
+[[command]]
+name = "get_status_2"
+req = "get status ch 2"
+res = "mode: {%s:mode} psi: {%3.2f:psi}"
+
+[[command]]
+name = "get_status_3"
+req = "get status ch 3"
+res = "mode: {%s:mode}\npsi: {%3.2f:psi}"
+
+[[command]]
+name = "set_two_params"
+req = "set mode {%s:mode} psi {%3.2f:psi}"
+res = "ok"

@@ -48,14 +48,18 @@ type ConcreteParameter[T paramType] struct {
 // Parameter constructor, the constructor will automatically create the ConcreteParameter instance base on the value passed on in the params
 func New(val any, opt, typ string) (Parameter, error) {
 	switch typ {
-	case "int":
+	case "int16":
 		return newParameter[int](reflect.Int, val, opt)
 	case "int32":
 		return newParameter[int32](reflect.Int32, val, opt)
+	case "int":
+		fallthrough
 	case "int64":
 		return newParameter[int64](reflect.Int64, val, opt)
 	case "float32":
 		return newParameter[float32](reflect.Float32, val, opt)
+	case "float":
+		fallthrough
 	case "float64":
 		return newParameter[float64](reflect.Float64, val, opt)
 	case "string":
@@ -88,6 +92,8 @@ func newParameter[T paramType](typ reflect.Kind, val any, opt string) (*Concrete
 
 // Value setter
 func (p *ConcreteParameter[T]) SetValue(val any) error {
+	// Note: the default toml parser will parse the float into float64 and int to int64,
+	// direct casting from interface to generice type T will fail here.
 	valT, ok := val.(T)
 	if !ok {
 		valStr, ok := val.(string)

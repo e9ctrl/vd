@@ -10,16 +10,14 @@ import (
 )
 
 var getDelayCmd = &cobra.Command{
-	Use:   "delay [delay_type]\n  vd get delay [delay_type] [parameter name]",
+	Use:   "delay\n  vd get delay [command name]",
 	Args:  cobra.RangeArgs(1, 2),
 	Short: "Command to get value of delays",
-	Long: `This commands reads value of global and parameter delays of two types: reponse and acknowledge. 
+	Long: `This commands reads value command delays. 
 	It communicates with REST API of the simulator and using HTTP GET ir reads specified delays. 
 Examples:
-	vd get delay res 		-> get global response delay
-	vd get delay ack 		-> get global acknowledge delay
-	vd get delay res temperature 	-> get response delay of temperature parameter
-	vd get dleay ack voltage 	-> get acknowledge delay of voltage parameter
+	vd get delay get_temperature 	-> get response delay of get temperature command
+	vd get dleay set_voltage 	-> get acknowledge delay of set voltage command
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		addr, err := cmd.Flags().GetString("apiAddr")
@@ -38,9 +36,7 @@ Examples:
 		var t time.Duration
 		switch len(args) {
 		case 1:
-			t, err = c.GetGlobalDelay(args[0])
-		case 2:
-			t, err = c.GetParamDelay(args[0], args[1])
+			t, err = c.GetCommandDelay(args[0])
 		default:
 			fmt.Println("Invalid number of arguments.")
 			os.Exit(1)
