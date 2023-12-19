@@ -1,12 +1,15 @@
-package stream
+package vdfile
 
 import (
+	"bytes"
+	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/e9ctrl/vd/lexer"
 	"github.com/e9ctrl/vd/parameter"
+	"github.com/e9ctrl/vd/structs"
 )
 
 type terminators struct {
@@ -14,28 +17,24 @@ type terminators struct {
 	OutTerminator string `toml:"outterm"`
 }
 
-type delays struct {
-	ResDelay string `toml:"res,omitempty"`
-	AckDelay string `toml:"ack,omitempty"`
-}
-
 type configParameter struct {
 	Name string `toml:"name"`
 	Typ  string `toml:"typ"`
-	Req  string `toml:"req"`
-	Res  string `toml:"res"`
-	Rdl  string `toml:"rdl,omitempty"`
-	Set  string `toml:"set,omitempty"`
-	Ack  string `toml:"ack,omitempty"`
-	Adl  string `toml:"adl,omitempty"`
 	Val  any    `toml:"val"`
 	Opt  string `toml:"opt,omitempty"`
 }
 
-type config struct {
+type configCommand struct {
+	Name string `toml:"name"`
+	Req  string `toml:"req"`
+	Res  string `toml:"res,omitempty"`
+	Dly  string `toml:"dly,omitempty"`
+}
+
+type Config struct {
 	Term     terminators       `toml:"terminators"`
-	Dels     delays            `toml:"delays,omitempty"`
 	Params   []configParameter `toml:"parameter"`
+	Commands []configCommand   `toml:"command"`
 	Mismatch string            `toml:"mismatch,omitempty"`
 }
 
@@ -43,58 +42,72 @@ type config struct {
 type VDFile struct {
 	InTerminator  []byte
 	OutTerminator []byte
-	ResDelay      time.Duration
-	AckDelay      time.Duration
-	Param         map[string]parameter.Parameter
-	StreamCmd     []*streamCommand
+	Params        map[string]parameter.Parameter
+	Commands      map[string]*structs.Command
 	Mismatch      []byte
 }
 
 // Read VDFile from disk from the given filepath
 func ReadVDFile(path string) (*VDFile, error) {
-	vdfile := &VDFile{
-		Param:     make(map[string]parameter.Parameter),
-		StreamCmd: make([]*streamCommand, 0),
+	config, err := DecodeVDFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed decoding file with err %w", err)
 	}
 
-	var config config
-	_, err := toml.DecodeFile(path, &config)
-	if err != nil {
-		return vdfile, err
+	return ReadVDFileFromConfig(config)
+}
+
+func ReadVDFileFromConfig(config Config) (*VDFile, error) {
+	vdfile := &VDFile{
+		Params:   make(map[string]parameter.Parameter, 0),
+		Commands: make(map[string]*structs.Command, 0),
 	}
 
 	for _, param := range config.Params {
-		currentParam, err := parameter.New(param.Val, param.Opt)
+		currentParam, err := parameter.New(param.Val, param.Opt, param.Typ)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Val, err)
 		}
 
-		currentCmd := &streamCommand{
-			Param:    param.Name,
-			Req:      []byte(param.Req),
-			Res:      []byte(param.Res),
-			Set:      []byte(param.Set),
-			Ack:      []byte(param.Ack),
-			reqItems: lexer.ItemsFromConfig(param.Req),
-			resItems: lexer.ItemsFromConfig(param.Res),
-			setItems: lexer.ItemsFromConfig(param.Set),
-			ackItems: lexer.ItemsFromConfig(param.Ack),
-			resDelay: parseDelays(param.Rdl),
-			ackDelay: parseDelays(param.Adl),
+		vdfile.Params[param.Name] = currentParam
+
+	}
+
+	for _, cmd := range config.Commands {
+		currentCmd := &structs.Command{
+			Name: cmd.Name,
+			Req:  []byte(cmd.Req),
+			Res:  []byte(cmd.Res),
+			Dly:  parseDelays(cmd.Dly),
 		}
 
-		vdfile.Param[param.Name] = currentParam
-		vdfile.StreamCmd = append(vdfile.StreamCmd, currentCmd)
+		vdfile.Commands[cmd.Name] = currentCmd
 	}
 
 	vdfile.InTerminator = parseTerminator(config.Term.InTerminator)
 	vdfile.OutTerminator = parseTerminator(config.Term.OutTerminator)
-
-	vdfile.ResDelay = parseDelays(config.Dels.ResDelay)
-	vdfile.AckDelay = parseDelays(config.Dels.AckDelay)
 	vdfile.Mismatch = []byte(config.Mismatch)
 
 	return vdfile, nil
+}
+
+func DecodeVDFile(path string) (Config, error) {
+	var config Config
+	_, err := toml.DecodeFile(path, &config)
+
+	return config, err
+}
+
+func WriteVDFile(path string, config Config) error {
+	var buf = bytes.Buffer{}
+	var encoder = toml.NewEncoder(&buf)
+
+	err := encoder.Encode(config)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, buf.Bytes(), os.ModePerm)
 }
 
 func parseDelays(line string) time.Duration {

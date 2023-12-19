@@ -10,16 +10,14 @@ import (
 )
 
 var setDelayCmd = &cobra.Command{
-	Use:   "delay [delay_type] [value]\n  vd set delay [delay_type] [parameter name] [value]",
+	Use:   "delay [value]\n  vd set delay [command name] [value]",
 	Args:  cobra.RangeArgs(2, 3),
 	Short: "Command to set value of delays",
-	Long: `The command sets value of global and parameter delays of two types: reponse and acknowledge.
+	Long: `The command sets value of command delays.
 	It communicates with REST API of the simulator and using HTTP POSRT verb modifies value of the specified delay. 
 Examples:
-	vd set delay res 10s		-> set global response delay
-	vd set delay ack 10s		-> set global acknowledge delay
-	vd set delay res temp 100ms	-> set response delay of temp parameter
-	vd set delay ack volt 1m	-> set acknowledge delay of volt parameter
+	vd set delay get_temp 100ms	-> set response delay of get temp command
+	vd set delay set_volt 1m	-> set response delay of set volt command
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		addr, err := cmd.Flags().GetString("apiAddr")
@@ -36,9 +34,7 @@ Examples:
 		c := api.NewClient(addr)
 		switch len(args) {
 		case 2:
-			err = c.SetGlobalDelay(args[0], args[1])
-		case 3:
-			err = c.SetParamDelay(args[0], args[1], args[2])
+			err = c.SetCommandDelay(args[0], args[1])
 		}
 
 		if err != nil {

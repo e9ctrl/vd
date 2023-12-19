@@ -10,43 +10,70 @@ func TestSetValue(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
+		typ     string
 		initVal any
 		val     any
 		opt     string
 		exp     any
 		expErr  error
 	}{
-		{"string param", "init", "test", "", "test", nil},
-		{"string param with opts", "one", "two", "one|two", "two", nil},
-		{"string param with wrong opts", "one", "two", "one|three", "one", ErrValNotAllowed},
-		{"string param wrong value", "init", 50.0, "", "init", ErrWrongTypeVal},
+		{"string param", "string", "init", "test", "", "test", nil},
+		{"string param with opts", "string", "one", "two", "one|two", "two", nil},
+		{"string param with wrong opts", "string", "one", "two", "one|three", "one", ErrValNotAllowed},
+		{"string param wrong float value", "string", "init", 50.0, "", "init", ErrWrongTypeVal},
+		{"string param wrong int value", "string", "init", 50, "", "init", ErrWrongTypeVal},
+		{"string param wrong bool value", "string", "init", false, "", "init", ErrWrongTypeVal},
 
-		{"int param", 20, 50, "", 50, nil},
-		{"int param with opts", 60, 50, "50|60", 50, nil},
-		{"int param int64", int64(30), int64(50), "", int64(50), nil},
-		{"int param int32", int32(30), int32(50), "", int32(50), nil},
-		{"int param string value", 20, "50", "", 50, nil},
-		{"int param wrong type", false, 50, "", false, ErrWrongTypeVal},
-		{"int param wrong string value", 30, "test", "", 30, ErrWrongIntVal},
-		{"int param float value", 30, 50.0, "", 30, ErrWrongTypeVal},
+		{"int16 param", "int16", 20, 50, "", 50, nil},
+		{"int16 param with opts", "int16", 60, 50, "50|60", 50, nil},
+		{"int16 param string value", "int16", 20, "50", "", 50, nil},
+		{"int16 param wrong bool value", "int16", 50, false, "", 50, ErrWrongTypeVal},
+		{"int16 param wrong string value", "int16", 30, "test", "", 30, ErrWrongIntVal},
+		{"int16 param wrong float value", "int16", 30, 50.0, "", 30, ErrWrongTypeVal},
+		{"int16 param wrong int value", "int16", 30, int64(50), "", 30, ErrWrongTypeVal},
 
-		{"float param", 20.0, 50.0, "", 50.0, nil},
-		{"float param with opts", 60.0, 50.0, "50|60", 50.0, nil},
-		{"float param int32", float32(20.0), float32(50.0), "", float32(50.0), nil},
-		{"float param string value", 20.0, "50.0", "", 50.0, nil},
-		{"float param wrong type", false, 50.0, "", false, ErrWrongTypeVal},
-		{"float param wrong string value", 20.0, "test", "", 20.0, ErrWrongFloatVal},
-		{"float param int value", 20.0, 50, "", 20.0, ErrWrongTypeVal},
+		{"int param", "int", int64(20), int64(50), "", int64(50), nil},
+		{"int param with opts", "int", int64(60), int64(50), "50|60", int64(50), nil},
+		{"int param string value", "int", int64(20), "50", "", int64(50), nil},
+		{"int param wrong bool value", "int", int64(50), false, "", int64(50), ErrWrongTypeVal},
+		{"int param wrong string value", "int", int64(30), "test", "", int64(30), ErrWrongIntVal},
+		{"int param wrong float value", "int", int64(30), 50.0, "", int64(30), ErrWrongTypeVal},
 
-		{"bool param", true, false, "", false, nil},
-		{"bool param with opts", false, true, "true|false", true, nil},
-		{"bool param string value", false, "true", "", true, nil},
-		{"bool param wrong type", 20.0, true, "", 20.0, ErrWrongTypeVal},
+		{"int32 param", "int32", int32(30), int32(50), "", int32(50), nil},
+		{"int32 param string value", "int32", int32(20), "50", "", int32(50), nil},
+		{"int32 param wrong bool value", "int32", int32(50), false, "", int32(50), ErrWrongTypeVal},
+		{"int32 param wrong string value", "int32", int32(30), "test", "", int32(30), ErrWrongIntVal},
+		{"int32 param wrong float value", "int32", int32(30), 50.0, "", int32(30), ErrWrongTypeVal},
+		{"int32 param wrong int value", "int32", int32(30), 50, "", int32(30), ErrWrongTypeVal},
+		{"int32 param wrong int64 value", "int32", int32(30), int64(50), "", int32(30), ErrWrongTypeVal},
+
+		{"int64 param", "int64", int64(30), int64(50), "", int64(50), nil},
+		{"int64 param string value", "int64", int64(20), "50", "", int64(50), nil},
+		{"int64 param wrong bool value", "int64", int64(50), false, "", int64(50), ErrWrongTypeVal},
+		{"int64 param wrong string value", "int64", int64(30), "test", "", int64(30), ErrWrongIntVal},
+		{"int64 param wrong float value", "int64", int64(30), 50.0, "", int64(30), ErrWrongTypeVal},
+		{"int64 param wrong int value", "int64", int64(30), int32(50), "", int64(30), ErrWrongTypeVal},
+
+		{"float param", "float64", 20.0, 50.0, "", 50.0, nil},
+		{"float param with opts", "float32", float32(60.0), float32(50.0), "50|60", float32(50.0), nil},
+		{"float param float32", "float32", float32(20.0), float32(50.0), "", float32(50.0), nil},
+		{"float param float64", "float64", 20.0, 50.0, "", 50.0, nil},
+		{"float param string value", "float32", float32(20.0), "50.0", "", float32(50.0), nil},
+		{"float param wrong bool value", "float32", float32(50.0), false, "", float32(50.0), ErrWrongTypeVal},
+		{"float param wrong string value", "float32", float32(20.0), "test", "", float32(20.0), ErrWrongFloatVal},
+		{"float param wrong int value", "float32", float32(20.0), 50, "", float32(20.0), ErrWrongTypeVal},
+
+		{"bool param", "bool", true, false, "", false, nil},
+		{"bool param with opts", "bool", false, true, "true|false", true, nil},
+		{"bool param string value", "bool", false, "true", "", true, nil},
+		{"bool param wrong string value", "bool", false, "test", "", false, ErrWrongBoolVal},
+		{"bool param wrong float value", "bool", true, 20.0, "", true, ErrWrongTypeVal},
+		{"bool param wrong int value", "bool", true, 20, "", true, ErrWrongTypeVal},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			param, err := New(tt.initVal, tt.opt)
+			param, err := New(tt.initVal, tt.opt, tt.typ)
 			if err != nil {
 				t.Error(err)
 				return
