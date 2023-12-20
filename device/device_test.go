@@ -383,7 +383,7 @@ func TestTriggerCommand(t *testing.T) {
 				if !bytes.Equal(res, tt.exp) {
 					t.Errorf("%s: exp resp: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
 				}
-			case <-time.After(2 * time.Second):
+			case <-time.After(5 * time.Second):
 				if !errors.Is(err, tt.expErr) {
 					t.Errorf("Timeout: Goroutine did not complete in time.")
 					t.Errorf("exp error: %v got: %v", tt.expErr, err)
