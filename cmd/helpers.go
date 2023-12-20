@@ -13,7 +13,7 @@ import (
 var vdTemplate fs.FS
 
 const (
-	exampleFileName = "example.toml"
+	exampleFileName = "vdfile"
 )
 
 func verifyIPAddr(addrStr string) bool {
