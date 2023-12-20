@@ -28,7 +28,7 @@ type Parser struct {
 	commandPatterns map[string]CommandPattern
 }
 
-func (p *Parser) Parse(input string) ([]byte, string, error) {
+func (p *Parser) Handle(input string) ([]byte, string, error) {
 	for cmdName, pattern := range p.commandPatterns {
 		match, values := checkPattern(input, pattern.reqItems)
 		if !match {
@@ -71,7 +71,7 @@ func (p Parser) makeResponse(items []Item) []byte {
 	return constructOutput(items, p.vdfile.Params)
 }
 
-func NewParser(vdfile *vdfile.VDFile) (protocols.Parser, error) {
+func NewParser(vdfile *vdfile.VDFile) (protocols.Protocol, error) {
 	commandPattern, err := buildCommandPatterns(vdfile.Commands)
 	if err != nil {
 		return nil, err

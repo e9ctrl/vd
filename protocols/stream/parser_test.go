@@ -46,7 +46,7 @@ func TestParse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, cmdName, err := p.Parse(tt.in)
+			res, cmdName, err := p.Handle(tt.in)
 			if !errors.Is(err, tt.expErr) {
 				t.Errorf("exp error: %v got: %v", tt.expErr, err)
 			}
