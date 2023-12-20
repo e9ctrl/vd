@@ -1,55 +1,20 @@
 package cmd
 
 import (
-	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/e9ctrl/vd/vdfile"
 )
 
-const sampleConfig = `# This is vdfile config
+var vdTemplate fs.FS
 
-mismatch = "Wrong query"
-
-[delays]
-req = "1s"
-res = "1s"
-
-[terminators]
-intterm = "CR LF"
-outterm = "CR LF"
-
-[[parameter]]
-name = "current"
-typ = "int"
-req = "CUR?"
-res = "CUR %d"
-rdl = "1s"
-set = "CUR %d"
-ack = "OK"
-sdl = "100ms"
-val = 300
-
-[[parameter]]
-name = "version"
-typ = "string"
-req = "VER?"
-res = "%s"
-val = "version 1.0"
-
-[[parameter]]
-name = "mode"
-typ = "string"
-opt = "NORM|SING|BURS|DCYC"
-req = ":PULSE0:MODE?"
-res = "%s"
-set = ":PULSE0:MODE %s"
-ack = "ok"
-val = "NORM"
-`
-
-const exampleFileName = "example.toml"
+const (
+	exampleFileName = "example.toml"
+)
 
 func verifyIPAddr(addrStr string) bool {
 	parts := strings.Split(addrStr, ":")
@@ -72,15 +37,13 @@ func generateConfig() error {
 		return err
 	}
 
-	f, err := os.Create(path + "/" + exampleFileName)
+	config, err := vdfile.DecodeVDFS(vdTemplate, "vdfile/vdfile")
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_ = f.Close()
-	}()
 
-	_, err = fmt.Fprintf(f, "%s", sampleConfig)
+	config = vdfile.GenerateRandomDelay(config)
+	err = vdfile.WriteVDFile(path+"/"+exampleFileName, config)
 	if err != nil {
 		return err
 	}
