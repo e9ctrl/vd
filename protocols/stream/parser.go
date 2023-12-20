@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/e9ctrl/vd/command"
 	"github.com/e9ctrl/vd/parameter"
 	"github.com/e9ctrl/vd/protocols"
-	"github.com/e9ctrl/vd/structs"
 	"github.com/e9ctrl/vd/vdfile"
 )
 
@@ -83,7 +83,7 @@ func NewParser(vdfile *vdfile.VDFile) (protocols.Parser, error) {
 	}, nil
 }
 
-func buildCommandPatterns(commands map[string]*structs.Command) (map[string]CommandPattern, error) {
+func buildCommandPatterns(commands map[string]*command.Command) (map[string]CommandPattern, error) {
 	patterns := map[string]CommandPattern{}
 
 	// validate the items output for each req and res,
