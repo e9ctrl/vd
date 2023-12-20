@@ -40,3 +40,26 @@ func TestGenerateRandomDelayVDFile(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestParseDelays(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		line string
+		exp  time.Duration
+	}{
+
+		{"valid line 5s", "5s", 5 * time.Second},
+		{"valid line 1m", "1m", time.Minute},
+		{"empty line", "", 0},
+		{"wrong format", "5test", 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := parseDelays(tt.line)
+			if res != tt.exp {
+				t.Errorf("%s: exp value: %v got %v\n", tt.name, tt.exp, res)
+			}
+		})
+	}
+}
