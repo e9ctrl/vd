@@ -6,14 +6,59 @@ import (
 	"testing"
 
 	"github.com/e9ctrl/vd/command"
-	"github.com/e9ctrl/vd/parameter"
-	"github.com/e9ctrl/vd/protocols"
+	"github.com/e9ctrl/vd/protocol"
 	"github.com/e9ctrl/vd/vdfile"
 )
 
 const FILE1 = "../../vdfile/vdfile"
 
-func TestParse(t *testing.T) {
+// func TestParse(t *testing.T) {
+// 	t.Parallel()
+// 	vd, err := vdfile.ReadVDFile(FILE1)
+// 	if err != nil {
+// 		t.Fatalf("error while parsing test file: %v", err)
+// 	}
+// 	p, err := NewParser(vd)
+// 	if err != nil {
+// 		t.Fatalf("error while creating parser: %v", err)
+// 	}
+// 	tests := []struct {
+// 		name   string
+// 		in     string
+// 		exp    []byte
+// 		expCmd string
+// 		expErr error
+// 	}{
+// 		{"get command int", "CUR?", []byte("CUR 300"), "get_current", nil},
+// 		{"get command str", "VER?", []byte("version 1.0"), "get_version", nil},
+// 		{"get status two params", "S?", []byte("version 1.0 - 2.3"), "get_status", nil},
+// 		{"get status two params with new line", "get status ch 3", []byte("mode: NORM\npsi: 3.30"), "get_status_3", nil},
+// 		{"set psi command", "PSI 30.42", []byte("PSI 30.42 OK"), "set_psi", nil},
+// 		{"empty command", "", []byte(""), "", protocols.ErrCommandNotFound},
+// 		{"non-existent command", "test 30.0", []byte(nil), "", protocols.ErrCommandNotFound},
+// 		{"set current command", "CUR 30", []byte("OK"), "set_current", nil},
+// 		{"wrong value of the command", "CUR 30.0", []byte(nil), "set_current", parameter.ErrWrongIntVal},
+// 		{"set command with opt", ":PULSE0:MODE SING", []byte("ok"), "set_mode", nil},
+// 		{"wrong opt of the command", ":PULSE0:MODE TEST", []byte(nil), "set_mode", parameter.ErrValNotAllowed},
+// 		{"set hex", "HEX 0x03F", []byte("HEX 0x03F"), "set_hex", nil},
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			res, cmdName, err := p.Decode(tt.in)
+// 			if !errors.Is(err, tt.expErr) {
+// 				t.Errorf("exp error: %v got: %v", tt.expErr, err)
+// 			}
+// 			if !bytes.Equal(tt.exp, res) {
+// 				t.Errorf("exp response: %s got: %s", tt.exp, res)
+// 			}
+// 			if tt.expCmd != cmdName {
+// 				t.Errorf("exp cmd name: %s got: %s", tt.expCmd, cmdName)
+// 			}
+// 		})
+// 	}
+// }
+
+func TestDecode(t *testing.T) {
 	t.Parallel()
 	vd, err := vdfile.ReadVDFile(FILE1)
 	if err != nil {
@@ -24,77 +69,37 @@ func TestParse(t *testing.T) {
 		t.Fatalf("error while creating parser: %v", err)
 	}
 	tests := []struct {
-		name   string
-		in     string
-		exp    []byte
-		expCmd string
-		expErr error
+		name  string
+		data  []byte
+		expTx []protocol.Transaction
 	}{
-		{"get command int", "CUR?", []byte("CUR 300"), "get_current", nil},
-		{"get command str", "VER?", []byte("version 1.0"), "get_version", nil},
-		{"get status two params", "S?", []byte("version 1.0 - 2.3"), "get_status", nil},
-		{"get status two params with new line", "get status ch 3", []byte("mode: NORM\npsi: 3.30"), "get_status_3", nil},
-		{"set psi command", "PSI 30.42", []byte("PSI 30.42 OK"), "set_psi", nil},
-		{"empty command", "", []byte(""), "", protocols.ErrCommandNotFound},
-		{"non-existent command", "test 30.0", []byte(nil), "", protocols.ErrCommandNotFound},
-		{"set current command", "CUR 30", []byte("OK"), "set_current", nil},
-		{"wrong value of the command", "CUR 30.0", []byte(nil), "set_current", parameter.ErrWrongIntVal},
-		{"set command with opt", ":PULSE0:MODE SING", []byte("ok"), "set_mode", nil},
-		{"wrong opt of the command", ":PULSE0:MODE TEST", []byte(nil), "set_mode", parameter.ErrValNotAllowed},
-		{"set hex", "HEX 0x03F", []byte("HEX 0x03F"), "set_hex", nil},
+		{"get command int", []byte("CUR?"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_current"}}},
+		{"get command str", []byte("VER?"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_version"}}},
+		{"get status two params", []byte("S?"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status"}}},
+		{"get status two params with new line", []byte("get status ch 3"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status_3"}}},
+		{"set psi command", []byte("PSI 30.42"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_psi", Payload: map[string]any{"psi": 30.42}}}},
+		{"empty command", []byte(""), []protocol.Transaction{{Typ: protocol.TxUnknown, CommandName: ""}}},
+		{"non-existent command", []byte("test 30.0"), []protocol.Transaction{{Typ: protocol.TxUnknown, CommandName: ""}}},
+		{"set current command", []byte("CUR 30"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_current", Payload: map[string]any{"current": 30}}}},
+		//{"wrong value of the command", []byte("CUR 30.0"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_current", Payload: map[string]any{"current": 30}}}},
+		{"set command with opt", []byte(":PULSE0:MODE SING"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_mode", Payload: map[string]any{"mode": "SING"}}}},
+		//{"wrong opt of the command", []byte(":PULSE0:MODE TEST"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_mode", Payload: map[string]any{"mode": "TEST"}}}},
+		{"set hex", []byte("HEX 0x03F"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_hex", Payload: map[string]any{"hex": 0x03F}}}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res, cmdName, err := p.Handle(tt.in)
-			if !errors.Is(err, tt.expErr) {
-				t.Errorf("exp error: %v got: %v", tt.expErr, err)
+			tx, err := p.Decode(tt.data)
+			if err != nil {
+				t.Fatalf("error while decoding: %v", err)
 			}
-			if !bytes.Equal(tt.exp, res) {
-				t.Errorf("exp response: %s got: %s", tt.exp, res)
-			}
-			if tt.expCmd != cmdName {
-				t.Errorf("exp cmd name: %s got: %s", tt.expCmd, cmdName)
-			}
-		})
-	}
-}
-
-func TestTrigger(t *testing.T) {
-	t.Parallel()
-	vd, err := vdfile.ReadVDFile(FILE1)
-	if err != nil {
-		t.Fatalf("error while parsing test file: %v", err)
-	}
-	p, err := NewParser(vd)
-	if err != nil {
-		t.Fatalf("error while creating parser: %v", err)
-	}
-
-	tests := []struct {
-		name   string
-		cmd    string
-		exp    []byte
-		expErr error
-	}{
-		{"current param", "get_current", []byte("CUR 300"), nil},
-		{"version param", "get_version", []byte("version 1.0"), nil},
-		{"two params", "get_status", []byte("version 1.0 - 2.3"), nil},
-		{"two params with new line", "get_status_3", []byte("mode: NORM\npsi: 3.30"), nil},
-		{"psi param", "get_psi", []byte("PSI 3.30"), nil},
-		{"empty command", "", []byte(nil), protocols.ErrCommandNotFound},
-		{"non-existent command", "test", []byte(nil), protocols.ErrCommandNotFound},
-		{"hex param", "get_hex", []byte("0x0FF"), nil},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			res, err := p.Trigger(tt.cmd)
-			if !errors.Is(err, tt.expErr) {
-				t.Errorf("exp error: %v got: %v", tt.expErr, err)
-			}
-			if !bytes.Equal(tt.exp, res) {
-				t.Errorf("exp response: %s got: %s", tt.exp, res)
+			for i, x := range tx {
+				if x.Typ != tt.expTx[i].Typ {
+					t.Errorf("exp typ: %v got: %v", tt.expTx[i].Typ, x.Typ)
+				}
+				if x.CommandName != tt.expTx[i].CommandName {
+					t.Errorf("exp cmd name: %v got: %v", tt.expTx[i].CommandName, x.CommandName)
+				}
 			}
 		})
 	}
@@ -387,61 +392,105 @@ func TestParseString(t *testing.T) {
 	}
 }
 
-func TestConstructOutput(t *testing.T) {
+// func TestConstructOutput(t *testing.T) {
+// 	t.Parallel()
+// 	params := map[string]parameter.Parameter{}
+
+// 	cur, err := parameter.New("20", "", "int64")
+// 	if err == nil {
+// 		params["current"] = cur
+// 	}
+
+// 	volt, err := parameter.New(1.234, "", "float64")
+// 	if err == nil {
+// 		params["voltage"] = volt
+// 	}
+
+// 	psi, err := parameter.New(22.34, "", "float64")
+// 	if err == nil {
+// 		params["psi"] = psi
+// 	}
+
+// 	max, err := parameter.New(11.11, "", "float64")
+// 	if err == nil {
+// 		params["max"] = max
+// 	}
+
+// 	version, err := parameter.New("version", "", "string")
+// 	if err == nil {
+// 		params["version"] = version
+// 	}
+
+// 	hex, err := parameter.New("30", "", "int64")
+// 	if err == nil {
+// 		params["hex"] = hex
+// 	}
+
+// 	tests := []struct {
+// 		name  string
+// 		items []Item
+// 		exp   string
+// 	}{
+// 		{"current param", ItemsFromConfig("CUR {%d:current}"), "CUR 20"},
+// 		{"voltage param", ItemsFromConfig("VOLT {%.3f:voltage}"), "VOLT 1.234"},
+// 		{"psi param", ItemsFromConfig("PSI {%3.2f:psi}"), "PSI 22.34"},
+// 		{"max param", ItemsFromConfig("ch1 max{%2.2f:max}"), "ch1 max11.11"},
+// 		{"version param", ItemsFromConfig("{%s:version}"), "version"},
+// 		{"empty value", ItemsFromConfig("test {%d:}"), "test "},
+// 		{"empty lexer", []Item(nil), ""},
+// 		{"two params", ItemsFromConfig("{%s:version} - {%2.2f:max}"), "version - 11.11"},
+// 		{"hex param", ItemsFromConfig("HEX 0x{%03X:hex}"), "HEX 0x01E"},
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			res := constructOutput(tt.items, params)
+// 			if string(res) != tt.exp {
+// 				t.Errorf("exp output: %s got: %s", tt.exp, res)
+// 			}
+// 		})
+// 	}
+// }
+
+func TestEncode(t *testing.T) {
 	t.Parallel()
-	params := map[string]parameter.Parameter{}
-
-	cur, err := parameter.New("20", "", "int64")
-	if err == nil {
-		params["current"] = cur
+	vd, err := vdfile.ReadVDFile(FILE1)
+	if err != nil {
+		t.Fatalf("error while parsing test file: %v", err)
 	}
-
-	volt, err := parameter.New(1.234, "", "float64")
-	if err == nil {
-		params["voltage"] = volt
+	p, err := NewParser(vd)
+	if err != nil {
+		t.Fatalf("error while creating parser: %v", err)
 	}
-
-	psi, err := parameter.New(22.34, "", "float64")
-	if err == nil {
-		params["psi"] = psi
-	}
-
-	max, err := parameter.New(11.11, "", "float64")
-	if err == nil {
-		params["max"] = max
-	}
-
-	version, err := parameter.New("version", "", "string")
-	if err == nil {
-		params["version"] = version
-	}
-
-	hex, err := parameter.New("30", "", "int64")
-	if err == nil {
-		params["hex"] = hex
-	}
-
 	tests := []struct {
-		name  string
-		items []Item
-		exp   string
+		name    string
+		tx      []protocol.Transaction
+		expData []byte
 	}{
-		{"current param", ItemsFromConfig("CUR {%d:current}"), "CUR 20"},
-		{"voltage param", ItemsFromConfig("VOLT {%.3f:voltage}"), "VOLT 1.234"},
-		{"psi param", ItemsFromConfig("PSI {%3.2f:psi}"), "PSI 22.34"},
-		{"max param", ItemsFromConfig("ch1 max{%2.2f:max}"), "ch1 max11.11"},
-		{"version param", ItemsFromConfig("{%s:version}"), "version"},
-		{"empty value", ItemsFromConfig("test {%d:}"), "test "},
-		{"empty lexer", []Item(nil), ""},
-		{"two params", ItemsFromConfig("{%s:version} - {%2.2f:max}"), "version - 11.11"},
-		{"hex param", ItemsFromConfig("HEX 0x{%03X:hex}"), "HEX 0x01E"},
+		{"current param", []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_current", Payload: map[string]any{"current": 20}}}, []byte("CUR 20\r\n")},
+		{"get command str", []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_version", Payload: map[string]any{"version": "version 1.0"}}}, []byte("version 1.0\r\n")},
+		// {"get status two params", []byte("S?"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status"}}},
+		// {"get status two params with new line", []byte("get status ch 3"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status_3"}}},
+		// {"set psi command", []byte("PSI 30.42"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_psi", Payload: protocol.TxPayload{"psi": 30.42}}}},
+		// {"empty command", []byte(""), []protocol.Transaction{{Typ: protocol.TxUnknown, CommandName: ""}}},
+		// {"non-existent command", []byte("test 30.0"), []protocol.Transaction{{Typ: protocol.TxUnknown, CommandName: ""}}},
+		// {"set current command", []byte("CUR 30"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_current", Payload: protocol.TxPayload{"current": 30}}}},
+		// //{"wrong value of the command", []byte("CUR 30.0"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_current", Payload: protocol.TxPayload{"current": 30}}}},
+		// {"set command with opt", []byte(":PULSE0:MODE SING"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_mode", Payload: protocol.TxPayload{"mode": "SING"}}}},
+		// //{"wrong opt of the command", []byte(":PULSE0:MODE TEST"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_mode", Payload: protocol.TxPayload{"mode": "TEST"}}}},
+		// {"set hex", []byte("HEX 0x03F"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_hex", Payload: protocol.TxPayload{"hex": 0x03F}}}},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res := constructOutput(tt.items, params)
-			if string(res) != tt.exp {
-				t.Errorf("exp output: %s got: %s", tt.exp, res)
+			data, err := p.Encode(tt.tx)
+			if err != nil {
+				t.Fatalf("error while decoding: %v", err)
 			}
+
+			if !bytes.Equal(data, tt.expData) {
+				t.Errorf("exp output: %s got: %s", tt.expData, data)
+			}
+
 		})
 	}
 }

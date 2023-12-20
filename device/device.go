@@ -1,17 +1,14 @@
 package device
 
 import (
-	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/e9ctrl/vd/log"
-	"github.com/e9ctrl/vd/protocols"
-	"github.com/e9ctrl/vd/protocols/stream"
+	"github.com/e9ctrl/vd/protocol"
+	"github.com/e9ctrl/vd/protocol/stream"
 	"github.com/e9ctrl/vd/server"
 	"github.com/e9ctrl/vd/vdfile"
 )
@@ -26,8 +23,7 @@ var (
 type StreamDevice struct {
 	server.Handler
 	vdfile    *vdfile.VDFile
-	splitter  bufio.SplitFunc
-	proto     protocols.Protocol
+	proto     protocol.Protocol
 	triggered chan []byte
 	lock      sync.RWMutex
 }
@@ -44,25 +40,6 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 		vdfile:    vdfile,
 		triggered: make(chan []byte),
 		proto:     parser,
-		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-			if atEOF && len(data) == 0 {
-				return 0, nil, nil
-			}
-			if vdfile.InTerminator == nil {
-				return 0, nil, nil
-			}
-			// Find sequence of terminator bytes
-			if i := bytes.Index(data, vdfile.InTerminator); i >= 0 {
-				return i + len(vdfile.InTerminator), data[0:i], nil
-			}
-
-			// If we're at EOF, we have a final, non-terminated line. Return it.
-			if atEOF {
-				return len(data), data, nil
-			}
-			// Request more data.
-			return 0, nil, nil
-		},
 	}, nil
 }
 
@@ -73,62 +50,76 @@ func (s *StreamDevice) Mismatch() (res []byte) {
 
 	if len(mis) != 0 {
 		log.MSM(string(mis))
-		res = s.appendOutTerminator(mis)
-		log.TX(string(mis), res)
+		res = append(mis, s.vdfile.OutTerminator...)
+		log.TX(res)
 	}
 	return
 }
 
 func (s *StreamDevice) Triggered() chan []byte { return s.triggered }
 
-func (s *StreamDevice) parseTok(tok string) []byte {
-	res, commandName, err := s.proto.Handle(tok)
+func (s *StreamDevice) Handle(cmd []byte) []byte {
+
+	if len(cmd) == 0 {
+		return nil
+	}
+
+	txs, err := s.proto.Decode(cmd)
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	s.lock.Lock()
-	mis := s.vdfile.Mismatch
+	mismatch := s.vdfile.Mismatch
 	s.lock.Unlock()
 
-	if (err == protocols.ErrCommandNotFound || errors.Is(err, protocols.ErrWrongSetVal)) && len(mis) > 0 {
-		res = mis
-	} else if err != nil {
-		log.ERR("parse return with error %w", err)
-	}
+	for i, tx := range txs {
+		if len(mismatch) > 0 && tx.Typ == protocol.TxUnknown {
+			txs[i].Typ = protocol.TxMismatch
+		}
 
-	if len(res) == 0 {
-		return res
-	}
+		// set the parameter
+		if tx.Typ == protocol.TxSetParam {
+			for p, v := range tx.Payload {
+				if err := s.SetParameter(p, v); err != nil {
+					fmt.Println(err)
+					return nil
+				}
+			}
+		}
 
-	s.lock.Lock()
-	if commandName != "" && s.vdfile != nil {
-		if cmd, exist := s.vdfile.Commands[commandName]; exist {
-			s.delayRes(cmd.Dly)
-		} else {
-			log.ERR("command name %s not found", commandName)
+		// the following for range code is to ensure the proper type of the parameter value
+		// that needs to be set back to the transaction payload
+		// it is due to fact that proto does not have information about the type of the parameter
+		for p := range tx.Payload {
+			v, err := s.GetParameter(p)
+			if err != nil {
+				fmt.Println(err)
+				return nil
+			}
+
+			txs[i].Payload[p] = v
 		}
 	}
-	s.lock.Unlock()
-	strRes := string(res)
-	res = s.appendOutTerminator(res)
-	log.TX(strRes, res)
-	return res
-}
 
-func (s *StreamDevice) Handle(cmd []byte) []byte {
-	r := bytes.NewReader(cmd)
-	scanner := bufio.NewScanner(r)
-	scanner.Split(s.splitter)
-
-	var buffer []byte
-	for scanner.Scan() {
-		log.RX(scanner.Text(), cmd)
-		buffer = append(buffer, s.parseTok(scanner.Text())...)
+	buf, err := s.proto.Encode(txs)
+	if err != nil {
+		fmt.Println(err)
+		return nil
 	}
 
-	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "Error scanning: ", err.Error())
-		return []byte(nil)
+	//using first command to determine the delay
+	cmdName := txs[0].CommandName
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if cmdName != "" && s.vdfile != nil {
+		if cmd, exist := s.vdfile.Commands[cmdName]; exist {
+			s.delayRes(cmd.Dly)
+		} else {
+			log.ERR("command name %s not found", cmdName)
+		}
 	}
-	return buffer
+	return buf
 }
 
 func (s *StreamDevice) GetParameter(name string) (any, error) {
@@ -200,46 +191,38 @@ func (s *StreamDevice) SetMismatch(value string) error {
 }
 
 func (s *StreamDevice) Trigger(name string) error {
-	s.lock.Lock()
-	_, exists := s.vdfile.Commands[name]
-	s.lock.Unlock()
-	if !exists {
-		return protocols.ErrCommandNotFound
-	}
+	// s.lock.Lock()
+	// _, exists := s.vdfile.Commands[name]
+	// s.lock.Unlock()
+	// if !exists {
+	// 	return protocols.ErrCommandNotFound
+	// }
 
-	res, err := s.proto.Trigger(name)
-	if err != nil {
-		return err
-	}
+	// res, err := s.proto.Trigger(name)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if res == nil {
-		return nil
-	}
+	// if res == nil {
+	// 	return nil
+	// }
 
-	res = s.appendOutTerminator(res)
+	// res = s.appendOutTerminator(res)
 
-	select {
-	case s.triggered <- res:
-	default:
-		return ErrNoClient
-	}
+	// select {
+	// case s.triggered <- res:
+	// default:
+	// 	return ErrNoClient
+	// }
 
 	return nil
 }
 
 func (s *StreamDevice) delayRes(d time.Duration) {
+	if d == 0 {
+		return
+	}
+
 	log.DLY("delaying response by", d)
 	time.Sleep(d)
-}
-
-func (s *StreamDevice) appendOutTerminator(res []byte) []byte {
-	// we need to copy the result into a new slice to avoid
-	// race condition when running in parallel
-
-	s.lock.Lock()
-	res = append(res, s.vdfile.OutTerminator...)
-	output := make([]byte, len(res))
-	copy(output, res)
-	s.lock.Unlock()
-	return output
 }

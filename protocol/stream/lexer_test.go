@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	lexer "github.com/e9ctrl/vd/protocols/stream"
+	lexer "github.com/e9ctrl/vd/protocol/stream"
 )
 
 func TestLexer(t *testing.T) {
