@@ -2,7 +2,11 @@ package vdfile
 
 import (
 	"bytes"
+	"os"
 	"testing"
+	"time"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestParseTerminator(t *testing.T) {
@@ -27,17 +31,31 @@ func TestParseTerminator(t *testing.T) {
 	}
 }
 
-func TestGenerateRandomDelayVDFile(t *testing.T) {
+func TestWriteVDFile(t *testing.T) {
+	t.Parallel()
 	config, err := DecodeVDFile("vdfile")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 		return
 	}
 
-	config = GenerateRandomDelay(config)
-	err = WriteVDFile("vdfile_random_delay", config)
+	path := t.TempDir() + "/vdfile"
+	err = WriteVDFile(path, config)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
+	}
+
+	want, err := os.ReadFile("vdfile")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cmp.Equal(want, got) {
+		t.Fatal(cmp.Diff(want, got))
 	}
 }
 
