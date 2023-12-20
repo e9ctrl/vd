@@ -3,6 +3,7 @@ package vdfile
 import (
 	"bytes"
 	"fmt"
+	"io/fs"
 	"os"
 	"strings"
 	"time"
@@ -94,6 +95,13 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 func DecodeVDFile(path string) (Config, error) {
 	var config Config
 	_, err := toml.DecodeFile(path, &config)
+
+	return config, err
+}
+
+func DecodeVDFS(f fs.FS, path string) (Config, error) {
+	var config Config
+	_, err := toml.DecodeFS(f, path, &config)
 
 	return config, err
 }

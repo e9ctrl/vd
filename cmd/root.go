@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/signal"
 	"syscall"
@@ -104,7 +105,8 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
+func Execute(f fs.FS) {
+	vdTemplate = f
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
