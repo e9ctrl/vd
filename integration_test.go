@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/e9ctrl/vd/device"
 	"github.com/e9ctrl/vd/server"
-	"github.com/e9ctrl/vd/stream"
 	"github.com/e9ctrl/vd/vdfile"
 )
 
@@ -64,7 +64,7 @@ func setupTestCase(t *testing.T, addr string, vd vdfile.Config) func() {
 	}
 
 	//create stream device
-	d, err := stream.NewDevice(vdfile)
+	d, err := device.NewDevice(vdfile)
 	if err != nil {
 		t.Fatal(err)
 	}
