@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/e9ctrl/vd/stream"
+	"github.com/e9ctrl/vd/device"
 	"github.com/e9ctrl/vd/vdfile"
 )
 
@@ -42,7 +42,7 @@ func TestGetMismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dev, err := stream.NewDevice(vdfile)
+	dev, err := device.NewDevice(vdfile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestSetMismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dev, err := stream.NewDevice(vdfile)
+	dev, err := device.NewDevice(vdfile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestGetParameter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dev, err := stream.NewDevice(vdfile)
+	dev, err := device.NewDevice(vdfile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestSetParameter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dev, err := stream.NewDevice(vdfile)
+	dev, err := device.NewDevice(vdfile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +221,7 @@ func TestGetCommandDelay(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dev, err := stream.NewDevice(vdfile)
+	dev, err := device.NewDevice(vdfile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,7 +265,7 @@ func TestSetCommandDelay(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dev, err := stream.NewDevice(vdfile)
+	dev, err := device.NewDevice(vdfile)
 	if err != nil {
 		t.Fatal(err)
 	}

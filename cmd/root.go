@@ -8,8 +8,8 @@ import (
 	"syscall"
 
 	"github.com/e9ctrl/vd/api"
+	"github.com/e9ctrl/vd/device"
 	"github.com/e9ctrl/vd/server"
-	"github.com/e9ctrl/vd/stream"
 	"github.com/e9ctrl/vd/vdfile"
 	"github.com/jwalton/gchalk"
 	"github.com/spf13/cobra"
@@ -59,7 +59,7 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 
-		str, err := stream.NewDevice(vdfile)
+		str, err := device.NewDevice(vdfile)
 		if err != nil {
 			fmt.Printf("Device creation failed %v", err)
 			os.Exit(1)
