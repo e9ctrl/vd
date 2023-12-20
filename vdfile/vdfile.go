@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/e9ctrl/vd/command"
 	"github.com/e9ctrl/vd/parameter"
-	"github.com/e9ctrl/vd/structs"
 )
 
 type terminators struct {
@@ -43,7 +43,7 @@ type VDFile struct {
 	InTerminator  []byte
 	OutTerminator []byte
 	Params        map[string]parameter.Parameter
-	Commands      map[string]*structs.Command
+	Commands      map[string]*command.Command
 	Mismatch      []byte
 }
 
@@ -60,7 +60,7 @@ func ReadVDFile(path string) (*VDFile, error) {
 func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 	vdfile := &VDFile{
 		Params:   make(map[string]parameter.Parameter, 0),
-		Commands: make(map[string]*structs.Command, 0),
+		Commands: make(map[string]*command.Command, 0),
 	}
 
 	for _, param := range config.Params {
@@ -74,7 +74,7 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 	}
 
 	for _, cmd := range config.Commands {
-		currentCmd := &structs.Command{
+		currentCmd := &command.Command{
 			Name: cmd.Name,
 			Req:  []byte(cmd.Req),
 			Res:  []byte(cmd.Res),

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/e9ctrl/vd/command"
 	"github.com/e9ctrl/vd/parameter"
 	"github.com/e9ctrl/vd/protocols"
-	"github.com/e9ctrl/vd/structs"
 	"github.com/e9ctrl/vd/vdfile"
 )
 
@@ -101,44 +101,44 @@ func TestTrigger(t *testing.T) {
 }
 
 func TestBuildCommandPatterns(t *testing.T) {
-	input := map[string]*structs.Command{}
-	cmd1 := &structs.Command{
+	input := map[string]*command.Command{}
+	cmd1 := &command.Command{
 		Name: "current_get",
 		Req:  []byte("get curr?"),
 		Res:  []byte("curr {%3.2f:current}"),
 	}
-	cmd2 := &structs.Command{
+	cmd2 := &command.Command{
 		Name: "current_set",
 		Req:  []byte("set curr {%02d:current}"),
 		Res:  []byte("ok"),
 	}
-	cmd3 := &structs.Command{
+	cmd3 := &command.Command{
 		Name: "version_get",
 		Req:  []byte("VER?"),
 		Res:  []byte("{%s:version}"),
 	}
-	cmd4 := &structs.Command{
+	cmd4 := &command.Command{
 		Name: "psi_set",
 		Req:  []byte("set {%03X:psi} psi"),
 	}
-	cmd5 := &structs.Command{
+	cmd5 := &command.Command{
 		Name: "get_status",
 		Req:  []byte("S?"),
 		Res:  []byte("{%s:version} - {%.1f:temp}"),
 	}
-	cmd6 := &structs.Command{
+	cmd6 := &command.Command{
 		Name: "get_stat",
 		Req:  []byte("get stat?"),
 		Res:  []byte("{%s:version}\n{%.1f:temp}"),
 	}
 
-	cmd7 := &structs.Command{
+	cmd7 := &command.Command{
 		Name: "get_hex",
 		Req:  []byte("HEX?"),
 		Res:  []byte("0x{%03X:hex}"),
 	}
 
-	cmd8 := &structs.Command{
+	cmd8 := &command.Command{
 		Name: "set_hex",
 		Req:  []byte("HEX 0x{%03X:hex}"),
 		Res:  []byte("HEX 0x{%03X:hex}"),
@@ -246,8 +246,8 @@ func TestBuildCommandPatternsEmptyCmds(t *testing.T) {
 }
 
 func TestBuildCommandPatternsReqErr(t *testing.T) {
-	input := map[string]*structs.Command{}
-	cmd1 := &structs.Command{
+	input := map[string]*command.Command{}
+	cmd1 := &command.Command{
 		Name: "current_get",
 		Req:  []byte("get curr{}?"),
 		Res:  []byte("curr {%3.2f:current}"),
@@ -264,8 +264,8 @@ func TestBuildCommandPatternsReqErr(t *testing.T) {
 }
 
 func TestBuildCommandPatternsResErr(t *testing.T) {
-	input := map[string]*structs.Command{}
-	cmd1 := &structs.Command{
+	input := map[string]*command.Command{}
+	cmd1 := &command.Command{
 		Name: "current_get",
 		Req:  []byte("get curr?"),
 		Res:  []byte("curr {%3z.2f:current}"),

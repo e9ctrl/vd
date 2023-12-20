@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/e9ctrl/vd/command"
 	"github.com/e9ctrl/vd/parameter"
 	"github.com/e9ctrl/vd/protocols"
 	"github.com/e9ctrl/vd/protocols/stream"
-	"github.com/e9ctrl/vd/structs"
 	"github.com/e9ctrl/vd/vdfile"
 
 	"testing"
@@ -30,7 +30,7 @@ var dev = myStreamDev()
 
 func TestMain(m *testing.M) {
 	params := map[string]parameter.Parameter{}
-	commands := map[string]*structs.Command{}
+	commands := map[string]*command.Command{}
 
 	p1, err := parameter.New("50", "", "int")
 	if err != nil {
@@ -38,7 +38,7 @@ func TestMain(m *testing.M) {
 	}
 	params["current"] = p1
 
-	cmdGetCurrent := &structs.Command{
+	cmdGetCurrent := &command.Command{
 		Name: "get_current",
 		Req:  []byte("CUR?"),
 		Res:  []byte("CUR {%d:current}"),
@@ -46,7 +46,7 @@ func TestMain(m *testing.M) {
 	}
 	commands[cmdGetCurrent.Name] = cmdGetCurrent
 
-	cmdSetCurrent := &structs.Command{
+	cmdSetCurrent := &command.Command{
 		Name: "set_current",
 		Req:  []byte("CUR {%d:current}"),
 		Res:  []byte("OK"),
@@ -59,14 +59,14 @@ func TestMain(m *testing.M) {
 	}
 	params["psi"] = p2
 
-	cmdGetPsi := &structs.Command{
+	cmdGetPsi := &command.Command{
 		Name: "get_psi",
 		Req:  []byte("PSI?"),
 		Res:  []byte("PSI {%3.2f:psi}"),
 	}
 	commands[cmdGetPsi.Name] = cmdGetPsi
 
-	cmdSetPsi := &structs.Command{
+	cmdSetPsi := &command.Command{
 		Name: "set_psi",
 		Req:  []byte("PSI {%3.2f:psi}"),
 		Res:  []byte("PSI {%3.2f:psi} OK"),
@@ -80,14 +80,14 @@ func TestMain(m *testing.M) {
 	}
 	params["voltage"] = p3
 
-	cmdGetVoltage := &structs.Command{
+	cmdGetVoltage := &command.Command{
 		Name: "get_voltage",
 		Req:  []byte("VOLT?"),
 		Res:  []byte("VOLT {%.3f:voltage}"),
 	}
 	commands[cmdGetVoltage.Name] = cmdGetVoltage
 
-	cmdSetVoltage := &structs.Command{
+	cmdSetVoltage := &command.Command{
 		Name: "set_voltage",
 		Req:  []byte("VOLT {%.3f:voltage}"),
 		Res:  []byte("VOLT {%.3f:voltage} OK"),
@@ -100,14 +100,14 @@ func TestMain(m *testing.M) {
 	}
 	params["max"] = p4
 
-	cmdGetMax := &structs.Command{
+	cmdGetMax := &command.Command{
 		Name: "get_max",
 		Req:  []byte("get ch1 max?"),
 		Res:  []byte("ch1 max{%2.2f:max}"),
 	}
 	commands[cmdGetMax.Name] = cmdGetMax
 
-	cmdSetMax := &structs.Command{
+	cmdSetMax := &command.Command{
 		Name: "set_max",
 		Req:  []byte("set ch1 max{%2.2f:max}"),
 	}
@@ -119,7 +119,7 @@ func TestMain(m *testing.M) {
 	}
 	params["version"] = p5
 
-	cmdGetVersion := &structs.Command{
+	cmdGetVersion := &command.Command{
 		Name: "get_version",
 		Req:  []byte("ver?"),
 		Res:  []byte("{%s:version}"),
@@ -132,21 +132,21 @@ func TestMain(m *testing.M) {
 	}
 	params["offset"] = p6
 
-	cmdGetOffset := &structs.Command{
+	cmdGetOffset := &command.Command{
 		Name: "get_offset",
 		Req:  []byte("get ch1 off"),
 		Res:  []byte("ch1 off {%.1f:offset}"),
 	}
 	commands[cmdGetOffset.Name] = cmdGetOffset
 
-	cmdTwoParams := &structs.Command{
+	cmdTwoParams := &command.Command{
 		Name: "get_two_params",
 		Req:  []byte("get two"),
 		Res:  []byte("{%s:version} {%.1f:offset}"),
 	}
 	commands[cmdTwoParams.Name] = cmdTwoParams
 
-	cmdTwoParams2 := &structs.Command{
+	cmdTwoParams2 := &command.Command{
 		Name: "get_two_params_2",
 		Req:  []byte("get two 2"),
 		Res:  []byte("ver: {%s:version} off: {%.1f:offset}"),
@@ -159,14 +159,14 @@ func TestMain(m *testing.M) {
 	}
 	params["status"] = p7
 
-	cmdGetStatus := &structs.Command{
+	cmdGetStatus := &command.Command{
 		Name: "get_status",
 		Req:  []byte("get status"),
 		Res:  []byte("{%s:status}"),
 	}
 	commands[cmdGetStatus.Name] = cmdGetStatus
 
-	cmdSetStatus := &structs.Command{
+	cmdSetStatus := &command.Command{
 		Name: "set_status",
 		Req:  []byte("set status {%s:status}"),
 		Res:  []byte("ok"),
@@ -179,14 +179,14 @@ func TestMain(m *testing.M) {
 	}
 	params["mode"] = p8
 
-	cmdGetMode := &structs.Command{
+	cmdGetMode := &command.Command{
 		Name: "get_mode",
 		Req:  []byte("get ch1 mode"),
 		Res:  []byte("{%t:mode}"),
 	}
 	commands[cmdGetMode.Name] = cmdGetMode
 
-	cmdSetMode := &structs.Command{
+	cmdSetMode := &command.Command{
 		Name: "set_mode",
 		Req:  []byte("set ch1 {%t:mode}"),
 	}
@@ -226,7 +226,7 @@ func TestMain(m *testing.M) {
 	}
 	params["current2"] = p14
 
-	cmdGetCurrent2 := &structs.Command{
+	cmdGetCurrent2 := &command.Command{
 		Name: "get_current2",
 		Req:  []byte("CUR2?"),
 		Res:  []byte("CUR2 {%d:current2}"),
@@ -234,7 +234,7 @@ func TestMain(m *testing.M) {
 	}
 	commands[cmdGetCurrent2.Name] = cmdGetCurrent2
 
-	cmdSetCurrent2 := &structs.Command{
+	cmdSetCurrent2 := &command.Command{
 		Name: "set_current2",
 		Req:  []byte("CUR2 {%d:current2}"),
 		Res:  []byte("OK"),
@@ -247,21 +247,21 @@ func TestMain(m *testing.M) {
 	}
 	params["voltage2"] = p15
 
-	cmdGetVoltage2 := &structs.Command{
+	cmdGetVoltage2 := &command.Command{
 		Name: "get_voltage2",
 		Req:  []byte("VOLT2?"),
 		Res:  []byte("VOLT2 {%.3f:voltage2}"),
 	}
 	commands[cmdGetVoltage2.Name] = cmdGetVoltage2
 
-	cmdSetVoltage2 := &structs.Command{
+	cmdSetVoltage2 := &command.Command{
 		Name: "set_voltage2",
 		Req:  []byte("VOLT2 {%.3f:voltage2}"),
 		Res:  []byte("VOLT2 {%.3f:voltage2} OK"),
 	}
 	commands[cmdSetVoltage2.Name] = cmdSetVoltage2
 
-	cmdGetStat := &structs.Command{
+	cmdGetStat := &command.Command{
 		Name: "get_stat",
 		Req:  []byte("get stat"),
 		Res:  []byte("{%s:version}\n{%.1f:offset}"),
