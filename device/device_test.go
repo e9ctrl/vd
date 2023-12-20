@@ -270,7 +270,7 @@ func TestMain(m *testing.M) {
 
 	dev.vdfile.Commands = commands
 	dev.vdfile.Params = params
-	dev.parser, _ = stream.NewParser(dev.vdfile)
+	dev.proto, _ = stream.NewParser(dev.vdfile)
 	// run tests
 	os.Exit(m.Run())
 }

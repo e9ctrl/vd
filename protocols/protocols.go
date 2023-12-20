@@ -8,7 +8,7 @@ var (
 	ErrWrongSetVal     = errors.New("could not set")
 )
 
-type Parser interface {
-	Parse(token string) ([]byte, string, error)
+type Protocol interface {
+	Handle(token string) ([]byte, string, error)
 	Trigger(cmdName string) ([]byte, error)
 }

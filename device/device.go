@@ -27,7 +27,7 @@ type StreamDevice struct {
 	server.Handler
 	vdfile    *vdfile.VDFile
 	splitter  bufio.SplitFunc
-	parser    protocols.Parser
+	proto     protocols.Protocol
 	triggered chan []byte
 	lock      sync.RWMutex
 }
@@ -43,7 +43,7 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 	return &StreamDevice{
 		vdfile:    vdfile,
 		triggered: make(chan []byte),
-		parser:    parser,
+		proto:     parser,
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
 				return 0, nil, nil
@@ -82,7 +82,7 @@ func (s *StreamDevice) Mismatch() (res []byte) {
 func (s *StreamDevice) Triggered() chan []byte { return s.triggered }
 
 func (s *StreamDevice) parseTok(tok string) []byte {
-	res, commandName, err := s.parser.Parse(tok)
+	res, commandName, err := s.proto.Handle(tok)
 
 	s.lock.Lock()
 	mis := s.vdfile.Mismatch
@@ -207,7 +207,7 @@ func (s *StreamDevice) Trigger(name string) error {
 		return protocols.ErrCommandNotFound
 	}
 
-	res, err := s.parser.Trigger(name)
+	res, err := s.proto.Trigger(name)
 	if err != nil {
 		return err
 	}
