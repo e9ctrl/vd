@@ -43,6 +43,7 @@ func TestLexer(t *testing.T) {
 		{"new line between params", "val: {%s:param}\n{%s:param}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEscape, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "val: {%sparam}\n{%sparam}"},
 		{"number as a command", "get two 2", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "get two 2"},
 		{"hex command", "HEX 0x{%03X:hex}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "HEX 0x{%03Xhex}"},
+		{"test", ":STAT POW,{%.1f:pow},1.1,2.2,3.3,4.4", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemCommand, lexer.ItemEOF}, ":STAT POW,{%.1fpow},1.1,2.2,3.3,4.4"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
