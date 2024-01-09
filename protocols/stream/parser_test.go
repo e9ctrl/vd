@@ -42,6 +42,7 @@ func TestParse(t *testing.T) {
 		{"set command with opt", ":PULSE0:MODE SING", []byte("ok"), "set_mode", nil},
 		{"wrong opt of the command", ":PULSE0:MODE TEST", []byte(nil), "set_mode", parameter.ErrValNotAllowed},
 		{"set hex", "HEX 0x03F", []byte("HEX 0x03F"), "set_hex", nil},
+		{"set tec", "set ch1 tec07A", []byte("set ch1 tec 7A\r"), "set_tec", nil},
 	}
 
 	for _, tt := range tests {
