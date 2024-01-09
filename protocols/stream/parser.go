@@ -3,6 +3,7 @@ package stream
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/e9ctrl/vd/command"
@@ -29,34 +30,64 @@ type Parser struct {
 }
 
 func (p *Parser) Handle(input string) ([]byte, string, error) {
+	matched := []struct {
+		cmd  string
+		res  []Item
+		req  []Item
+		vals map[string]any
+	}{}
 	for cmdName, pattern := range p.commandPatterns {
 		match, values := checkPattern(input, pattern.reqItems)
 		if !match {
 			continue
 		}
+		m := struct {
+			cmd  string
+			res  []Item
+			req  []Item
+			vals map[string]any
+		}{
+			cmd:  cmdName,
+			req:  pattern.reqItems,
+			res:  pattern.resItems,
+			vals: values,
+		}
+		matched = append(matched, m)
+	}
+	if len(matched) == 0 {
+		return nil, "", protocols.ErrCommandNotFound
+	}
 
-		if len(values) > 0 {
-			// set params
-			for name, val := range values {
-				if param, exist := p.vdfile.Params[name]; exist {
-					err := param.SetValue(val)
-					if err != nil {
-						if err == parameter.ErrValNotAllowed {
-							return nil, cmdName, errors.Join(protocols.ErrWrongSetVal, err)
-						}
-						return nil, cmdName, err
+	if len(matched) > 1 {
+		sort.Slice(matched, func(i, j int) bool {
+			return len(matched[i].req) > len(matched[j].req)
+		})
+	}
+
+	values := matched[0].vals
+	cmdName := matched[0].cmd
+	res := matched[0].res
+
+	if len(values) > 0 {
+		// set params
+		for name, val := range values {
+			if param, exist := p.vdfile.Params[name]; exist {
+				err := param.SetValue(val)
+				if err != nil {
+					if err == parameter.ErrValNotAllowed {
+						return nil, cmdName, errors.Join(protocols.ErrWrongSetVal, err)
 					}
-				} else {
-					// error param not found
-					// todo: we might need to wrap the errors to provide more info
-					return nil, cmdName, protocols.ErrParamNotFound
+					return nil, cmdName, err
 				}
+			} else {
+				// error param not found
+				// todo: we might need to wrap the errors to provide more info
+				return nil, cmdName, protocols.ErrParamNotFound
 			}
 		}
-
-		return p.makeResponse(pattern.resItems), cmdName, nil
 	}
-	return nil, "", protocols.ErrCommandNotFound
+
+	return p.makeResponse(res), cmdName, nil
 }
 
 func (p *Parser) Trigger(cmdName string) ([]byte, error) {
