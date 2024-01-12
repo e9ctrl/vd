@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// getMismatchCmd represents the getMismatch command
 var getMismatchCmd = &cobra.Command{
 	Use:   "mismatch",
 	Args:  cobra.NoArgs,
@@ -32,7 +31,7 @@ Examples:
 		c := api.NewClient(addr)
 		res, err := c.GetMismatch()
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Println(err)
 			os.Exit(1)
 		}
 		fmt.Printf("%s\n", res)

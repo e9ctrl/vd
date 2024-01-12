@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// getCmd represents the get command
 var getCmd = &cobra.Command{
 	Use:   "get [parameter name]",
 	Args:  cobra.ExactArgs(1),
@@ -32,7 +31,7 @@ Examples:
 		c := api.NewClient(addr)
 		res, err := c.GetParameter(args[0])
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Println(err)
 			os.Exit(1)
 		}
 		fmt.Printf("%s\n", res)

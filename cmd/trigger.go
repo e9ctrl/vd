@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// triggerCmd represents the trigger command
 var triggerCmd = &cobra.Command{
 	Use:   "trigger [parameter name]",
 	Args:  cobra.ExactArgs(1),
@@ -30,9 +29,9 @@ Examples:
 		}
 
 		c := api.NewClient(addr)
-		err = c.Trigger(args[0])
+		err := c.Trigger(args[0])
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Println(err)
 			os.Exit(1)
 		}
 		fmt.Println("OK")

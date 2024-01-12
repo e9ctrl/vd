@@ -10,12 +10,13 @@ import (
 	"github.com/e9ctrl/vd/vdfile"
 )
 
+// used to generate an example of vdfile
 var vdTemplate fs.FS
 
-const (
-	exampleFileName = "vdfile"
-)
+// name of the example of generated vdile
+const exampleFileName = "vdfile"
 
+// check if addr is made of <ip_addr>:<port>
 func verifyIPAddr(addrStr string) bool {
 	parts := strings.Split(addrStr, ":")
 	if len(parts) != 2 {
@@ -31,6 +32,7 @@ func verifyIPAddr(addrStr string) bool {
 	return err == nil
 }
 
+// generate an example of vdfile
 func generateConfig() error {
 	path, err := os.Getwd()
 	if err != nil {

@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// setCmd represents the set command
 var setCmd = &cobra.Command{
 	Use:   "set [parameter name] [value]",
 	Args:  cobra.ExactArgs(2),
@@ -31,9 +30,9 @@ Examples:
 		}
 
 		c := api.NewClient(addr)
-		err = c.SetParameter(args[0], args[1])
+		err := c.SetParameter(args[0], args[1])
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Println(err)
 			os.Exit(1)
 		}
 		fmt.Println("OK")

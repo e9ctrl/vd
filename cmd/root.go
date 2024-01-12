@@ -51,6 +51,7 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		fmt.Printf(banner, version, website)
+		// parse config file
 		vdfile, err := vdfile.ReadVDFile(args[0])
 		if err != nil {
 			fmt.Printf("Config loading failed %v", err)
@@ -60,6 +61,7 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 
+		// create device instance using loaded vdfile
 		str, err := device.NewDevice(vdfile)
 		if err != nil {
 			fmt.Printf("Device creation failed %v", err)
@@ -72,12 +74,14 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 			os.Exit(1)
 		}
 
+		// create instance of TCP simulator server
 		srv, err := server.New(str, ip)
 		if err != nil {
 			fmt.Printf("TCP server creation failed %v", err)
 			os.Exit(1)
 		}
 
+		// run TCP simulator server
 		go srv.Start()
 		fmt.Println("vd running on ", gchalk.BrightYellow(ip))
 
@@ -87,9 +91,11 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 			os.Exit(1)
 		}
 
+		// create instance of HTTP server
 		a := api.NewHttpApiServer(str)
 
 		go func() {
+			// run HTTP server with REST API
 			err = a.Serve(ctx, addr)
 			if err != nil {
 				fmt.Printf("HTTP server failed %v", err)
@@ -105,6 +111,7 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
+// This is the main method that start Cobra CLI.
 func Execute(f fs.FS) {
 	vdTemplate = f
 	err := rootCmd.Execute()
