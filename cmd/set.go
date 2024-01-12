@@ -23,11 +23,7 @@ Examples:
 	vd set voltage 3.5 --httpListenAddr 192.168.56.100:9999
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		addr, err := cmd.Flags().GetString("apiAddr")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+		addr := viper.GetString("apiAddr")
 
 		if !verifyIPAddr(addr) {
 			fmt.Println("Wrong HTTP address")
@@ -46,8 +42,12 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(setCmd)
-	setCmd.PersistentFlags().StringP("apiAddr", "", "127.0.0.1:8080", "VD HTTP API address")
-	viper.AutomaticEnv()
+	// The default value from here is not used but it is visible in help, that's why it is left here
+	setCmd.PersistentFlags().StringP("apiAddr", "a", "127.0.0.1:8080", "VD HTTP API address")
+	// Binds viper apiAddr flag to cobra apiAddr pflag
 	viper.BindPFlag("apiAddr", setCmd.Flags().Lookup("apiAddr"))
+	// Binds viper apiAddr flag to VD_API_ADDR environment variable
 	viper.BindEnv("apiAddr", "VD_API_ADDR")
+	// Set default flag in viper cause the default one from cobra is not used
+	viper.SetDefault("apiAddr", "127.0.0.1:8080")
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/e9ctrl/vd/api"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // setMismatchCmd represents the setMismatch command
@@ -22,11 +23,7 @@ Examples:
 	vd set mismatch error
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		addr, err := cmd.Flags().GetString("apiAddr")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+		addr := viper.GetString("apiAddr")
 
 		if !verifyIPAddr(addr) {
 			fmt.Println("Wrong HTTP address")

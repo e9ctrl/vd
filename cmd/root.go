@@ -121,15 +121,24 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.vd.yaml)")
+
+	// The default value from here is not used but it is visible in help, that's why it is left here
 	rootCmd.Flags().StringP("httpListenAddr", "", "127.0.0.1:8080", "Address of the HTTP simulator server")
-
-	viper.AutomaticEnv()
+	// Binds viper httpListenAddr flag to cobra httpListenAddr pflag
 	viper.BindPFlag("httpListenAddr", rootCmd.Flags().Lookup("httpListenAddr"))
+	// Binds viper apiAddr flag to VD_HTTP_LISTEN_ADDR environment variable
 	viper.BindEnv("httpListenAddr", "VD_HTTP_LISTEN_ADDR")
+	// Set default flag in viper cause the default one from cobra is not used
+	viper.SetDefault("httpListenAddr", "127.0.0.1:8080")
 
+	// The default value from here is not used but it is visible in help, that's why it is left here
 	rootCmd.Flags().StringP("listenAddr", "", "127.0.0.1:9999", "Virtual device address")
+	// Binds viper listenAddr flag to cobra listenAddr pflag
 	viper.BindPFlag("listenAddr", rootCmd.Flags().Lookup("listenAddr"))
+	// Binds viper apiAddr flag to VD_LISTEN_ADDR environment variable
 	viper.BindEnv("listenAddr", "VD_LISTEN_ADDR")
+	// Set default flag in viper cause the default one from cobra is not used
+	viper.SetDefault("listenAddr", "127.0.0.1:9999")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
