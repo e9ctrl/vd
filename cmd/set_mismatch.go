@@ -21,6 +21,7 @@ HTTP POST verb modifies value of the mismatch message.
 Examples:
 	vd set mismatch "wrong parameter"
 	vd set mismatch error
+	vd set mismatch test --apiAddr 127.0.0.1:7070
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		addr := viper.GetString("apiAddr")

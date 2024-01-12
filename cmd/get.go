@@ -19,7 +19,7 @@ var getCmd = &cobra.Command{
 It communicates with REST API of the simulator and using HTTP GET it reads value of the specified parameter.
 Examples:
 	vd get current
-	vd get voltage --httpListenAddr 127.0.0.1:7070
+	vd get voltage --apiAddr 127.0.0.1:7070
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		addr := viper.GetString("apiAddr")

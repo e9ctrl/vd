@@ -20,7 +20,7 @@ It communicates with REST API of the simulator and using
 HTTP POST verb modifies value of the specified parameter inside the simulator.
 Examples:
 	vd set current 20
-	vd set voltage 3.5 --httpListenAddr 192.168.56.100:9999
+	vd set voltage 3.5 --apiAddr 192.168.56.100:9999
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		addr := viper.GetString("apiAddr")

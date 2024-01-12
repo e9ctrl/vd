@@ -17,8 +17,9 @@ var getDelayCmd = &cobra.Command{
 	Long: `This commands reads value command delays. 
 	It communicates with REST API of the simulator and using HTTP GET ir reads specified delays. 
 Examples:
-	vd get delay get_temperature 	-> get response delay of get temperature command
-	vd get dleay set_voltage 	-> get acknowledge delay of set voltage command
+	vd get delay get_temperature 				-> get response delay of get temperature command
+	vd get delay set_voltage 				-> get acknowledge delay of set voltage command
+	vd get delay set_voltage --apiAddr 127.0.0.1:7070 	-> get acknowledge delay of set voltage command with not default api addr
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		addr := viper.GetString("apiAddr")

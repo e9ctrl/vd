@@ -19,7 +19,7 @@ var triggerCmd = &cobra.Command{
 argument parameter name is sent to the connected TCP client."
 Examples:
 	vd trigger current
-	vd trigger voltage --httpListenAddr 127.0.0.1:7070
+	vd trigger voltage --apiAddr 127.0.0.1:7070
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		addr := viper.GetString("apiAddr")

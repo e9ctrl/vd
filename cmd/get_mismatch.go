@@ -19,7 +19,7 @@ var getMismatchCmd = &cobra.Command{
 It communicates with REST API of the simulator and using HTTP GET it reads mismatch string.
 Examples:
 	vd get mismatch
-	vd get mismatch --httpListenAddr 127.0.0.1:7070
+	vd get mismatch --apiAddr 127.0.0.1:7070
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		addr := viper.GetString("apiAddr")
