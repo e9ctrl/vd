@@ -49,7 +49,7 @@ func TestGetMismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a := &api{
+	a := &Api{
 		d: dev,
 	}
 
@@ -81,7 +81,7 @@ func TestSetMismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a := &api{
+	a := &Api{
 		d: dev,
 	}
 
@@ -124,7 +124,7 @@ func TestGetParameter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a := &api{
+	a := &Api{
 		d: dev,
 	}
 
@@ -169,7 +169,7 @@ func TestSetParameter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a := &api{
+	a := &Api{
 		d: dev,
 	}
 
@@ -228,7 +228,7 @@ func TestGetCommandDelay(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a := &api{
+	a := &Api{
 		d: dev,
 	}
 
@@ -272,7 +272,7 @@ func TestSetCommandDelay(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	a := &api{
+	a := &Api{
 		d: dev,
 	}
 

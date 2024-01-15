@@ -7,17 +7,20 @@ import (
 	"time"
 )
 
-type client struct {
+// Structure with client configuration.
+type Client struct {
 	url string
 }
 
-func NewClient(url string) *client {
-	return &client{
+// Create new Client isntance with configurable HTTP address.
+func NewClient(url string) *Client {
+	return &Client{
 		url: url,
 	}
 }
 
-func (c *client) GetParameter(param string) (string, error) {
+// Get given parameter name from the simulator server via exposed REST API with HTTP GET query.
+func (c *Client) GetParameter(param string) (string, error) {
 	resp, err := http.Get("http://" + c.url + "/" + param)
 	if err != nil {
 		return "", err
@@ -38,7 +41,8 @@ func (c *client) GetParameter(param string) (string, error) {
 	return string(body), nil
 }
 
-func (c *client) SetParameter(param, value string) error {
+// Set given parameter with a specified value via exposed REST API with HTTP POST query.
+func (c *Client) SetParameter(param, value string) error {
 	resp, err := http.Post("http://"+c.url+"/"+param+"/"+value, "text/plain", nil)
 	if err != nil {
 		return err
@@ -60,7 +64,8 @@ func (c *client) SetParameter(param, value string) error {
 	return nil
 }
 
-func (c *client) GetCommandDelay(commandName string) (time.Duration, error) {
+// Get command delay value via exposed REST API with HTTP Get query.
+func (c *Client) GetCommandDelay(commandName string) (time.Duration, error) {
 	resp, err := http.Get("http://" + c.url + "/delay/" + commandName)
 	if err != nil {
 		return 0, err
@@ -82,7 +87,8 @@ func (c *client) GetCommandDelay(commandName string) (time.Duration, error) {
 	return time.ParseDuration(string(body))
 }
 
-func (c *client) SetCommandDelay(commandName, value string) error {
+// Set command delay via exposed REST aPI with HTTP Post query.
+func (c *Client) SetCommandDelay(commandName, value string) error {
 	resp, err := http.Post("http://"+c.url+"/delay/"+commandName+"/"+value, "text/plain", nil)
 	if err != nil {
 		return err
@@ -104,7 +110,8 @@ func (c *client) SetCommandDelay(commandName, value string) error {
 	return nil
 }
 
-func (c *client) GetMismatch() (string, error) {
+// Get mismatch string (message that is returned when ) via exposed REST API with Get query.
+func (c *Client) GetMismatch() (string, error) {
 	resp, err := http.Get("http://" + c.url + "/mismatch")
 	if err != nil {
 		return "", err
@@ -125,7 +132,8 @@ func (c *client) GetMismatch() (string, error) {
 	return string(body), nil
 }
 
-func (c *client) SetMismatch(value string) error {
+// Set new mismatch message via exposed REST API with POST query.
+func (c *Client) SetMismatch(value string) error {
 	resp, err := http.Post("http://"+c.url+"/mismatch/"+value, "text/plain", nil)
 	if err != nil {
 		return err
@@ -147,7 +155,8 @@ func (c *client) SetMismatch(value string) error {
 	return nil
 }
 
-func (c *client) Trigger(param string) error {
+// Method to trigger returning parameter value on the TCP server side, uses HTTP Post query.
+func (c *Client) Trigger(param string) error {
 	resp, err := http.Post("http://"+c.url+"/trigger/"+param, "text/plain", nil)
 	if err != nil {
 		return err

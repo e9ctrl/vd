@@ -24,18 +24,18 @@ type Device interface {
 }
 
 // Struct that keeps Device interface.
-type api struct {
+type Api struct {
 	d Device
 }
 
 // Create new instance of http server that fullfils Device interface.
 // Server exposes REST API to control parameters and commands settings.
-func NewHttpApiServer(d Device) *api {
-	return &api{d: d}
+func NewHttpApiServer(d Device) *Api {
+	return &Api{d: d}
 }
 
 // Start HTTP server
-func (a *api) Serve(ctx context.Context, addr string) error {
+func (a *Api) Serve(ctx context.Context, addr string) error {
 	srv := &http.Server{
 		Addr:         addr,
 		Handler:      a.routes(),
@@ -75,7 +75,7 @@ func (a *api) Serve(ctx context.Context, addr string) error {
 	return nil
 }
 
-func (a *api) routes() http.Handler {
+func (a *Api) routes() http.Handler {
 	r := chi.NewRouter()
 
 	r.Route("/", func(r chi.Router) {
@@ -90,14 +90,14 @@ func (a *api) routes() http.Handler {
 
 	return r
 }
-func (a *api) getMismatch(w http.ResponseWriter, r *http.Request) {
+func (a *Api) getMismatch(w http.ResponseWriter, r *http.Request) {
 	value := a.d.GetMismatch()
 	log.API("get mismatch")
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write(value)
 }
 
-func (a *api) setMismatch(w http.ResponseWriter, r *http.Request) {
+func (a *Api) setMismatch(w http.ResponseWriter, r *http.Request) {
 	value := chi.URLParam(r, "value")
 
 	err := a.d.SetMismatch(value)
@@ -110,7 +110,7 @@ func (a *api) setMismatch(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Mismatch set successfully"))
 }
 
-func (a *api) getParameter(w http.ResponseWriter, r *http.Request) {
+func (a *Api) getParameter(w http.ResponseWriter, r *http.Request) {
 	param := chi.URLParam(r, "param")
 
 	value, err := a.d.GetParameter(param)
@@ -123,7 +123,7 @@ func (a *api) getParameter(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("%v", value)))
 }
 
-func (a *api) setParameter(w http.ResponseWriter, r *http.Request) {
+func (a *Api) setParameter(w http.ResponseWriter, r *http.Request) {
 	param := chi.URLParam(r, "param")
 	value := chi.URLParam(r, "value")
 
@@ -136,7 +136,7 @@ func (a *api) setParameter(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Parameter set successfully"))
 }
 
-func (a *api) getCommandDelay(w http.ResponseWriter, r *http.Request) {
+func (a *Api) getCommandDelay(w http.ResponseWriter, r *http.Request) {
 	commandName := chi.URLParam(r, "command")
 
 	del, err := a.d.GetCommandDelay(commandName)
@@ -150,7 +150,7 @@ func (a *api) getCommandDelay(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(del.String()))
 }
 
-func (a *api) setCommandDelay(w http.ResponseWriter, r *http.Request) {
+func (a *Api) setCommandDelay(w http.ResponseWriter, r *http.Request) {
 	commandName := chi.URLParam(r, "command")
 	value := chi.URLParam(r, "value")
 
@@ -164,7 +164,7 @@ func (a *api) setCommandDelay(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Delay set successfully"))
 }
 
-func (a *api) trigger(w http.ResponseWriter, r *http.Request) {
+func (a *Api) trigger(w http.ResponseWriter, r *http.Request) {
 	param := chi.URLParam(r, "param")
 
 	err := a.d.Trigger(param)
