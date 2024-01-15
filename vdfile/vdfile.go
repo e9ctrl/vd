@@ -101,7 +101,7 @@ func DecodeVDFile(path string) (Config, error) {
 	return config, err
 }
 
-// Parse TOmL file but using fle system FS to Config struct
+// Parse TOML file but using fle system FS to Config struct
 func DecodeVDFS(f fs.FS, path string) (Config, error) {
 	var config Config
 	_, err := toml.DecodeFS(f, path, &config)
@@ -122,7 +122,7 @@ func WriteVDFile(path string, config Config) error {
 	return os.WriteFile(path, buf.Bytes(), os.ModePerm)
 }
 
-// checks if string can be converted to time.Duration
+// Checks if string can be converted to time.Duration
 func parseDelays(line string) time.Duration {
 	if len(line) == 0 {
 		return 0
