@@ -22,6 +22,8 @@ const MISMATCH_LIMIT = 255
 var (
 	// Error returned by Trigger when there is no client to send parameter value
 	ErrNoClient = errors.New("no client available")
+	// Error returned by SetMimsatch if new message is too long
+	ErrMismatchTooLong = errors.New("new mismatch message exceeded 255 characters limit")
 )
 
 // Stream device store the information of a set of parameters
@@ -146,7 +148,7 @@ func (s *StreamDevice) GetParameter(name string) (any, error) {
 	param, exists := s.vdfile.Params[name]
 	s.lock.Unlock()
 	if !exists {
-		return nil, fmt.Errorf("parameter %s not found", name)
+		return nil, fmt.Errorf("%w: %s", protocols.ErrParamNotFound, name)
 	}
 
 	return param.Value(), nil
@@ -158,7 +160,7 @@ func (s *StreamDevice) SetParameter(name string, value any) error {
 	param, exists := s.vdfile.Params[name]
 	s.lock.Unlock()
 	if !exists {
-		return fmt.Errorf("parameter %s not found", name)
+		return fmt.Errorf("%w: %s", protocols.ErrParamNotFound, name)
 	}
 
 	return param.SetValue(value)
@@ -170,7 +172,7 @@ func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 	cmd, exists := s.vdfile.Commands[name]
 	s.lock.Unlock()
 	if !exists {
-		return 0, fmt.Errorf("command %s not found", name)
+		return 0, fmt.Errorf("%w: %s", protocols.ErrCommandNotFound, name)
 	}
 
 	return cmd.Dly, nil
@@ -182,7 +184,7 @@ func (s *StreamDevice) SetCommandDelay(name, val string) error {
 	cmd, exists := s.vdfile.Commands[name]
 	s.lock.Unlock()
 	if !exists {
-		return fmt.Errorf("command %s not found", name)
+		return fmt.Errorf("%w: %s", protocols.ErrCommandNotFound, name)
 	}
 
 	if val, err := time.ParseDuration(val); err == nil {
@@ -205,7 +207,7 @@ func (s *StreamDevice) GetMismatch() []byte {
 // Method to set mismatch message, returns error when string it too long
 func (s *StreamDevice) SetMismatch(value string) error {
 	if len(value) > MISMATCH_LIMIT {
-		return fmt.Errorf("mismatch message: %s - exceeded 255 characters limit", value)
+		return fmt.Errorf("%w: %s", ErrMismatchTooLong, value)
 	}
 	s.lock.Lock()
 	s.vdfile.Mismatch = []byte(value)
@@ -220,7 +222,7 @@ func (s *StreamDevice) Trigger(name string) error {
 	_, exists := s.vdfile.Commands[name]
 	s.lock.Unlock()
 	if !exists {
-		return protocols.ErrCommandNotFound
+		return fmt.Errorf("%w: %s", protocols.ErrCommandNotFound, name)
 	}
 
 	res, err := s.proto.Trigger(name)

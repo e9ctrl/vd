@@ -138,7 +138,7 @@ func TestGetParameter(t *testing.T) {
 		{"get version", "version", "version 1.0", http.StatusOK},
 		{"get current", "current", "300", http.StatusOK},
 		{"get mode", "mode", "NORM", http.StatusOK},
-		{"get wrong paramter", "test", "Error: parameter test not found", http.StatusInternalServerError},
+		{"get wrong paramter", "test", "Error: parameter not found: test", http.StatusInternalServerError},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -187,7 +187,7 @@ func TestSetParameter(t *testing.T) {
 		{"set psi", "psi", "4.56", "Parameter set successfully", http.StatusOK, "4.56", http.StatusOK},
 		{"set current", "current", "34", "Parameter set successfully", http.StatusOK, "34", http.StatusOK},
 		{"set wrong psi value", "psi", "5s", "Error: received param type that cannot be converted to float", http.StatusInternalServerError, "4.56", http.StatusOK},
-		{"set wrong parameter", "test", "20.1", "Error: parameter test not found", http.StatusInternalServerError, "Error: parameter test not found", http.StatusInternalServerError},
+		{"set wrong parameter", "test", "20.1", "Error: parameter not found: test", http.StatusInternalServerError, "Error: parameter not found: test", http.StatusInternalServerError},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -288,7 +288,7 @@ func TestSetCommandDelay(t *testing.T) {
 		expGetCode int
 	}{
 		{"set current result delay", "set_current", "2s", "Delay set successfully", http.StatusOK, "2s", http.StatusOK},
-		{"set wrong command name", "test", "5s", "Error: command test not found", http.StatusInternalServerError, "Error: command test not found", http.StatusInternalServerError},
+		{"set wrong command name", "test", "5s", "Error: command not found: test", http.StatusInternalServerError, "Error: command not found: test", http.StatusInternalServerError},
 		{"set wrong delay value", "set_current", "10test", "Error: time: unknown unit \"test\" in duration \"10test\"", http.StatusInternalServerError, "2s", http.StatusOK},
 	}
 	for _, tt := range tests {

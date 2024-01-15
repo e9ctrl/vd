@@ -399,22 +399,20 @@ func TestGetParameter(t *testing.T) {
 		name   string
 		param  string
 		expVal any
-		expErr string
+		expErr error
 	}{
-		{"get version", "version", "v1.0.0", ""},
-		{"get offset", "offset", 53.4, ""},
-		{"get status", "status", "stop", ""},
-		{"get mode", "mode", true, ""},
-		{"not know param", "test", nil, "parameter test not found"},
-		{"empty param name", "", nil, "parameter  not found"},
+		{"get version", "version", "v1.0.0", nil},
+		{"get offset", "offset", 53.4, nil},
+		{"get status", "status", "stop", nil},
+		{"get mode", "mode", true, nil},
+		{"not know param", "test", nil, protocols.ErrParamNotFound},
+		{"empty param name", "", nil, protocols.ErrParamNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := dev.GetParameter(tt.param)
-			if err != nil {
-				if err.Error() != tt.expErr {
-					t.Errorf("exp error: %v got: %v", tt.expErr, err)
-				}
+			if !errors.Is(err, tt.expErr) {
+				t.Errorf("exp error: %v got: %v", tt.expErr, err)
 			}
 			if tt.expVal != got {
 				t.Errorf("exp val: %v got: %v", tt.expVal, got)
@@ -430,24 +428,22 @@ func TestSetParameter(t *testing.T) {
 		param  string
 		setVal any
 		expVal any
-		expErr string
+		expErr error
 	}{
-		{"set int", "diode_offset", int64(30), int64(30), ""},
-		{"set float", "humidity", 2.34, 2.34, ""},
-		{"set string", "acq", "stopped", "stopped", ""},
-		{"set bool", "height", false, false, ""},
-		{"set with opt", "state", "not ok", "not ok", ""},
-		{"wrong param name", "test", "test", nil, "parameter test not found"},
-		{"set wrong value", "diode_offset", 34.5, int64(30), "received value with invalid type"},
-		{"set value outside opt", "state", "test", "not ok", "value outside opts - ignoring set"},
+		{"set int", "diode_offset", int64(30), int64(30), nil},
+		{"set float", "humidity", 2.34, 2.34, nil},
+		{"set string", "acq", "stopped", "stopped", nil},
+		{"set bool", "height", false, false, nil},
+		{"set with opt", "state", "not ok", "not ok", nil},
+		{"wrong param name", "test", "test", nil, protocols.ErrParamNotFound},
+		{"set wrong value", "diode_offset", 34.5, int64(30), parameter.ErrWrongTypeVal},
+		{"set value outside opt", "state", "test", "not ok", parameter.ErrValNotAllowed},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := dev.SetParameter(tt.param, tt.setVal)
-			if err != nil {
-				if err.Error() != tt.expErr {
-					t.Fatalf("exp err: %v got: %s", err, tt.expErr)
-				}
+			if !errors.Is(err, tt.expErr) {
+				t.Fatalf("exp err: %v got: %s", err, tt.expErr)
 			}
 			got, _ := dev.GetParameter(tt.param)
 			if got != tt.expVal {
@@ -472,19 +468,17 @@ func TestGetCommandDelay(t *testing.T) {
 		name   string
 		cmd    string
 		expVal time.Duration
-		expErr string
+		expErr error
 	}{
-		{"get get current delay", "get_current", time.Second, ""},
-		{"get set psi delay", "set_psi", time.Millisecond * 10, ""},
-		{"wrong command name", "set_test", 0, "command set_test not found"},
+		{"get get current delay", "get_current", time.Second, nil},
+		{"get set psi delay", "set_psi", time.Millisecond * 10, nil},
+		{"wrong command name", "set_test", 0, protocols.ErrCommandNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := dev.GetCommandDelay(tt.cmd)
-			if err != nil {
-				if err.Error() != tt.expErr {
-					t.Errorf("exp err: %v got: %s", err, tt.expErr)
-				}
+			if !errors.Is(err, tt.expErr) {
+				t.Errorf("exp err: %v got: %s", err, tt.expErr)
 			}
 			if got != tt.expVal {
 				t.Errorf("exp delay: %v got: %v", tt.expVal, got)
@@ -500,24 +494,28 @@ func TestSetCommandDelay(t *testing.T) {
 		cmd    string
 		setVal string
 		expVal time.Duration
-		expErr string
+		expErr error
 	}{
-		{"get set voltage delay", "get_voltage", "300us", 300 * time.Microsecond, ""},
-		{"get set psi delay", "set_max", "20ms", 20 * time.Millisecond, ""},
-		{"wrong command name", "set_test", "10s", 0, "command set_test not found"},
-		{"wrong delay value", "set_current", "test", 0, "time: invalid duration \"test\""},
+		{"get set voltage delay", "get_voltage", "300us", 300 * time.Microsecond, nil},
+		{"get set psi delay", "set_max", "20ms", 20 * time.Millisecond, nil},
+		{"wrong command name", "set_test", "10s", 0, protocols.ErrCommandNotFound},
+		{"wrong delay value", "set_current", "test", 0, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := dev.SetCommandDelay(tt.cmd, tt.setVal)
-			if err != nil {
-				if err.Error() != tt.expErr {
-					t.Fatalf("exp err: %v got: %s", err, tt.expErr)
+			if tt.name == "wrong delay value" {
+				if err.Error() != "time: invalid duration \"test\"" {
+					t.Fatalf("exp err: time: invalid duration \"test\" got: %v", err)
 				}
-			}
-			got, _ := dev.GetCommandDelay(tt.cmd)
-			if got != tt.expVal {
-				t.Errorf("exp delay: %v got: %v", tt.expVal, got)
+			} else {
+				if !errors.Is(err, tt.expErr) {
+					t.Fatalf("exp err: %v got: %v", tt.expErr, err)
+				}
+				got, _ := dev.GetCommandDelay(tt.cmd)
+				if got != tt.expVal {
+					t.Errorf("exp delay: %v got: %v", tt.expVal, got)
+				}
 			}
 		})
 	}
@@ -563,21 +561,19 @@ func TestSetMismatch(t *testing.T) {
 		name   string
 		set    string
 		expVal string
-		expErr string
+		expErr error
 	}{
-		{"standard set", "test test", "test test", ""},
-		{"empty mismatch", "", "", ""},
-		{"set over limit", mis, "", "mismatch message: " + mis + " - exceeded 255 characters limit"},
+		{"standard set", "test test", "test test", nil},
+		{"empty mismatch", "", "", nil},
+		{"set over limit", mis, "", ErrMismatchTooLong},
 		// bring back error mismatch
-		{"bring back error mismatch", "error", "error", ""},
+		{"bring back error mismatch", "error", "error", nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := dev.SetMismatch(tt.set)
-			if err != nil {
-				if err.Error() != tt.expErr {
-					t.Errorf("exp err: %s got: %v", tt.expErr, err)
-				}
+			if !errors.Is(err, tt.expErr) {
+				t.Errorf("exp err: %s got: %v", tt.expErr, err)
 			}
 			got := dev.GetMismatch()
 			if string(got) != tt.expVal {
