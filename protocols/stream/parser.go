@@ -30,12 +30,17 @@ type Parser struct {
 }
 
 func (p *Parser) Handle(input string) ([]byte, string, error) {
+	// It happens that input string matches several patterns
+	// To prevent from random matches, it's better to sort patterns
+	// and always use the longest slice of Items that matches input
 	matched := []struct {
 		cmd  string
 		res  []Item
 		req  []Item
 		vals map[string]any
 	}{}
+	// This copies data from map to struct to sort it
+	// Maps cannot be sorted
 	for cmdName, pattern := range p.commandPatterns {
 		match, values := checkPattern(input, pattern.reqItems)
 		if !match {
@@ -54,16 +59,21 @@ func (p *Parser) Handle(input string) ([]byte, string, error) {
 		}
 		matched = append(matched, m)
 	}
+
+	// if nothing is matched, just return an error
 	if len(matched) == 0 {
 		return nil, "", protocols.ErrCommandNotFound
 	}
 
+	// sorting struct from those containg the longest request slice of items
 	if len(matched) > 1 {
 		sort.Slice(matched, func(i, j int) bool {
 			return len(matched[i].req) > len(matched[j].req)
 		})
 	}
 
+	// alwyas use first index from slice, in that way
+	// it does not matter how many matches we have
 	values := matched[0].vals
 	cmdName := matched[0].cmd
 	res := matched[0].res
