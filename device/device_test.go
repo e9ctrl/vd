@@ -443,7 +443,7 @@ func TestSetParameter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := dev.SetParameter(tt.param, tt.setVal)
 			if !errors.Is(err, tt.expErr) {
-				t.Fatalf("exp err: %v got: %s", err, tt.expErr)
+				t.Fatalf("exp err: %v got: %s", tt.expErr, err)
 			}
 			got, _ := dev.GetParameter(tt.param)
 			if got != tt.expVal {
@@ -478,7 +478,7 @@ func TestGetCommandDelay(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := dev.GetCommandDelay(tt.cmd)
 			if !errors.Is(err, tt.expErr) {
-				t.Errorf("exp err: %v got: %s", err, tt.expErr)
+				t.Errorf("exp err: %v got: %s", tt.expErr, err)
 			}
 			if got != tt.expVal {
 				t.Errorf("exp delay: %v got: %v", tt.expVal, got)
