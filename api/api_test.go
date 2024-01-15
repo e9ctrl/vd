@@ -8,19 +8,21 @@ import (
 	"github.com/e9ctrl/vd/vdfile"
 )
 
+// path to vdfile used in tests
 const FILE1 = "../vdfile/vdfile"
 
 var (
-	vdfileDelay    vdfile.Config
-	vdfileMismatch vdfile.Config
+	vdfileTest vdfile.Config
 )
 
 func init() {
+	// use one, common vdfile as a template to create vdfile.Config structures for tests
 	config, err := vdfile.DecodeVDFile(FILE1)
 	if err != nil {
 		panic(err)
 	}
 
+	// add delays to get_psi and get_temp commands
 	for i := 0; i < len(config.Commands); i++ {
 		switch config.Commands[i].Name {
 		case "get_psi":
@@ -30,14 +32,14 @@ func init() {
 		}
 	}
 
-	vdfileDelay = config
 	config.Mismatch = "Wrong query"
-	vdfileMismatch = config
+	// vvdfile with changed mismatch message and delays
+	vdfileTest = config
 }
 
 func TestGetMismatch(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileMismatch)
+	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +71,7 @@ func TestGetMismatch(t *testing.T) {
 
 func TestSetMismatch(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileMismatch)
+	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +114,7 @@ func TestSetMismatch(t *testing.T) {
 
 func TestGetParameter(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileDelay)
+	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +159,7 @@ func TestGetParameter(t *testing.T) {
 
 func TestSetParameter(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileMismatch)
+	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +218,7 @@ func TestSetParameter(t *testing.T) {
 
 func TestGetCommandDelay(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileDelay)
+	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +262,7 @@ func TestGetCommandDelay(t *testing.T) {
 
 func TestSetCommandDelay(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileDelay)
+	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
 	if err != nil {
 		t.Fatal(err)
 	}
