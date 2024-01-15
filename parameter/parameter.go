@@ -71,6 +71,7 @@ func New(val any, opt, typ string) (Parameter, error) {
 	return nil, ErrUnknownParamType
 }
 
+// Contructor that fix allowed values and set initial value of the parameter
 func newParameter[T paramType](typ reflect.Kind, val any, opt string) (*ConcreteParameter[T], error) {
 	opts, err := buildOptions[T](typ, opt)
 	if err != nil {
@@ -148,6 +149,7 @@ func (p *ConcreteParameter[T]) String() string {
 	return fmt.Sprintf("%v", p.val)
 }
 
+// Return allowed values if available
 func (p *ConcreteParameter[T]) Opts() []string {
 	var opts []string
 	for _, opt := range p.opts {
@@ -155,6 +157,9 @@ func (p *ConcreteParameter[T]) Opts() []string {
 	}
 	return opts
 }
+
+// Used mainly while parsing commands received from TCP client
+// It converts received string to the corresponding value under parameter.
 func convertStringToVal[T paramType](typ reflect.Kind, val string) (*T, error) {
 	switch typ {
 	case reflect.Int:
@@ -228,6 +233,7 @@ func convertStringToVal[T paramType](typ reflect.Kind, val string) (*T, error) {
 	}
 }
 
+// Splits string into parts and tries to convert them according to value type under parameter.
 func buildOptions[T paramType](typ reflect.Kind, opt string) ([]T, error) {
 	opts := []T{}
 	if opt != "" {

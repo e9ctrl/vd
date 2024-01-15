@@ -94,7 +94,7 @@ func buildCommandPatterns(commands map[string]*command.Command) (map[string]Comm
 	// report the error back when there is a IllegalItem
 	for key, cmd := range commands {
 		pattern := CommandPattern{}
-		if cmd.Req != nil && len(cmd.Req) > 0 {
+		if len(cmd.Req) > 0 {
 			pattern.reqItems = ItemsFromConfig(string(cmd.Req))
 
 			for _, item := range pattern.reqItems {
@@ -104,7 +104,7 @@ func buildCommandPatterns(commands map[string]*command.Command) (map[string]Comm
 			}
 		}
 
-		if cmd.Res != nil && len(cmd.Res) > 0 {
+		if len(cmd.Res) > 0 {
 			pattern.resItems = ItemsFromConfig(string(cmd.Res))
 
 			for _, item := range pattern.resItems {
