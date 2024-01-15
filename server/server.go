@@ -73,6 +73,7 @@ func (s *Server) handleConnections() {
 	}
 }
 
+// Used to send value to the client when Trigget via HTTP is called.
 func (s *Server) handleAsync(conn net.Conn) {
 	for {
 		resp := <-s.d.Triggered()

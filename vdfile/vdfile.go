@@ -58,6 +58,7 @@ func ReadVDFile(path string) (*VDFile, error) {
 	return ReadVDFileFromConfig(config)
 }
 
+// Creates vdfile struct based on Config containing result of TOML file parsing
 func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 	vdfile := &VDFile{
 		Params:   make(map[string]parameter.Parameter, 0),
@@ -92,6 +93,7 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 	return vdfile, nil
 }
 
+// Parse TOML file to Config struct
 func DecodeVDFile(path string) (Config, error) {
 	var config Config
 	_, err := toml.DecodeFile(path, &config)
@@ -99,6 +101,7 @@ func DecodeVDFile(path string) (Config, error) {
 	return config, err
 }
 
+// Parse TOmL file but using fle system FS to Config struct
 func DecodeVDFS(f fs.FS, path string) (Config, error) {
 	var config Config
 	_, err := toml.DecodeFS(f, path, &config)
@@ -106,6 +109,7 @@ func DecodeVDFS(f fs.FS, path string) (Config, error) {
 	return config, err
 }
 
+// Created TOML config file based on Config
 func WriteVDFile(path string, config Config) error {
 	var buf = bytes.Buffer{}
 	var encoder = toml.NewEncoder(&buf)
@@ -118,6 +122,7 @@ func WriteVDFile(path string, config Config) error {
 	return os.WriteFile(path, buf.Bytes(), os.ModePerm)
 }
 
+// checks if string can be converted to time.Duration
 func parseDelays(line string) time.Duration {
 	if len(line) == 0 {
 		return 0

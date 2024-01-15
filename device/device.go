@@ -16,9 +16,11 @@ import (
 	"github.com/e9ctrl/vd/vdfile"
 )
 
+// Max length of mismatch message
 const MISMATCH_LIMIT = 255
 
 var (
+	// Error returned by Trigger when there is no client to send parameter value
 	ErrNoClient = errors.New("no client available")
 )
 
@@ -66,6 +68,7 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 	}, nil
 }
 
+// Return mismatch message together with terminators
 func (s *StreamDevice) Mismatch() (res []byte) {
 	s.lock.Lock()
 	mis := s.vdfile.Mismatch
@@ -79,6 +82,7 @@ func (s *StreamDevice) Mismatch() (res []byte) {
 	return
 }
 
+// Method that returns channel with value of the parameter
 func (s *StreamDevice) Triggered() chan []byte { return s.triggered }
 
 func (s *StreamDevice) parseTok(tok string) []byte {
@@ -88,12 +92,14 @@ func (s *StreamDevice) parseTok(tok string) []byte {
 	mis := s.vdfile.Mismatch
 	s.lock.Unlock()
 
+	// if command not found or set value has been wrong, return mismatch message if it exists
 	if (err == protocols.ErrCommandNotFound || errors.Is(err, protocols.ErrWrongSetVal)) && len(mis) > 0 {
 		res = mis
 	} else if err != nil {
 		log.ERR("parse return with error %w", err)
 	}
 
+	// mismatch message is empty, it just returns nil response
 	if len(res) == 0 {
 		return res
 	}
@@ -101,6 +107,7 @@ func (s *StreamDevice) parseTok(tok string) []byte {
 	s.lock.Lock()
 	if commandName != "" && s.vdfile != nil {
 		if cmd, exist := s.vdfile.Commands[commandName]; exist {
+			// apply command delay
 			s.delayRes(cmd.Dly)
 		} else {
 			log.ERR("command name %s not found", commandName)
@@ -113,6 +120,8 @@ func (s *StreamDevice) parseTok(tok string) []byte {
 	return res
 }
 
+// Method that fulfills Handler interface that is used by TCP server.
+// It divides bytes into understandable pieces of data and parses it.
 func (s *StreamDevice) Handle(cmd []byte) []byte {
 	r := bytes.NewReader(cmd)
 	scanner := bufio.NewScanner(r)
@@ -131,6 +140,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 	return buffer
 }
 
+// Method to read value of the specified parameter, returns error when parameter not found
 func (s *StreamDevice) GetParameter(name string) (any, error) {
 	s.lock.Lock()
 	param, exists := s.vdfile.Params[name]
@@ -142,6 +152,7 @@ func (s *StreamDevice) GetParameter(name string) (any, error) {
 	return param.Value(), nil
 }
 
+// Method to access value of the specified parameter and change it, return error when parameter not found
 func (s *StreamDevice) SetParameter(name string, value any) error {
 	s.lock.Lock()
 	param, exists := s.vdfile.Params[name]
@@ -153,6 +164,7 @@ func (s *StreamDevice) SetParameter(name string, value any) error {
 	return param.SetValue(value)
 }
 
+// Get delay of the specified command, return error when command not found
 func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 	s.lock.Lock()
 	cmd, exists := s.vdfile.Commands[name]
@@ -164,6 +176,7 @@ func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 	return cmd.Dly, nil
 }
 
+// Set delay of the specified command, return error when command not found or when value cannot be converted to time.Duration
 func (s *StreamDevice) SetCommandDelay(name, val string) error {
 	s.lock.Lock()
 	cmd, exists := s.vdfile.Commands[name]
@@ -181,14 +194,15 @@ func (s *StreamDevice) SetCommandDelay(name, val string) error {
 	return nil
 }
 
+// Return mismatch message
 func (s *StreamDevice) GetMismatch() []byte {
 	s.lock.Lock()
 	mis := s.vdfile.Mismatch
 	s.lock.Unlock()
 	return mis
-	//return s.vdfile.Mismatch
 }
 
+// Method to set mismatch message, returns error when string it too long
 func (s *StreamDevice) SetMismatch(value string) error {
 	if len(value) > MISMATCH_LIMIT {
 		return fmt.Errorf("mismatch message: %s - exceeded 255 characters limit", value)
@@ -199,6 +213,8 @@ func (s *StreamDevice) SetMismatch(value string) error {
 	return nil
 }
 
+// Method that cause that value of the specified parameter is sent directly via TCP server to connected client.
+// It return error when there is no client connected to TCP server or when parameter was not found.
 func (s *StreamDevice) Trigger(name string) error {
 	s.lock.Lock()
 	_, exists := s.vdfile.Commands[name]

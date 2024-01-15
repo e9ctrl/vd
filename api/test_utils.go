@@ -7,6 +7,8 @@ import (
 	"testing"
 )
 
+// This file contains common structs and methods that facilitates api tests
+
 type testServer struct {
 	*httptest.Server
 }

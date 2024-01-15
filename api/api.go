@@ -12,20 +12,24 @@ import (
 	"github.com/jwalton/gchalk"
 )
 
+// Interface provides methods to control parameters and commands settings via HTTP server.
 type Device interface {
 	GetParameter(param string) (any, error)
 	SetParameter(param string, val any) error
 	GetCommandDelay(commandName string) (time.Duration, error)
 	SetCommandDelay(commandName string, val string) error
 	GetMismatch() []byte
-	SetMismatch(string) error
+	SetMismatch(mismatch string) error
 	Trigger(param string) error
 }
 
+// Struct that keeps Device interface.
 type api struct {
 	d Device
 }
 
+// Create new instance of http server that fullfils Device interface.
+// Server exposes REST API to control parameters and commands settings.
 func NewHttpApiServer(d Device) *api {
 	return &api{d: d}
 }
@@ -115,7 +119,6 @@ func (a *api) getParameter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.API("get", param)
-	// Return the value as plain text
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("%v", value)))
 }
@@ -143,7 +146,6 @@ func (a *api) getCommandDelay(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.API("get delay of", commandName)
-	// Return the value as plain text
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(del.String()))
 }

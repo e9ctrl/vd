@@ -8,6 +8,7 @@ var (
 	ErrWrongSetVal     = errors.New("could not set")
 )
 
+// Interface that must be implemented in all communication protocols
 type Protocol interface {
 	Handle(token string) ([]byte, string, error)
 	Trigger(cmdName string) ([]byte, error)

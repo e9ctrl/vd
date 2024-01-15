@@ -16,20 +16,22 @@ var (
 	ErrWrongReqSyntax = errors.New("illegal syntax in request")
 )
 
-// req
-// seq
+// Keeps request and response tokens
 type CommandPattern struct {
 	reqItems []Item
 	resItems []Item
 }
 
+// Main parser structure, based on vdfile generates map of commands, and then parses incoming messages
 type Parser struct {
 	vdfile          *vdfile.VDFile
 	commandPatterns map[string]CommandPattern
 }
 
+// Method that fullfils main Protocol interface, all logic is implemented here.
 func (p *Parser) Handle(input string) ([]byte, string, error) {
 	for cmdName, pattern := range p.commandPatterns {
+		// chcecks if input string matches one of the request
 		match, values := checkPattern(input, pattern.reqItems)
 		if !match {
 			continue
@@ -59,6 +61,7 @@ func (p *Parser) Handle(input string) ([]byte, string, error) {
 	return nil, "", protocols.ErrCommandNotFound
 }
 
+// Method tat fulfills main Protocl interface, it returns value of the parameter if it exists/
 func (p *Parser) Trigger(cmdName string) ([]byte, error) {
 	pattern, exist := p.commandPatterns[cmdName]
 	if !exist {
@@ -71,6 +74,7 @@ func (p Parser) makeResponse(items []Item) []byte {
 	return constructOutput(items, p.vdfile.Params)
 }
 
+// Constructor, returns parser struct with processed commands patterns that are used while parsing incoming data.
 func NewParser(vdfile *vdfile.VDFile) (protocols.Protocol, error) {
 	commandPattern, err := buildCommandPatterns(vdfile.Commands)
 	if err != nil {

@@ -20,7 +20,7 @@ const eof = -1
 const (
 	ItemError ItemType = iota
 
-	ItemCommand // this is valid for a query as well
+	ItemCommand
 
 	ItemNumberValuePlaceholder
 	ItemStringValuePlaceholder
@@ -63,6 +63,7 @@ func (i ItemType) String() string {
 	return "unknown ItemType"
 }
 
+// Main structure that keeps token type and its value.
 type Item struct {
 	typ ItemType
 	val string
@@ -102,8 +103,8 @@ type Lexer struct {
 	pos     int       //current position in the input string
 	width   int       //width of last rune read from input string
 	ItemsCh chan Item //channel of scanned items
-	State   StateFn
-	mode    mode
+	State   StateFn   //current state of the state machine
+	mode    mode      //either parsing data from vd config file or from TCP server
 }
 
 func newLexer(input string, mode mode) *Lexer {
@@ -130,6 +131,7 @@ func ItemsFromConfig(input string) []Item {
 	return NewConfig(input).Items()
 }
 
+// Generate token
 func (l *Lexer) emit(t ItemType) {
 	l.ItemsCh <- Item{t, l.Input[l.start:l.pos]}
 	l.start = l.pos
@@ -324,12 +326,14 @@ func lexPlaceholder(l *Lexer) StateFn {
 
 func lexLeftMeta(l *Lexer) StateFn {
 	l.emit(ItemLeftMeta)
+	// ignore all spaces between % and {
 	for isSpace(l.next()) {
 		l.ignore()
 	}
 
 	l.backup()
 
+	// after { there always should be %
 	if l.peek() != '%' {
 		l.emit(ItemIllegal)
 		return nil
