@@ -6,14 +6,16 @@ import (
 	"github.com/jwalton/gchalk"
 )
 
-var prefixERR = gchalk.BrightRed("[ERR] ")
-var prefixINF = gchalk.BrightBlue("[INF] ")
-var prefixTX = gchalk.BrightGreen("[<--] ")
-var prefixRX = gchalk.BrightYellow("[-->] ")
-var prefixCMD = gchalk.BrightBlue("[•••] ")
-var prefixAPI = gchalk.BrightMagenta("[API] ")
-var prefixDLY = gchalk.BrightCyan("[ 💤] ")
-var prefixMSM = gchalk.BrightRed("[MSM] ")
+var (
+	prefixERR = gchalk.BrightRed("[ERR] ")
+	prefixINF = gchalk.BrightBlue("[INF] ")
+	prefixTX  = gchalk.BrightGreen("[<--] ")
+	prefixRX  = gchalk.BrightYellow("[-->] ")
+	prefixCMD = gchalk.BrightBlue("[•••] ")
+	prefixAPI = gchalk.BrightMagenta("[API] ")
+	prefixDLY = gchalk.BrightCyan("[ 💤] ")
+	prefixMSM = gchalk.BrightRed("[MSM] ")
+)
 
 func ERR(msg ...any) {
 	fmt.Println(gchalk.BrightRed(prefixERR), msg)
