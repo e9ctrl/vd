@@ -98,7 +98,7 @@ func (s *StreamDevice) parseTok(tok string) []byte {
 	if (err == protocols.ErrCommandNotFound || errors.Is(err, protocols.ErrWrongSetVal)) && len(mis) > 0 {
 		res = mis
 	} else if err != nil {
-		log.ERR("parse return with error %w", err)
+		log.ERR("parse return with error:", err)
 	}
 
 	// mismatch message is empty, it just returns nil response
@@ -112,7 +112,7 @@ func (s *StreamDevice) parseTok(tok string) []byte {
 			// apply command delay
 			s.delayRes(cmd.Dly)
 		} else {
-			log.ERR("command name %s not found", commandName)
+			log.ERR("command name", commandName, "not found")
 		}
 	}
 	s.lock.Unlock()
