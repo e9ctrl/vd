@@ -33,97 +33,147 @@ The configuration file called `vdfile` is a [TOML](https://toml.io/en/) file and
 
 Note that some parameters do not contain specific communication patterns. Your configuration can include one or multiple parameters depending on your needs.
 
-It starts with information about terminators
+It starts with optional error message:
+```toml```
+mismatch = "error"
+```
+then, it contains information about terminators:
 ```toml
 [terminators]
-intterm = "CR LF"
-outterm = "CR LF"
+  intterm = "CR LF"
+  outterm = "CR LF"
 ```
-and describes parameters available in the simulated device:
+and finally describes parameters available in the simulated device:
 
 ```toml
 [[parameter]]
-name = "current"
-type = "int"
-req = "CUR?"
-res = "CUR %d"
-rdl = "1s"
-set = "CUR %d"
-ack = "OK"
-adl = "100ms"
-val = 300
+  name = "current"
+  typ = "int64"
+  val = 300
+
+[[command]]
+  name = "get_current"
+  req = "CUR?"
+  res = "CUR {%d:current}"
+
+[[command]]
+  name = "set_current"
+  req = "CUR {%d:current}"
+  res = "OK"
+  dly = "1s"
+
+[[parameter]]
+  name = "state"
+  typ = "string"
+  val = "on"
+  opt = "ON|OFF|ERROR"
+
+[[command]]
+  name = "set_state"
+  req = "SET {%s:state}"
+  res = "OK"
 ```
 
 Here's a breakdown of the configuration:
 
 * `name`: Parameter's name, not used in client communication but utilized in the HTTP API.
-* `type`: Parameter type (available values - `int`, `float`, `string`, `bool`).
-* `req`: Client's request to the simulated device to read the value.
-* `res`: The response the simulated device sends to the client for the request.
-* `set`: Client's request to change the parameter value.
-* `rdl`: Response delay with time unit.
-* `ack`: Device's acknowledgment to the set request.
-* `val`: Contains the default value. Note that for int and float, the value should be without quotes.
-* `adl`: Acknowledgment delay with time unit.
+* `typ`:  Parameter type (available values - `int`, `float`, `string`, `bool`).
+* `req`:  Client's request to the sumylated device to get or set value.
+* `res`:  The response the simulated device sends to the client for the request.
+* `dly`:  Response delay with time unit.
 * `opt`: (Optional) Limits the range of values a parameter can take (see below for example of usage).
+
 
 Below is a sample configuration:
 ```toml
 
 mismatch = "Wrong query"
 
-[delays]
-res = "1s"
-ack = "1s"
+[[terminators]]
+  intterm = "CR LF"
+  outterm = "CR LF"
 
 [[parameter]]
-name = "version"
-type = "string"
-req = "ver?"
-res = "%s"
-rdl = "10s"
-val = "version 1.0"
+  name = "version"
+  typ = "string"
+  val = "version 1.0"
+
+[[command]]
+  name = "get_version"
+  req = "ver?"
+  res = "{%s:version}"
+  dly = "10s"
 
 [[parameter]]
-name = "current"
-type = "int"
-req = "CUR?"
-res = "CUR %d"
-set = "CUR %d"
-ack = "OK"
-adl = "2s"
-val = 300
+  name = "current"
+  typ = "int64"
+  val = 300
+
+[[command]]
+  name = "get_current"
+  req = "CUR?"
+  res = "CUR {%d:current}"
+
+[[command]]
+  name = "set_current"
+  req = "CUR {%d:current}"
+  res = "OK"
+  dly = "2s"
 
 [[parameter]]
-name = "temperature"
-type = "float"
-req = "TEMP?"
-res = "%.2f"
-set = "TEMP %.2f"
-ack = "%.2f"
-val = 36.6
+  name = "temperature"
+  typ = "float64"
+  val = 36.6
+
+[[command]]
+  name = "get_temp"
+  req = "TEMP?"
+  res = "{%.2f:temperature}"
+
+[[command]]
+  name = "set_temp"
+  req = "TEMP {%.2f:temperature}"
+  res = "{%.2f:temperature}"
 
 [[parameter]]
-name = "mode"
-type = "string"
-opt = "NORM|SING|BURS|DCYC"
-req = "MODE?"
-res = "%s"
-set = "MODE %s"
-ack = "ok"
-val = "NORM"
+  name = "mode"
+  typ = "string"
+  opt = "NORM|SING|BURS|DCYC"
+  val = "NORM"
+
+[[command]]
+  name = "get_mode"
+  req = "MODE?"
+  res = "{%s:mode}"
+
+[[command]]
+  name = "set_mode"
+  req = "MODE {%s:mode}"
+  res = "ok"
+
+[[command]]
+  name = "get_status"
+  req = "status?"
+  res = mode:{%s:mode},temp:{%2f:temperature}
+
 ```
 
-# Delays
-The `vd` tool enables the introduction of delays when sending responses to requests and acknowledging to set messages. This feature allows you to define custom wait times for the `vd` to hold off on every response and acknowledgment, enhancing the simulation of real-world network conditions or server response times.
+# Parameter
+`parameter` is a place where parameter together with its name, type, possible values, and initial value are defined. 
 
-For system-wide settings, you should define the delays within a dedicated section at the beginning of the configuration file. If you wish to apply delays to specific parameters only, you can use `rdl` for response delays and `adl` for acknowledgment delays, respectively.
+# Command
+`command` is section that keeps information about accepted request strings and responses to them. The command can reference none, one or more parameters. One can assign command to the parameter using `{` `}` with proper placeholder and parameter name between brackets e.g. `{%d:parameter}`.
+
+# Delays
+The `vd` tool enables the introduction of delays when sending responses to requests. This feature allows you to define custom wait times for the `vd` to hold off on every response and acknowledgment, enhancing the simulation of real-world network conditions or server response times.
+
+The delays are specific for single command, you can use `dly` to define delay time for the given command.
 
 # Mismatch
 `vd` allows to specify mismatch that is sent back to the client when received string does not match any of the expected commands. It is send back to the client automatically without delay.
 
 # Triggering reply
-The `vd` tool enables the triggering of responses, simulating scenarios where a device sends data autonomously, without a specific request from the client. 
+The `vd` tool enables the triggering of responses, simulating scenarios where a device sends data autonomously, without a specific request from the client. It is done by sending proper request via HTTP API. 
 
 # Installation
 `vd` is supplied as a binary file. Download the appropriate version for your operating system and you are good to go.
@@ -156,28 +206,16 @@ $ vd get temperature
 $ vd set temperature 36.6
 ```
 
-To change the global value of response delay:
+To change the value of command delay:
 ```
-$ vd get delay res
-$ vd set delay res 200ms
-```
-
-To change the global value of acknowledgment delay:
-```
-$ vd get delay ack
-$ vd set delay ack 200ms
+$ vd get delay get_status
+$ vd set delay get_status 200ms
 ```
 
-To change the value of response delay for particular paramter, e.g., temperature:
+To change mismatch message string:
 ```
-$ vd get delay res temperature
-$ vd set delay res temperature 2s
-```
-
-To change the value of acknowledgment delay for particular paramter, e.g., temperature:
-```
-$ vd get delay ack temperature
-$ vd set delay ack temperature 2s
+$ vd get mismatch
+$ vd set mismatch "wrong message"
 ```
 
 To trigger a response related to a parameter, e.g., temperature:
