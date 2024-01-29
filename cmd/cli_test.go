@@ -113,7 +113,6 @@ func TestGetMismatch(t *testing.T) {
 }
 
 func TestGetParameter(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name  string
 		input string
@@ -140,7 +139,6 @@ func TestGetParameter(t *testing.T) {
 }
 
 func TestGetDelay(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name  string
 		input string
@@ -166,7 +164,6 @@ func TestGetDelay(t *testing.T) {
 }
 
 func TestTrigger(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name  string
 		input string
@@ -192,7 +189,6 @@ func TestTrigger(t *testing.T) {
 }
 
 func TestSetParameter(t *testing.T) {
-	t.Parallel()
 	res := execute([]string{"set", "current", "20", "--apiAddr", API_ADDR})
 
 	expected := "OK\n"
@@ -208,7 +204,6 @@ func TestSetParameter(t *testing.T) {
 }
 
 func TestSetParameterWrong(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name  string
 		input string
@@ -250,8 +245,6 @@ func TestSetMismatch(t *testing.T) {
 }
 
 func TestSetMismatchWrong(t *testing.T) {
-	t.Parallel()
-
 	var letterRunes = []rune("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	b := make([]rune, 256)
 	for i := range b {
@@ -283,8 +276,6 @@ func TestSetMismatchWrong(t *testing.T) {
 }
 
 func TestSetDelay(t *testing.T) {
-	t.Parallel()
-
 	res := execute([]string{"set", "delay", "get_temp", "5s", "--apiAddr", API_ADDR})
 
 	expected := "OK\n"
@@ -301,7 +292,6 @@ func TestSetDelay(t *testing.T) {
 }
 
 func TestSetDelayWrong(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name  string
 		input string
