@@ -11,14 +11,14 @@ import (
 )
 
 var triggerCmd = &cobra.Command{
-	Use:   "trigger [parameter name]",
+	Use:   "trigger [command name]",
 	Args:  cobra.ExactArgs(1),
 	Short: "Command to trigger the sending of the parameter value to the client ",
-	Long: `This commands causes sending the current value of the specified in the
-argument parameter name is sent to the connected TCP client."
+	Long: `This commands causes sending the current value of the specified parameter to the
+connected TCP client. As a argument it is required to pass corresponding getter command name.
 Examples:
-	vd trigger current
-	vd trigger voltage --apiAddr 127.0.0.1:7070
+	vd trigger get_current
+	vd trigger get_voltage --apiAddr 127.0.0.1:7070
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		addr := viper.GetString("apiAddr")
