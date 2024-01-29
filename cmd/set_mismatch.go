@@ -22,7 +22,7 @@ Examples:
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !verifyIPAddr(apiAddr) {
-			return fmt.Errorf("Wrong HTTP address")
+			return fmt.Errorf("wrong HTTP address")
 		}
 
 		c := api.NewClient(apiAddr)
