@@ -36,8 +36,9 @@ Examples:
 }
 
 func init() {
-	rootCmd.AddCommand(getCmd)
-	getCmd.PersistentFlags().StringP("apiAddr", "a", "127.0.0.1:8080", "VD HTTP API address")
+	RootCmd.AddCommand(getCmd)
+	// The default value from here is not used but it is visible in help, that's why it is left here
+	getCmd.PersistentFlags().StringVarP(&apiAddr, "apiAddr", "a", "127.0.0.1:8080", "VD HTTP API address")
 	// Binds viper apiAddr flag to cobra apiAddr pflag
 	viper.BindPFlag("apiAddr", getCmd.PersistentFlags().Lookup("apiAddr"))
 	// Binds viper apiAddr flag to VD_API_ADDR environment variable

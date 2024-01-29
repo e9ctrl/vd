@@ -36,10 +36,10 @@ Examples:
 }
 
 func init() {
-	rootCmd.AddCommand(triggerCmd)
-	triggerCmd.PersistentFlags().StringP("apiAddr", "a", "127.0.0.1:8080", "VD HTTP API address")
+	RootCmd.AddCommand(triggerCmd)
+	triggerCmd.PersistentFlags().StringVarP(&apiAddr, "apiAddr", "a", "127.0.0.1:8080", "VD HTTP API address")
 	// Binds viper apiAddr flag to cobra apiAddr pflag
-	viper.BindPFlag("apiAddr", getCmd.PersistentFlags().Lookup("apiAddr"))
+	viper.BindPFlag("apiAddr", triggerCmd.PersistentFlags().Lookup("apiAddr"))
 	// Binds viper apiAddr flag to VD_API_ADDR environment variable
 	viper.BindEnv("apiAddr", "VD_API_ADDR")
 }

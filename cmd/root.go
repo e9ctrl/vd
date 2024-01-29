@@ -18,6 +18,7 @@ import (
 )
 
 var cfgFile string
+var apiAddr string
 
 const version = "0.1.0"
 const website = "https://vd.e9controls.com"
