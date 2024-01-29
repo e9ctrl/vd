@@ -35,7 +35,7 @@ ____________________________________O/_______
 `
 
 // rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
+var RootCmd = &cobra.Command{
 	Use:   "vd",
 	Args:  cobra.ExactArgs(1),
 	Short: "vd is a easy to use device simulator",
@@ -114,7 +114,7 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 // This is the main method that start Cobra CLI.
 func Execute(f fs.FS) {
 	vdTemplate = f
-	err := rootCmd.Execute()
+	err := RootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
@@ -127,21 +127,21 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.vd.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.vd.yaml)")
 
 	// The default value from here is not used but it is visible in help, that's why it is left here
-	rootCmd.Flags().StringP("httpListenAddr", "", "127.0.0.1:8080", "Address of the HTTP simulator server")
+	RootCmd.Flags().StringP("httpListenAddr", "", "127.0.0.1:8080", "Address of the HTTP simulator server")
 	// Binds viper httpListenAddr flag to cobra httpListenAddr pflag
-	viper.BindPFlag("httpListenAddr", rootCmd.Flags().Lookup("httpListenAddr"))
+	viper.BindPFlag("httpListenAddr", RootCmd.Flags().Lookup("httpListenAddr"))
 	// Binds viper apiAddr flag to VD_HTTP_LISTEN_ADDR environment variable
 	viper.BindEnv("httpListenAddr", "VD_HTTP_LISTEN_ADDR")
 	// Set default flag in viper cause the default one from cobra is not used
 	viper.SetDefault("httpListenAddr", "127.0.0.1:8080")
 
 	// The default value from here is not used but it is visible in help, that's why it is left here
-	rootCmd.Flags().StringP("listenAddr", "", "127.0.0.1:9999", "Virtual device address")
+	RootCmd.Flags().StringP("listenAddr", "", "127.0.0.1:9999", "Virtual device address")
 	// Binds viper listenAddr flag to cobra listenAddr pflag
-	viper.BindPFlag("listenAddr", rootCmd.Flags().Lookup("listenAddr"))
+	viper.BindPFlag("listenAddr", RootCmd.Flags().Lookup("listenAddr"))
 	// Binds viper apiAddr flag to VD_LISTEN_ADDR environment variable
 	viper.BindEnv("listenAddr", "VD_LISTEN_ADDR")
 	// Set default flag in viper cause the default one from cobra is not used
@@ -149,7 +149,7 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 // initConfig reads in config file and ENV variables if set.

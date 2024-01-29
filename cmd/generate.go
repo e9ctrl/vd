@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -15,16 +14,12 @@ var generateCmd = &cobra.Command{
 Usage:
 	vd generate
 `,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Writing vdfile config file...")
-		err := generateConfig()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Fprint(cmd.OutOrStdout(), "Writing vdfile config file...")
+		return generateConfig()
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(generateCmd)
+	RootCmd.AddCommand(generateCmd)
 }

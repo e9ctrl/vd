@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/e9ctrl/vd/api"
 
@@ -20,21 +19,19 @@ Examples:
 	vd get current
 	vd get voltage --apiAddr 127.0.0.1:7070
 `,
-	Run: func(cmd *cobra.Command, args []string) {
-		addr := viper.GetString("apiAddr")
-
-		if !verifyIPAddr(addr) {
-			fmt.Println("Wrong HTTP address")
-			os.Exit(1)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if !verifyIPAddr(apiAddr) {
+			return fmt.Errorf("Wrong HTTP address")
 		}
 
-		c := api.NewClient(addr)
+		c := api.NewClient(apiAddr)
 		res, err := c.GetParameter(args[0])
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return err
 		}
-		fmt.Printf("%s\n", res)
+
+		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", res)
+		return nil
 	},
 }
 

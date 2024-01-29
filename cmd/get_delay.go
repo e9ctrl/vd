@@ -2,12 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/e9ctrl/vd/api"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var getDelayCmd = &cobra.Command{
@@ -21,23 +19,20 @@ Examples:
 	vd get delay set_voltage 				-> get acknowledge delay of set voltage command
 	vd get delay set_voltage --apiAddr 127.0.0.1:7070 	-> get acknowledge delay of set voltage command with not default api addr
 `,
-	Run: func(cmd *cobra.Command, args []string) {
-		addr := viper.GetString("apiAddr")
-
-		if !verifyIPAddr(addr) {
-			fmt.Println("Wrong HTTP address")
-			os.Exit(1)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if !verifyIPAddr(apiAddr) {
+			return fmt.Errorf("Wrong HTTP address")
 		}
 
-		c := api.NewClient(addr)
+		c := api.NewClient(apiAddr)
 
 		t, err := c.GetCommandDelay(args[0])
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return err
 		}
 
-		fmt.Printf("%s\n", t)
+		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", t)
+		return nil
 	},
 }
 
