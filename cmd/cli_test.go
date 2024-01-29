@@ -97,7 +97,7 @@ func TestGetMismatch(t *testing.T) {
 	}{
 		{"get mismatch", "Wrong query\n", API_ADDR},
 		{"wrong api addr", `Error: Get "http://127.0.0.1:5555/mismatch": dial tcp 127.0.0.1:5555: connect: connection refused` + "\n", "127.0.0.1:5555"},
-		{"wrong api addr format", "Error: Wrong HTTP address\n", "127.test"},
+		{"wrong api addr format", "Error: wrong HTTP address\n", "127.test"},
 	}
 
 	for _, tt := range tests {
@@ -123,7 +123,7 @@ func TestGetParameter(t *testing.T) {
 		{"get version", "version", "version 1.0\n", API_ADDR},
 		{"get mode", "mode", "NORM\n", API_ADDR},
 		{"wrong api addr", "version", `Error: Get "http://127.0.0.1:5555/version": dial tcp 127.0.0.1:5555: connect: connection refused` + "\n", "127.0.0.1:5555"},
-		{"wrong api addr format", "version", "Error: Wrong HTTP address\n", "127.test"},
+		{"wrong api addr format", "version", "Error: wrong HTTP address\n", "127.test"},
 		{"wrong cmd", "test", "Error: API error Error: parameter not found: test\n", API_ADDR},
 	}
 
@@ -149,7 +149,7 @@ func TestGetDelay(t *testing.T) {
 	}{
 		{"get_psi delay", "get_psi", "3s\n", API_ADDR},
 		{"wrong api addr", "get_psi", `Error: Get "http://127.0.0.1:5555/delay/get_psi": dial tcp 127.0.0.1:5555: connect: connection refused` + "\n", "127.0.0.1:5555"},
-		{"wrong api addr format", "get_psi", "Error: Wrong HTTP address\n", "127.test"},
+		{"wrong api addr format", "get_psi", "Error: wrong HTTP address\n", "127.test"},
 		{"wrong cmd", "get_test", "Error: API error Error: command not found: get_test\n", API_ADDR},
 	}
 
@@ -175,7 +175,7 @@ func TestTrigger(t *testing.T) {
 	}{
 		{"trig get_current", "get_current", "Error: API error Error: no client available\n", API_ADDR},
 		{"wrong api addr", "get_psi", `Error: Post "http://127.0.0.1:5555/trigger/get_psi": dial tcp 127.0.0.1:5555: connect: connection refused` + "\n", "127.0.0.1:5555"},
-		{"wrong api addr format", "get_psi", "Error: Wrong HTTP address\n", "127.test"},
+		{"wrong api addr format", "get_psi", "Error: wrong HTTP address\n", "127.test"},
 		{"wrong cmd", "get_test", "Error: API error Error: command not found: get_test\n", API_ADDR},
 	}
 
@@ -216,7 +216,7 @@ func TestSetParameterWrong(t *testing.T) {
 		api   string
 	}{
 		{"wrong api addr", "current 30", `Error: Post "http://127.0.0.1:5555/current/30": dial tcp 127.0.0.1:5555: connect: connection refused` + "\n", "127.0.0.1:5555"},
-		{"wrong api addr format", "current 30", "Error: Wrong HTTP address\n", "127.test"},
+		{"wrong api addr format", "current 30", "Error: wrong HTTP address\n", "127.test"},
 		{"wrong set value", "current test", "Error: API error Error: received param type that cannot be converted to int\n", API_ADDR},
 		{"wrong param", "test 20", "Error: API error Error: parameter not found: test\n", API_ADDR},
 	}
@@ -266,7 +266,7 @@ func TestSetMismatchWrong(t *testing.T) {
 		api   string
 	}{
 		{"wrong api addr", "error", `Error: Post "http://127.0.0.1:5555/mismatch/error": dial tcp 127.0.0.1:5555: connect: connection refused` + "\n", "127.0.0.1:5555"},
-		{"wrong api addr format", "error", "Error: Wrong HTTP address\n", "127.test"},
+		{"wrong api addr format", "error", "Error: wrong HTTP address\n", "127.test"},
 		{"too long message", mis, "Error: API error Error: new mismatch message exceeded 255 characters limit: " + mis + "\n", API_ADDR},
 	}
 
@@ -309,7 +309,7 @@ func TestSetDelayWrong(t *testing.T) {
 		api   string
 	}{
 		{"wrong api addr", "get_psi 10s", `Error: Post "http://127.0.0.1:5555/delay/get_psi/10s": dial tcp 127.0.0.1:5555: connect: connection refused` + "\n", "127.0.0.1:5555"},
-		{"wrong api addr format", "get_psi 10s", "Error: Wrong HTTP address\n", "127.test"},
+		{"wrong api addr format", "get_psi 10s", "Error: wrong HTTP address\n", "127.test"},
 		{"wrong set value", "get_psi test", "Error: API error Error: time: invalid duration \"test\"\n", API_ADDR},
 		{"wrong cmd", "get_test 10s", "Error: API error Error: command not found: get_test\n", API_ADDR},
 	}
