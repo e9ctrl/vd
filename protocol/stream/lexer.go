@@ -242,7 +242,7 @@ func isNumber(ch rune) bool {
 }
 
 func isSpecialChar(ch rune) bool {
-	return ch == '?' || ch == ':' || ch == '*' || ch == '=' || ch == '-'
+	return ch == '?' || ch == ':' || ch == '*' || ch == '=' || ch == '-' || ch == ','
 }
 
 func isSpace(ch rune) bool {
