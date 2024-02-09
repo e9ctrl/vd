@@ -237,55 +237,55 @@ func TestRunWithDelays(t *testing.T) {
 	}
 }
 
-// func TestRunWithMismatch(t *testing.T) {
-// 	t.Parallel()
-// 	if testing.Short() {
-// 		t.Skip("skipping test in short mode.")
-// 	}
-// 	defer setupTestCase(t, ADDR4, vdfileMismatch)()
-// 	// connect to server
-// 	conn, err := net.Dial("tcp", ADDR4)
-// 	if err != nil {
-// 		t.Fatalf("could not connect to to server: %v\n", err)
-// 	}
-// 	defer conn.Close()
-// 	// set timeout for reading data
-// 	conn.SetReadDeadline(time.Now().Add(time.Second))
+func TestRunWithMismatch(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+	defer setupTestCase(t, ADDR4, vdfileMismatch)()
+	// connect to server
+	conn, err := net.Dial("tcp", ADDR4)
+	if err != nil {
+		t.Fatalf("could not connect to to server: %v\n", err)
+	}
+	defer conn.Close()
+	// set timeout for reading data
+	conn.SetReadDeadline(time.Now().Add(time.Second))
 
-// 	tests := []struct {
-// 		name  string
-// 		input []byte
-// 		want  []byte
-// 	}{
-// 		{"current check", []byte("CUR?\r\n"), []byte("CUR 300\r\n")},
-// 		{"psi check", []byte("PSI?\r\n"), []byte("PSI 3.30\r\n")},
-// 		{"version check", []byte("VER?\r\n"), []byte("version 1.0\r\n")},
-// 		{"mode check", []byte(":PULSE0:MODE?\r\n"), []byte("NORM\r\n")},
-// 		{"temp check", []byte("TEMP?\r\n"), []byte("TEMP 2.30\r\n")},
-// 		{"ack check", []byte("ACK?\r\n"), []byte("false\r\n")},
-// 		{"current set", []byte("CUR 20\r\n"), []byte("OK\r\n")},
-// 		{"psi set", []byte("PSI 3.46\r\n"), []byte("PSI 3.46 OK\r\n")},
-// 		{"mode set", []byte(":PULSE0:MODE SING\r\n"), []byte("ok\r\n")},
-// 		{"wrong parameter", []byte("test"), []byte("Wrong query\r\n")},
-// 		{"only white characters ", []byte("\t"), []byte("Wrong query\r\n")},
-// 		{"wrong set value", []byte("PSI test\r\n"), []byte("Wrong query\r\n")},
-// 		{"wrong mode", []byte(":PULSE0:MODE TEST\r\n"), []byte("Wrong query\r\n")},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			if _, err := conn.Write(tt.input); err != nil {
-// 				t.Error("could not write payload to TCP server:", err)
-// 			}
+	tests := []struct {
+		name  string
+		input []byte
+		want  []byte
+	}{
+		{"current check", []byte("CUR?\r\n"), []byte("CUR 300\r\n")},
+		{"psi check", []byte("PSI?\r\n"), []byte("PSI 3.30\r\n")},
+		{"version check", []byte("VER?\r\n"), []byte("version 1.0\r\n")},
+		{"mode check", []byte(":PULSE0:MODE?\r\n"), []byte("NORM\r\n")},
+		{"temp check", []byte("TEMP?\r\n"), []byte("TEMP 2.30\r\n")},
+		{"ack check", []byte("ACK?\r\n"), []byte("false\r\n")},
+		{"current set", []byte("CUR 20\r\n"), []byte("OK\r\n")},
+		{"psi set", []byte("PSI 3.46\r\n"), []byte("PSI 3.46 OK\r\n")},
+		{"mode set", []byte(":PULSE0:MODE SING\r\n"), []byte("ok\r\n")},
+		{"wrong parameter", []byte("test"), []byte("Wrong query\r\n")},
+		{"only white characters ", []byte("\t"), []byte("Wrong query\r\n")},
+		{"wrong set value", []byte("PSI test\r\n"), []byte("Wrong query\r\n")},
+		{"wrong mode", []byte(":PULSE0:MODE TEST\r\n"), []byte("Wrong query\r\n")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := conn.Write(tt.input); err != nil {
+				t.Error("could not write payload to TCP server:", err)
+			}
 
-// 			out := make([]byte, 128)
-// 			if _, err := conn.Read(out); err == nil {
-// 				trimmed := bytes.Trim(out, "\x00")
-// 				if !bytes.Equal(tt.want, trimmed) {
-// 					t.Errorf("exp resp: %[1]v %[1]s got: %[2]v %[2]s\n", tt.want, trimmed)
-// 				}
-// 			} else {
-// 				t.Error("could not read from connection")
-// 			}
-// 		})
-// 	}
-// }
+			out := make([]byte, 128)
+			if _, err := conn.Read(out); err == nil {
+				trimmed := bytes.Trim(out, "\x00")
+				if !bytes.Equal(tt.want, trimmed) {
+					t.Errorf("exp resp: %[1]v %[1]s got: %[2]v %[2]s\n", tt.want, trimmed)
+				}
+			} else {
+				t.Error("could not read from connection")
+			}
+		})
+	}
+}

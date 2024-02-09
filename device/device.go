@@ -66,7 +66,8 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 
 	txs, err := s.proto.Decode(cmd)
 	if err != nil {
-		fmt.Println(err)
+		log.ERR(err)
+		return nil
 	}
 
 	s.lock.Lock()
@@ -82,8 +83,8 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		if tx.Typ == protocol.TxSetParam {
 			for p, v := range tx.Payload {
 				if err := s.SetParameter(p, v); err != nil {
-					fmt.Println(err)
-					return nil
+					log.ERR(err)
+					txs[i].Typ = protocol.TxMismatch
 				}
 			}
 		}
@@ -94,8 +95,8 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		for p := range tx.Payload {
 			v, err := s.GetParameter(p)
 			if err != nil {
-				fmt.Println(err)
-				return nil
+				log.ERR(err)
+				txs[i].Typ = protocol.TxMismatch
 			}
 
 			txs[i].Payload[p] = v
@@ -104,7 +105,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 
 	buf, err := s.proto.Encode(txs)
 	if err != nil {
-		fmt.Println(err)
+		log.ERR(err)
 		return nil
 	}
 
