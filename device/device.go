@@ -177,7 +177,6 @@ func (s *StreamDevice) GetMismatch() []byte {
 	mis := s.vdfile.Mismatch
 	s.lock.Unlock()
 	return mis
-	//return s.vdfile.Mismatch
 }
 
 func (s *StreamDevice) SetMismatch(value string) error {
@@ -190,30 +189,34 @@ func (s *StreamDevice) SetMismatch(value string) error {
 	return nil
 }
 
-func (s *StreamDevice) Trigger(name string) error {
-	// s.lock.Lock()
-	// _, exists := s.vdfile.Commands[name]
-	// s.lock.Unlock()
-	// if !exists {
-	// 	return protocols.ErrCommandNotFound
-	// }
+func (s *StreamDevice) Trigger(cmdName string) error {
+	s.lock.Lock()
+	_, exists := s.vdfile.Commands[cmdName]
+	s.lock.Unlock()
+	if !exists {
+		return protocol.ErrCommandNotFound
+	}
 
-	// res, err := s.proto.Trigger(name)
-	// if err != nil {
-	// 	return err
-	// }
+	tx := s.proto.Trigger(cmdName)
+	for p := range tx.Payload {
+		v, err := s.GetParameter(p)
+		if err != nil {
+			return err
+		}
 
-	// if res == nil {
-	// 	return nil
-	// }
+		tx.Payload[p] = v
+	}
 
-	// res = s.appendOutTerminator(res)
+	buf, err := s.proto.Encode([]protocol.Transaction{tx})
+	if err != nil {
+		return err
+	}
 
-	// select {
-	// case s.triggered <- res:
-	// default:
-	// 	return ErrNoClient
-	// }
+	select {
+	case s.triggered <- buf:
+	default:
+		return ErrNoClient
+	}
 
 	return nil
 }

@@ -13,6 +13,7 @@ var (
 type Protocol interface {
 	Decode(data []byte) ([]Transaction, error)
 	Encode(txs []Transaction) ([]byte, error)
+	Trigger(cmdName string) Transaction
 }
 
 type TransactionType int

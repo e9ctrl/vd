@@ -116,6 +116,26 @@ func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
 	return out, nil
 }
 
+func (p *Parser) Trigger(cmdName string) protocol.Transaction {
+	tx := protocol.Transaction{}
+
+	responseItems := p.commandPatterns[cmdName].resItems
+	if len(responseItems) == 0 {
+		return tx
+	}
+
+	tx.Payload = make(map[string]any)
+	tx.CommandName = cmdName
+
+	for _, item := range responseItems {
+		if item.Type() == ItemParam {
+			tx.Payload[item.Value()] = nil
+		}
+	}
+
+	return tx
+}
+
 func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 	commandPattern, err := buildCommandPatterns(vdfile.Commands)
 	if err != nil {
