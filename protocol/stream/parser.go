@@ -1,14 +1,17 @@
 package stream
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 
 	"github.com/e9ctrl/vd/command"
-	"github.com/e9ctrl/vd/parameter"
-	"github.com/e9ctrl/vd/protocols"
+	"github.com/e9ctrl/vd/log"
+	"github.com/e9ctrl/vd/protocol"
 	"github.com/e9ctrl/vd/vdfile"
 )
 
@@ -25,11 +28,38 @@ type CommandPattern struct {
 }
 
 type Parser struct {
-	vdfile          *vdfile.VDFile
+	splitter        bufio.SplitFunc
+	outTerminator   []byte
+	mismatch        []byte
 	commandPatterns map[string]CommandPattern
 }
 
-func (p *Parser) Handle(input string) ([]byte, string, error) {
+func (p *Parser) Decode(data []byte) ([]protocol.Transaction, error) {
+
+	r := bytes.NewReader(data)
+	scanner := bufio.NewScanner(r)
+	scanner.Split(p.splitter)
+
+	var err error
+	txs := make([]protocol.Transaction, 0)
+	for scanner.Scan() {
+		txs = append(txs, p.decode(scanner.Text()))
+	}
+
+	if err = scanner.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error scanning: ", err.Error())
+		return []protocol.Transaction{}, err
+	}
+
+	return txs, nil
+}
+
+func (p *Parser) decode(input string) protocol.Transaction {
+
+	tx := protocol.Transaction{
+		Payload: make(map[string]any),
+	}
+
 	// It happens that input string matches several patterns
 	// To prevent from random matches, it's better to sort patterns
 	// and always use the longest slice of Items that matches input
@@ -39,13 +69,14 @@ func (p *Parser) Handle(input string) ([]byte, string, error) {
 		req  []Item
 		vals map[string]any
 	}{}
-	// This copies data from map to struct to sort it
-	// Maps cannot be sorted
+
 	for cmdName, pattern := range p.commandPatterns {
 		match, values := checkPattern(input, pattern.reqItems)
 		if !match {
 			continue
 		}
+		// This copies data from map to struct to sort it
+		// Maps cannot be sorted
 		m := struct {
 			cmd  string
 			res  []Item
@@ -62,7 +93,8 @@ func (p *Parser) Handle(input string) ([]byte, string, error) {
 
 	// if nothing is matched, just return an error
 	if len(matched) == 0 {
-		return nil, "", protocols.ErrCommandNotFound
+		log.ERR(protocol.ErrCommandNotFound)
+		return tx
 	}
 
 	// sorting struct from those containg the longest request slice of items
@@ -71,48 +103,76 @@ func (p *Parser) Handle(input string) ([]byte, string, error) {
 			return len(matched[i].req) > len(matched[j].req)
 		})
 	}
-
 	// alwyas use first index from slice, in that way
 	// it does not matter how many matches we have
 	values := matched[0].vals
-	cmdName := matched[0].cmd
+	tx.CommandName = matched[0].cmd
 	res := matched[0].res
 
 	if len(values) > 0 {
 		// set params
-		for name, val := range values {
-			if param, exist := p.vdfile.Params[name]; exist {
-				err := param.SetValue(val)
-				if err != nil {
-					if err == parameter.ErrValNotAllowed {
-						return nil, cmdName, errors.Join(protocols.ErrWrongSetVal, err)
-					}
-					return nil, cmdName, err
-				}
-			} else {
-				// error param not found
-				// todo: we might need to wrap the errors to provide more info
-				return nil, cmdName, protocols.ErrParamNotFound
-			}
+		tx.Typ = protocol.TxSetParam
+		for paramName, val := range values {
+			tx.Payload[paramName] = val
+		}
+
+		return tx
+	}
+
+	//get params
+	tx.Typ = protocol.TxGetParam
+	for _, item := range res {
+		if item.Type() == ItemParam {
+			tx.Payload[item.Value()] = nil
+
+		}
+	}
+	return tx
+}
+
+func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
+
+	var buf []byte
+	var out []byte
+
+	for _, tx := range txs {
+		if tx.Typ == protocol.TxMismatch {
+			buf = p.mismatch
+			log.MSM(string(buf))
+		} else {
+			responseItems := p.commandPatterns[tx.CommandName].resItems
+			buf = constructOutput(responseItems, tx.Payload)
+		}
+		if len(buf) > 0 {
+			buf = append(buf, p.outTerminator...)
+			out = append(out, buf...)
 		}
 	}
 
-	return p.makeResponse(res), cmdName, nil
+	return out, nil
 }
 
-func (p *Parser) Trigger(cmdName string) ([]byte, error) {
-	pattern, exist := p.commandPatterns[cmdName]
-	if !exist {
-		return nil, protocols.ErrCommandNotFound
+func (p *Parser) Trigger(cmdName string) protocol.Transaction {
+	tx := protocol.Transaction{}
+
+	responseItems := p.commandPatterns[cmdName].resItems
+	if len(responseItems) == 0 {
+		return tx
 	}
-	return p.makeResponse(pattern.resItems), nil
+
+	tx.Payload = make(map[string]any)
+	tx.CommandName = cmdName
+
+	for _, item := range responseItems {
+		if item.Type() == ItemParam {
+			tx.Payload[item.Value()] = nil
+		}
+	}
+
+	return tx
 }
 
-func (p Parser) makeResponse(items []Item) []byte {
-	return constructOutput(items, p.vdfile.Params)
-}
-
-func NewParser(vdfile *vdfile.VDFile) (protocols.Protocol, error) {
+func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 	commandPattern, err := buildCommandPatterns(vdfile.Commands)
 	if err != nil {
 		return nil, err
@@ -120,7 +180,27 @@ func NewParser(vdfile *vdfile.VDFile) (protocols.Protocol, error) {
 
 	return &Parser{
 		commandPatterns: commandPattern,
-		vdfile:          vdfile,
+		outTerminator:   vdfile.OutTerminator,
+		mismatch:        vdfile.Mismatch,
+		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+			if atEOF && len(data) == 0 {
+				return 0, nil, nil
+			}
+			if vdfile.InTerminator == nil {
+				return 0, nil, nil
+			}
+			// Find sequence of terminator bytes
+			if i := bytes.Index(data, vdfile.InTerminator); i >= 0 {
+				return i + len(vdfile.InTerminator), data[0:i], nil
+			}
+
+			// If we're at EOF, we have a final, non-terminated line. Return it.
+			if atEOF {
+				return len(data), data, nil
+			}
+			// Request more data.
+			return 0, nil, nil
+		},
 	}, nil
 }
 
@@ -302,7 +382,7 @@ func parseString(input string) string {
 	return output
 }
 
-func constructOutput(items []Item, params map[string]parameter.Parameter) []byte {
+func constructOutput(items []Item, payload map[string]any) []byte {
 	var (
 		out    []byte
 		temp   string
@@ -319,10 +399,13 @@ func constructOutput(items []Item, params map[string]parameter.Parameter) []byte
 			format = i.Value()
 
 		case ItemParam:
+
 			// Note:
 			// i.Value() hold the parameter name
 			// which the parameter instance itself can be retrieve from the vdfile.Params
-			temp += fmt.Sprintf(format, params[i.Value()].Value())
+			// check the type of payload[i.Value()]
+			add := fmt.Sprintf(format, payload[i.Value()])
+			temp += add
 
 		case ItemEscape:
 			temp += i.Value()

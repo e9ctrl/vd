@@ -9,8 +9,8 @@ import (
 
 	"github.com/e9ctrl/vd/command"
 	"github.com/e9ctrl/vd/parameter"
-	"github.com/e9ctrl/vd/protocols"
-	"github.com/e9ctrl/vd/protocols/stream"
+	"github.com/e9ctrl/vd/protocol"
+	"github.com/e9ctrl/vd/protocol/stream"
 	"github.com/e9ctrl/vd/vdfile"
 
 	"testing"
@@ -312,36 +312,6 @@ func TestHandle(t *testing.T) {
 	}
 }
 
-func TestParseTok(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name string
-		req  string
-		exp  []byte
-	}{
-		{"current cmd", "CUR?", []byte("CUR 50\r\n")},
-		{"psi cmd", "PSI?", []byte("PSI 24.10\r\n")},
-		{"version cmd", "ver?", []byte("v1.0.0\r\n")},
-		{"empty request", "", []byte("error\r\n")},
-		{"two params cmd", "get two 2", []byte("ver: v1.0.0 off: 53.4\r\n")},
-		{"set current2 cmd", "CUR2 30", []byte("OK\r\n")},
-		{"set voltage2 cmd", "VOLT2 2.367", []byte("VOLT2 2.367 OK\r\n")},
-		{"wrong request", "20", []byte("error\r\n")},
-		{"wrong request 2", "Wrong param?", []byte("error\r\n")},
-		{"set wrong value", "PSI test", []byte("error\r\n")},
-		{"set wrong bool", "set ch1 test", []byte("error\r\n")},
-		{"set wrong opt", "set status test", []byte("error\r\n")},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			res := dev.parseTok(tt.req)
-			if !bytes.Equal(res, tt.exp) {
-				t.Errorf("%s: exp resp: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
-			}
-		})
-	}
-}
-
 func TestTriggerCommand(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -356,8 +326,9 @@ func TestTriggerCommand(t *testing.T) {
 		{"mode command", "get_mode", []byte("true\r\n"), nil},
 		{"two params command", "get_two_params", []byte("v1.0.0 53.4\r\n"), nil},
 		{"two params command2 ", "get_two_params_2", []byte("ver: v1.0.0 off: 53.4\r\n"), nil},
-		{"empty command", "", []byte(nil), protocols.ErrCommandNotFound},
-		{"wrong command", "test", []byte(nil), protocols.ErrCommandNotFound},
+		{"empty command", "", []byte(nil), protocol.ErrCommandNotFound},
+		{"wrong command", "test", []byte(nil), protocol.ErrCommandNotFound},
+		{"set command", "set_mode", []byte(nil), nil},
 	}
 
 	for _, tt := range tests {
@@ -568,7 +539,6 @@ func TestSetMismatch(t *testing.T) {
 		{"standard set", "test test", "test test", ""},
 		{"empty mismatch", "", "", ""},
 		{"set over limit", mis, "", "mismatch message: " + mis + " - exceeded 255 characters limit"},
-		// bring back error mismatch
 		{"bring back error mismatch", "error", "error", ""},
 	}
 	for _, tt := range tests {
