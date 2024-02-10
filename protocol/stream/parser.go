@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/e9ctrl/vd/command"
@@ -42,11 +43,7 @@ func (p *Parser) Decode(data []byte) ([]protocol.Transaction, error) {
 	var err error
 	txs := make([]protocol.Transaction, 0)
 	for scanner.Scan() {
-		tx, err := p.decode(scanner.Text())
-		if err != nil {
-			return []protocol.Transaction{}, err
-		}
-		txs = append(txs, tx)
+		txs = append(txs, p.decode(scanner.Text()))
 	}
 
 	if err = scanner.Err(); err != nil {
@@ -57,41 +54,80 @@ func (p *Parser) Decode(data []byte) ([]protocol.Transaction, error) {
 	return txs, nil
 }
 
-func (p *Parser) decode(input string) (protocol.Transaction, error) {
+func (p *Parser) decode(input string) protocol.Transaction {
 
 	tx := protocol.Transaction{
 		Payload: make(map[string]any),
 	}
+
+	// It happens that input string matches several patterns
+	// To prevent from random matches, it's better to sort patterns
+	// and always use the longest slice of Items that matches input
+	matched := []struct {
+		cmd  string
+		res  []Item
+		req  []Item
+		vals map[string]any
+	}{}
 
 	for cmdName, pattern := range p.commandPatterns {
 		match, values := checkPattern(input, pattern.reqItems)
 		if !match {
 			continue
 		}
-		tx.CommandName = cmdName
-
-		if len(values) > 0 {
-			// set params
-			tx.Typ = protocol.TxSetParam
-			for paramName, val := range values {
-				tx.Payload[paramName] = val
-
-			}
-
-			return tx, nil
+		// This copies data from map to struct to sort it
+		// Maps cannot be sorted
+		m := struct {
+			cmd  string
+			res  []Item
+			req  []Item
+			vals map[string]any
+		}{
+			cmd:  cmdName,
+			req:  pattern.reqItems,
+			res:  pattern.resItems,
+			vals: values,
 		}
-
-		//get params
-		tx.Typ = protocol.TxGetParam
-		for _, item := range pattern.resItems {
-			if item.Type() == ItemParam {
-				tx.Payload[item.Value()] = nil
-
-			}
-		}
-
+		matched = append(matched, m)
 	}
-	return tx, nil
+
+	// if nothing is matched, just return an error
+	if len(matched) == 0 {
+		log.ERR(protocol.ErrCommandNotFound)
+		return tx
+	}
+
+	// sorting struct from those containg the longest request slice of items
+	if len(matched) > 1 {
+		sort.Slice(matched, func(i, j int) bool {
+			return len(matched[i].req) > len(matched[j].req)
+		})
+	}
+	// alwyas use first index from slice, in that way
+	// it does not matter how many matches we have
+	values := matched[0].vals
+	tx.CommandName = matched[0].cmd
+	res := matched[0].res
+
+	if len(values) > 0 {
+		// set params
+		tx.Typ = protocol.TxSetParam
+		for paramName, val := range values {
+			tx.Payload[paramName] = val
+		}
+
+		return tx
+	}
+
+	//get params
+	tx.Typ = protocol.TxGetParam
+	for _, item := range res {
+		if item.Type() == ItemParam {
+			tx.Payload[item.Value()] = nil
+
+		}
+	}
+	return tx
 }
 
 func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {

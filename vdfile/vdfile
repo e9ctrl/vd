@@ -48,6 +48,37 @@
   typ = "int64"
   val = 255
 
+[[parameter]]
+  name = "tec_max_current"
+  typ = "int64"
+  val = 300
+
+[[parameter]]
+  name = "enable"
+  typ = "string"
+  val = "on"
+  opt = "off|on"
+
+[[command]]
+  name = "get_status"
+  req = "get ch1 status"
+  res = "get ch1 status\r\r\n = {%s:enable}  "
+
+[[command]]
+  name = "set_status"
+  req = "set ch1 {%s:enable}"
+  res = "set ch1 {%s:enable}\r"
+
+[[command]]
+  name = "get_tec"
+  req = "get ch1 tec"
+  res = "get ch1 tec\r\r\n = {%3X:tec_max_current} "
+
+[[command]]
+  name = "set_tec"
+  req = "set ch1 tec{%03X:tec_max_current}"
+  res = "set ch1 tec{%3X:tec_max_current}\r"
+
 [[command]]
   name = "get_current"
   req = "CUR?"
