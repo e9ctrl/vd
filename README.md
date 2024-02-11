@@ -154,7 +154,7 @@ mismatch = "Wrong query"
 [[command]]
   name = "get_status"
   req = "status?"
-  res = mode:{%s:mode},temp:{%2f:temperature}
+  res = "mode:{%s:mode},temp:{%2f:temperature}"
 
 ```
 
