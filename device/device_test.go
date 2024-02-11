@@ -9,8 +9,8 @@ import (
 
 	"github.com/e9ctrl/vd/command"
 	"github.com/e9ctrl/vd/parameter"
-	"github.com/e9ctrl/vd/protocols"
-	"github.com/e9ctrl/vd/protocols/stream"
+	"github.com/e9ctrl/vd/protocol"
+	"github.com/e9ctrl/vd/protocol/stream"
 	"github.com/e9ctrl/vd/vdfile"
 
 	"testing"
@@ -312,36 +312,6 @@ func TestHandle(t *testing.T) {
 	}
 }
 
-func TestParseTok(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name string
-		req  string
-		exp  []byte
-	}{
-		{"current cmd", "CUR?", []byte("CUR 50\r\n")},
-		{"psi cmd", "PSI?", []byte("PSI 24.10\r\n")},
-		{"version cmd", "ver?", []byte("v1.0.0\r\n")},
-		{"empty request", "", []byte("error\r\n")},
-		{"two params cmd", "get two 2", []byte("ver: v1.0.0 off: 53.4\r\n")},
-		{"set current2 cmd", "CUR2 30", []byte("OK\r\n")},
-		{"set voltage2 cmd", "VOLT2 2.367", []byte("VOLT2 2.367 OK\r\n")},
-		{"wrong request", "20", []byte("error\r\n")},
-		{"wrong request 2", "Wrong param?", []byte("error\r\n")},
-		{"set wrong value", "PSI test", []byte("error\r\n")},
-		{"set wrong bool", "set ch1 test", []byte("error\r\n")},
-		{"set wrong opt", "set status test", []byte("error\r\n")},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			res := dev.parseTok(tt.req)
-			if !bytes.Equal(res, tt.exp) {
-				t.Errorf("%s: exp resp: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
-			}
-		})
-	}
-}
-
 func TestTriggerCommand(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -356,8 +326,9 @@ func TestTriggerCommand(t *testing.T) {
 		{"mode command", "get_mode", []byte("true\r\n"), nil},
 		{"two params command", "get_two_params", []byte("v1.0.0 53.4\r\n"), nil},
 		{"two params command2 ", "get_two_params_2", []byte("ver: v1.0.0 off: 53.4\r\n"), nil},
-		{"empty command", "", []byte(nil), protocols.ErrCommandNotFound},
-		{"wrong command", "test", []byte(nil), protocols.ErrCommandNotFound},
+		{"empty command", "", []byte(nil), protocol.ErrCommandNotFound},
+		{"wrong command", "test", []byte(nil), protocol.ErrCommandNotFound},
+		{"set command", "set_mode", []byte(nil), nil},
 	}
 
 	for _, tt := range tests {
@@ -405,8 +376,8 @@ func TestGetParameter(t *testing.T) {
 		{"get offset", "offset", 53.4, nil},
 		{"get status", "status", "stop", nil},
 		{"get mode", "mode", true, nil},
-		{"not know param", "test", nil, protocols.ErrParamNotFound},
-		{"empty param name", "", nil, protocols.ErrParamNotFound},
+		{"not know param", "test", nil, protocol.ErrParamNotFound},
+		{"empty param name", "", nil, protocol.ErrParamNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -435,7 +406,7 @@ func TestSetParameter(t *testing.T) {
 		{"set string", "acq", "stopped", "stopped", nil},
 		{"set bool", "height", false, false, nil},
 		{"set with opt", "state", "not ok", "not ok", nil},
-		{"wrong param name", "test", "test", nil, protocols.ErrParamNotFound},
+		{"wrong param name", "test", "test", nil, protocol.ErrParamNotFound},
 		{"set wrong value", "diode_offset", 34.5, int64(30), parameter.ErrWrongTypeVal},
 		{"set value outside opt", "state", "test", "not ok", parameter.ErrValNotAllowed},
 	}
@@ -472,7 +443,7 @@ func TestGetCommandDelay(t *testing.T) {
 	}{
 		{"get get current delay", "get_current", time.Second, nil},
 		{"get set psi delay", "set_psi", time.Millisecond * 10, nil},
-		{"wrong command name", "set_test", 0, protocols.ErrCommandNotFound},
+		{"wrong command name", "set_test", 0, protocol.ErrCommandNotFound},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -498,7 +469,7 @@ func TestSetCommandDelay(t *testing.T) {
 	}{
 		{"get set voltage delay", "get_voltage", "300us", 300 * time.Microsecond, nil},
 		{"get set psi delay", "set_max", "20ms", 20 * time.Millisecond, nil},
-		{"wrong command name", "set_test", "10s", 0, protocols.ErrCommandNotFound},
+		{"wrong command name", "set_test", "10s", 0, protocol.ErrCommandNotFound},
 		{"wrong delay value", "set_current", "test", 0, nil},
 	}
 	for _, tt := range tests {

@@ -6,6 +6,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/e9ctrl/vd/log"
 )
 
 const (
@@ -97,7 +99,9 @@ func (s *Server) handleConnection(conn net.Conn) {
 			break
 		}
 
+		log.RX(buffer[:n])
 		response := s.d.Handle(buffer[:n])
+		log.TX(response)
 		_, writeErr := conn.Write(response)
 		if writeErr != nil {
 			fmt.Println("error writing response", writeErr.Error())

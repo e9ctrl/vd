@@ -2,6 +2,8 @@ package log
 
 import (
 	"fmt"
+	"strings"
+	"unicode"
 
 	"github.com/jwalton/gchalk"
 )
@@ -30,7 +32,7 @@ func API(msg ...any) {
 }
 
 func MSM(msg ...any) {
-	fmt.Println(prefixMSM, "[returning mismatch]", msg)
+	fmt.Println(prefixMSM, "command unknown, returning mismatch", msg)
 }
 
 func DLY(msg ...any) {
@@ -46,10 +48,27 @@ func CMD(str ...any) {
 	fmt.Println(prefixCMD, str)
 }
 
-func TX(str string, hex []byte) {
-	printWithPrefix(prefixTX, str, hex)
+func TX(msg []byte) {
+	str := string(msg)
+
+	str = strings.Map(func(r rune) rune {
+		if unicode.IsPrint(r) {
+			return r
+		}
+		return -1
+	}, str)
+
+	printWithPrefix(prefixTX, str, msg)
 }
 
-func RX(str string, hex []byte) {
-	printWithPrefix(prefixRX, str, hex)
+func RX(msg []byte) {
+	str := string(msg)
+
+	str = strings.Map(func(r rune) rune {
+		if unicode.IsPrint(r) {
+			return r
+		}
+		return -1
+	}, str)
+	printWithPrefix(prefixRX, str, msg)
 }

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	lexer "github.com/e9ctrl/vd/protocols/stream"
+	lexer "github.com/e9ctrl/vd/protocol/stream"
 )
 
 func TestLexer(t *testing.T) {
@@ -43,7 +43,9 @@ func TestLexer(t *testing.T) {
 		{"new line between params", "val: {%s:param}\n{%s:param}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEscape, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "val: {%sparam}\n{%sparam}"},
 		{"number as a command", "get two 2", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "get two 2"},
 		{"hex command", "HEX 0x{%03X:hex}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "HEX 0x{%03Xhex}"},
-		{"from slink", ":STAT POW,{%.1f:pow},1.1,2.2,3.3,4.4", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemCommand, lexer.ItemEOF}, ":STAT POW,{%.1fpow},1.1,2.2,3.3,4.4"},
+		{"long command", ":STAT POW,{%.1f:pow},1.1,2.2,3.3,4.4", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemCommand, lexer.ItemEOF}, ":STAT POW,{%.1fpow},1.1,2.2,3.3,4.4"},
+		{"set ch1 tec cmd", "set ch1 tec07A", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "set ch1 tec07A"},
+		{"set ch1 tec config", "set ch1 tec{%03X:tec_max_current}\r", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEscape, lexer.ItemEOF}, "set ch1 tec{%03Xtec_max_current}\r"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
