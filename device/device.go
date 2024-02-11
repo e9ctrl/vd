@@ -211,7 +211,7 @@ func (s *StreamDevice) Trigger(cmdName string) error {
 	_, exists := s.vdfile.Commands[cmdName]
 	s.lock.Unlock()
 	if !exists {
-		return protocol.ErrCommandNotFound
+		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, cmdName)
 	}
 
 	tx := s.proto.Trigger(cmdName)
