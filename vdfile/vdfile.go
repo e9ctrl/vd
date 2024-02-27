@@ -58,6 +58,16 @@ func ReadVDFile(path string) (*VDFile, error) {
 	return ReadVDFileFromConfig(config)
 }
 
+// Read VDFile from disk from the given filepath
+func ReadVDFileMod(path string) (*VDFileMod, error) {
+	config, err := DecodeVDFileMod(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed decoding file with err %w", err)
+	}
+
+	return ReadVDFileFromConfigMod(config)
+}
+
 // Creates vdfile struct based on Config containing result of TOML file parsing
 func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 	vdfile := &VDFile{
