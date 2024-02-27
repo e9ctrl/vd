@@ -1,0 +1,13 @@
+protocol = modbus
+
+[[parameter]]
+  name = "state"
+  typ = "coil"
+  val = "1"
+  addr = 0x01
+
+[[parameter]]
+  name = "mode"
+  typ = "di"
+  val = "1"
+  addr = 0x03

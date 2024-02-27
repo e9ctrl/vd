@@ -8,6 +8,7 @@ import (
 
 	"github.com/e9ctrl/vd/log"
 	"github.com/e9ctrl/vd/protocol"
+	"github.com/e9ctrl/vd/protocol/modbus"
 	"github.com/e9ctrl/vd/protocol/stream"
 	"github.com/e9ctrl/vd/server"
 	"github.com/e9ctrl/vd/vdfile"
@@ -33,9 +34,14 @@ type StreamDevice struct {
 }
 
 // Create a new stream device given the virtual device configuration file
-func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
+func NewDevice(vdfile *vdfile.VDFile, vdfileMod *vdfile.VDFileMod) (*StreamDevice, error) {
 	// make sure the parser is initialize successfully
 	parser, err := stream.NewParser(vdfile)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = modbus.NewParser(vdfileMod)
 	if err != nil {
 		return nil, err
 	}

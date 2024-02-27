@@ -45,4 +45,7 @@ type Transaction struct {
 	Typ         TransactionType
 	CommandName string
 	Payload     map[string]any
+	Origin      []byte // for modbus to keep info about request
 }
+
+// moze dodac tutaj oryginal requesta w bytach?
