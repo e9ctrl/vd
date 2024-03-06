@@ -30,6 +30,8 @@ func getFunctionName(f uint8) string {
 		return "ReadDiscreteInputs"
 	case ReadHoldingRegistersTyp:
 		return "ReadHoldingRegisters"
+	case ReadInputRegistersTyp:
+		return "ReadInputRegisters"
 	case WriteSingleCoilTyp:
 		return "WriteSingleCoin"
 	case WriteHoldingRegisterTyp:
@@ -51,6 +53,7 @@ type TCPFrame struct {
 	Device                uint8
 	Function              uint8
 	Data                  []byte
+	Err                   *Exception
 }
 
 // NewTCPFrame converts a packet to a Modbus TCP frame.
@@ -67,6 +70,7 @@ func NewTCPFrame(packet []byte) (*TCPFrame, error) {
 		Device:                uint8(packet[6]),
 		Function:              uint8(packet[7]),
 		Data:                  packet[8:],
+		Err:                   &Success,
 	}
 
 	// Check expected vs actual packet length.
@@ -113,11 +117,11 @@ func (frame *TCPFrame) SetData(data []byte) {
 }
 
 // SetException sets the Modbus exception code in the frame.
-/*func (frame *TCPFrame) SetException(exception *Exception) {
+func (frame *TCPFrame) SetException() {
 	frame.Function = frame.Function | 0x80
-	frame.Data = []byte{byte(*exception)}
+	frame.Data = []byte{byte(*frame.Err)}
 	frame.setLength()
-}*/
+}
 
 func (frame *TCPFrame) setLength() {
 	frame.Length = uint16(len(frame.Data) + 2)

@@ -35,7 +35,14 @@ func ReadVDFileFromConfigMod(config ConfigModbus) (*VDFileMod, error) {
 	}
 
 	for _, param := range config.Params {
-		currentParam, err := parameter.New(param.Val, param.Opt, param.Typ)
+		var paramType string
+		if param.Typ == "di" || param.Typ == "coil" {
+			paramType = "uint"
+		} else {
+			paramType = "uint16"
+		}
+
+		currentParam, err := parameter.New(param.Val, param.Opt, paramType)
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Val, err)
 		}

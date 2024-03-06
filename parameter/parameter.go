@@ -10,7 +10,7 @@ import (
 )
 
 type paramType interface {
-	int | int32 | int64 | float32 | float64 | bool | string
+	uint | uint16 | int | int32 | int64 | float32 | float64 | bool | string
 }
 
 var (
@@ -19,6 +19,8 @@ var (
 	ErrWrongStringVal   = errors.New("could not convert paramTypeString to string")
 	ErrUnknownParamType = errors.New("unknown parameter type")
 	ErrWrongIntVal      = errors.New("received param type that cannot be converted to int")
+	ErrWrongUintVal     = errors.New("received param type that cannot be converted to uint")
+	ErrWrongUint16Val   = errors.New("received param type that cannot be converted to uint16")
 	ErrWrongFloatVal    = errors.New("received param type that cannot be converted to float")
 	ErrWrongBoolVal     = errors.New("received param type that cannot be converted to bool")
 	ErrWrongTypeVal     = errors.New("received value with invalid type")
@@ -48,6 +50,10 @@ type ConcreteParameter[T paramType] struct {
 // Parameter constructor, the constructor will automatically create the ConcreteParameter instance base on the value passed on in the params
 func New(val any, opt, typ string) (Parameter, error) {
 	switch typ {
+	case "uint":
+		return newParameter[uint](reflect.Uint, val, opt)
+	case "uint16":
+		return newParameter[uint16](reflect.Uint16, val, opt)
 	case "int16":
 		return newParameter[int](reflect.Int, val, opt)
 	case "int32":
@@ -162,6 +168,20 @@ func (p *ConcreteParameter[T]) Opts() []string {
 // It converts received string to the corresponding value under parameter.
 func convertStringToVal[T paramType](typ reflect.Kind, val string) (*T, error) {
 	switch typ {
+	case reflect.Uint:
+		if uintVal, err := strconv.ParseUint(val, 10, 8); err == nil {
+			uintVal8 := uint(uintVal)
+			return interface{}(&uintVal8).(*T), nil
+		} else {
+			return nil, ErrWrongIntVal
+		}
+	case reflect.Uint16:
+		if uintVal, err := strconv.ParseUint(val, 10, 16); err == nil {
+			uintVal16 := uint16(uintVal)
+			return interface{}(&uintVal16).(*T), nil
+		} else {
+			return nil, ErrWrongIntVal
+		}
 	case reflect.Int:
 		if intVal, err := strconv.Atoi(val); err == nil {
 			return interface{}(&intVal).(*T), nil
@@ -239,6 +259,22 @@ func buildOptions[T paramType](typ reflect.Kind, opt string) ([]T, error) {
 	if opt != "" {
 		splits := strings.Split(opt, "|")
 		switch typ {
+		case reflect.Uint:
+			for _, val := range splits {
+				if uintVal, err := strconv.ParseUint(val, 10, 8); err == nil {
+					opts = append(opts, interface{}(uint(uintVal)).(T))
+				} else {
+					return nil, ErrWrongUintVal
+				}
+			}
+		case reflect.Uint16:
+			for _, val := range splits {
+				if uintVal, err := strconv.ParseUint(val, 16, 16); err == nil {
+					opts = append(opts, interface{}(uint16(uintVal)).(T))
+				} else {
+					return nil, ErrWrongUint16Val
+				}
+			}
 		case reflect.Int:
 			for _, val := range splits {
 				if intVal, err := strconv.Atoi(val); err == nil {

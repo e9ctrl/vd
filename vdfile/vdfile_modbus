@@ -1,4 +1,4 @@
-protocol = modbus
+protocol = "modbus"
 
 [[parameter]]
   name = "state"
@@ -7,7 +7,31 @@ protocol = modbus
   addr = 0x01
 
 [[parameter]]
+  name = "state2"
+  typ = "coil"
+  val = "1"
+  addr = 0x02
+
+[[parameter]]
   name = "mode"
   typ = "di"
   val = "1"
   addr = 0x03
+
+[[parameter]]
+  name = "temp"
+  typ = "holdreg"
+  val = "20"
+  addr = 0x05
+
+[[parameter]]
+  name = "temp2"
+  typ = "holdreg"
+  val = "54211"
+  addr = 0x07
+
+[[parameter]]
+  name = "volt"
+  typ = "inreg"
+  val = "30"
+  addr = 0x06

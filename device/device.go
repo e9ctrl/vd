@@ -9,7 +9,7 @@ import (
 	"github.com/e9ctrl/vd/log"
 	"github.com/e9ctrl/vd/protocol"
 	"github.com/e9ctrl/vd/protocol/modbus"
-	"github.com/e9ctrl/vd/protocol/stream"
+	//"github.com/e9ctrl/vd/protocol/stream"
 	"github.com/e9ctrl/vd/server"
 	"github.com/e9ctrl/vd/vdfile"
 )
@@ -27,29 +27,33 @@ var (
 // Stream device store the information of a set of parameters
 type StreamDevice struct {
 	server.Handler
-	vdfile    *vdfile.VDFile
-	proto     protocol.Protocol
-	triggered chan []byte
-	lock      sync.RWMutex
+	vdfile      *vdfile.VDFile
+	vdfileMod   *vdfile.VDFileMod
+	proto       protocol.Protocol
+	triggered   chan []byte
+	lock        sync.RWMutex
+	protocolTyp string
 }
 
 // Create a new stream device given the virtual device configuration file
 func NewDevice(vdfile *vdfile.VDFile, vdfileMod *vdfile.VDFileMod) (*StreamDevice, error) {
 	// make sure the parser is initialize successfully
-	parser, err := stream.NewParser(vdfile)
+	/*_, err := stream.NewParser(vdfile)
 	if err != nil {
 		return nil, err
-	}
+	}*/
 
-	_, err = modbus.NewParser(vdfileMod)
+	parserMod, err := modbus.NewParser(vdfileMod)
 	if err != nil {
 		return nil, err
 	}
 
 	return &StreamDevice{
-		vdfile:    vdfile,
-		triggered: make(chan []byte),
-		proto:     parser,
+		vdfile:      vdfile,
+		triggered:   make(chan []byte),
+		proto:       parserMod,
+		vdfileMod:   vdfileMod,
+		protocolTyp: "modbus",
 	}, nil
 }
 
@@ -84,13 +88,19 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		return nil
 	}
 
-	s.lock.Lock()
-	mismatch := s.vdfile.Mismatch
-	s.lock.Unlock()
+	var mismatch []byte
+
+	if s.protocolTyp != "modbus" {
+		s.lock.Lock()
+		mismatch = s.vdfile.Mismatch
+		s.lock.Unlock()
+	}
 
 	for i, tx := range txs {
-		if len(mismatch) > 0 && tx.Typ == protocol.TxUnknown {
-			txs[i].Typ = protocol.TxMismatch
+		if s.protocolTyp != "modbus" {
+			if len(mismatch) > 0 && tx.Typ == protocol.TxUnknown {
+				txs[i].Typ = protocol.TxMismatch
+			}
 		}
 
 		// set the parameter
@@ -98,11 +108,12 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 			for p, v := range tx.Payload {
 				if err := s.SetParameter(p, v); err != nil {
 					log.ERR(err)
-					txs[i].Typ = protocol.TxMismatch
+					if s.protocolTyp != "modbus" {
+						txs[i].Typ = protocol.TxMismatch
+					}
 				}
 			}
 		}
-
 		// the following for range code is to ensure the proper type of the parameter value
 		// that needs to be set back to the transaction payload
 		// it is due to fact that proto does not have information about the type of the parameter
@@ -110,9 +121,10 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 			v, err := s.GetParameter(p)
 			if err != nil {
 				log.ERR(err)
-				txs[i].Typ = protocol.TxMismatch
+				if s.protocolTyp != "modbus" {
+					txs[i].Typ = protocol.TxMismatch
+				}
 			}
-
 			txs[i].Payload[p] = v
 		}
 	}
@@ -124,14 +136,16 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 	}
 
 	//using first command to determine the delay
-	cmdName := txs[0].CommandName
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	if cmdName != "" && s.vdfile != nil {
-		if cmd, exist := s.vdfile.Commands[cmdName]; exist {
-			s.delayRes(cmd.Dly)
-		} else {
-			log.ERR("command name %s not found", cmdName)
+	if s.protocolTyp != "modbus" {
+		cmdName := txs[0].CommandName
+		s.lock.Lock()
+		defer s.lock.Unlock()
+		if cmdName != "" && s.vdfile != nil {
+			if cmd, exist := s.vdfile.Commands[cmdName]; exist {
+				s.delayRes(cmd.Dly)
+			} else {
+				log.ERR("command name %s not found", cmdName)
+			}
 		}
 	}
 	return buf
@@ -140,19 +154,18 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 // Method to read value of the specified parameter, returns error when parameter not found
 func (s *StreamDevice) GetParameter(name string) (any, error) {
 	s.lock.Lock()
-	param, exists := s.vdfile.Params[name]
+	param, exists := s.vdfileMod.Params[name]
 	s.lock.Unlock()
 	if !exists {
 		return nil, fmt.Errorf("%w: %s", protocol.ErrParamNotFound, name)
 	}
-
 	return param.Value(), nil
 }
 
 // Method to access value of the specified parameter and change it, return error when parameter not found
 func (s *StreamDevice) SetParameter(name string, value any) error {
 	s.lock.Lock()
-	param, exists := s.vdfile.Params[name]
+	param, exists := s.vdfileMod.Params[name]
 	s.lock.Unlock()
 	if !exists {
 		return fmt.Errorf("%w: %s", protocol.ErrParamNotFound, name)

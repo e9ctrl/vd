@@ -1,23 +1,19 @@
 package modbus
 
 import (
-	"errors"
-
 	"github.com/e9ctrl/vd/memory"
 	"github.com/e9ctrl/vd/protocol"
 	"github.com/e9ctrl/vd/vdfile"
 )
 
-var (
-	ErrIllegalFunction = errors.New("wrong function code")
-	ErrNoParamsFound   = errors.New("could not generate parameters")
-)
-
-type Handler func(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Transaction, error)
+type InHandler func(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Transaction, *Exception)
+type OutHandler func(txs []protocol.Transaction) []byte
 
 type Parser struct {
-	functions   map[uint8]Handler
-	paramsAddrs map[string]memory.Memory
+	inFunctions  map[uint8]InHandler
+	outFunctions map[uint8]OutHandler
+	paramsAddrs  map[string]memory.Memory
+	frames       []*TCPFrame
 }
 
 // Constructor, returns struct that fulfils Protocol interface
@@ -27,68 +23,72 @@ func NewParser(vdfile *vdfile.VDFileMod) (protocol.Protocol, error) {
 	}
 
 	// Add default functions
-	parser.functions = make(map[uint8]Handler, 17)
-	parser.functions[1] = ReadCoils
-	parser.functions[2] = ReadDiscreteInputs
-	//parser.function[3] = ReadHoldingRegisters
-	//parser.function[4] = ReadInputRegisters
-	parser.functions[5] = WriteSingleCoil
+	parser.inFunctions = make(map[uint8]InHandler, 8)
+	parser.inFunctions[1] = ReadCoils
+	parser.inFunctions[2] = ReadDiscreteInputs
+	parser.inFunctions[3] = ReadHoldingRegisters
+	parser.inFunctions[4] = ReadInputRegisters
+	//parser.functions[5] = WriteSingleCoil
 	//parser.function[6] = WriteHoldingRegister
-	parser.functions[15] = WriteMultipleCoils
+	//parser.functions[15] = WriteMultipleCoils
 	//parser.function[16] = WriteHoldingRegisters
+
+	// Add default functions
+	parser.outFunctions = make(map[uint8]OutHandler, 8)
+	parser.outFunctions[1] = GenerateReadCoilsResponse
+	parser.outFunctions[2] = GenerateReadDiscreteInputsResponse
+	parser.outFunctions[3] = GenerateReadHoldingRegistersResponse
+	parser.outFunctions[4] = GenerateReadInputRegistersResponse
 
 	return parser, nil
 }
 
 func (p *Parser) Decode(data []byte) ([]protocol.Transaction, error) {
-	txs := make([]protocol.Transaction, 0)
-
 	frame, err := NewTCPFrame(data)
 	if err != nil {
-		return []protocol.Transaction(nil), nil
+		return []protocol.Transaction(nil), err
 	}
 
+	txs := make([]protocol.Transaction, 0)
+
 	function := frame.GetFunction()
-	if f, exist := p.functions[function]; exist {
-		txs, err = f(*frame, p.paramsAddrs)
+	var res *Exception
+	if f, exist := p.inFunctions[function]; exist {
+		txs, res = f(*frame, p.paramsAddrs)
 	} else {
-		return []protocol.Transaction(nil), ErrIllegalFunction
+		res = &IllegalFunction
 	}
+
+	frame.Err = res
+	p.frames = append(p.frames, frame)
+
 	return txs, nil
 }
 
 func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
+	// get origin frame from the queue
+	frame := p.frames[0]
+	p.frames = p.frames[1:]
+	// check if there was an error while decoding
+	if frame.Err != &Success {
+		frame.SetException()
+		return frame.Bytes(), nil
+	}
+	// process transaction
 	if len(txs) > 0 {
-		// potrzebne do wygenerowania odpowiedzi
-		response, err := NewTCPFrame(txs[0].Origin)
-		if err != nil {
-			return []byte(nil), nil
-		}
-		// tutaj zawsze jedna transakcja bo to modbus
-		if txs[0].Typ == protocol.TxGetParam {
-			// when function is "read coils"
-			if txs[0].CommandName == "ReadCoils" {
-				// count byte size
-				dataSize := len(txs) / 8
-				if (len(txs) % 8) != 0 {
-					dataSize++
-				}
-				data := make([]byte, 1+dataSize)
-				data[0] = byte(dataSize)
+		// place for data
+		var data []byte
 
-				for i, tx := range txs {
-					for _, v := range tx.Payload {
-						if v != 0 {
-							shift := uint(i) % 8
-							data[1+i/8] |= byte(1 << shift)
-						}
-					}
-				}
-				// generate response
-				response.SetData(data)
-				return response.Bytes(), nil
-			}
+		function := frame.GetFunction()
+		if f, exist := p.outFunctions[function]; exist {
+			data = f(txs)
+		} else {
+			return []byte(nil), nil // jakis error
 		}
+
+		// generate response
+		frame.SetData(data)
+		return frame.Bytes(), nil
 	}
 	return []byte(nil), nil
 }
@@ -96,13 +96,3 @@ func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
 func (p *Parser) Trigger(string) protocol.Transaction {
 	return protocol.Transaction{}
 }
-
-/*func buildParamsAddrs(vdfile *vdfile.VDFileMod) map[uint16]string {
-	params := make(map[int]string, 0)
-	for k, _ := range vdfile.Params {
-		if reg, exist := vdfile.Mems[k]; exist {
-			params[reg.Addr] = k
-		}
-	}
-	return params
-}*/
