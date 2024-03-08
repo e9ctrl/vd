@@ -18,7 +18,7 @@ func ReadData(frame TCPFrame, params map[string]memory.Memory, memTyp memory.Dat
 		return txs, res
 	}
 
-	for i := register; i <= endRegister; i++ {
+	for i := register; i < endRegister; i++ {
 		for paramName, mem := range params {
 			if mem.Typ == memTyp {
 				if mem.Addr == uint16(i) {
@@ -37,7 +37,6 @@ func ReadData(frame TCPFrame, params map[string]memory.Memory, memTyp memory.Dat
 		}
 	}
 	return txs, res
-
 }
 
 // ReadCoils function 1, reads coils from internal memory.
@@ -61,7 +60,7 @@ func ReadInputRegisters(frame TCPFrame, params map[string]memory.Memory) ([]prot
 }
 
 // Read status values for coils or discrete inputs
-func GenerateStatusesResponse(txs []protocol.Transaction) []byte {
+func GenerateStatusesResponse(frame TCPFrame, txs []protocol.Transaction) []byte {
 	// count byte size
 	dataSize := len(txs) / 8
 	if (len(txs) % 8) != 0 {
@@ -71,7 +70,7 @@ func GenerateStatusesResponse(txs []protocol.Transaction) []byte {
 	data[0] = byte(dataSize)
 	for i, tx := range txs {
 		for _, v := range tx.Payload {
-			if v != 0 {
+			if v != uint(0) {
 				shift := uint(i) % 8
 				data[1+i/8] |= byte(1 << shift)
 			}
@@ -81,7 +80,7 @@ func GenerateStatusesResponse(txs []protocol.Transaction) []byte {
 }
 
 // Read holding or input registers
-func GenerateRegistersResponse(txs []protocol.Transaction) []byte {
+func GenerateRegistersResponse(frame TCPFrame, txs []protocol.Transaction) []byte {
 	var data []byte
 	for _, tx := range txs {
 		for _, v := range tx.Payload {
@@ -92,112 +91,173 @@ func GenerateRegistersResponse(txs []protocol.Transaction) []byte {
 	return data
 }
 
-func GenerateReadCoilsResponse(txs []protocol.Transaction) []byte {
-	return GenerateStatusesResponse(txs)
+// Generate response for read coils function
+func GenerateReadCoilsResponse(frame TCPFrame, txs []protocol.Transaction) []byte {
+	return GenerateStatusesResponse(frame, txs)
 }
 
-func GenerateReadDiscreteInputsResponse(txs []protocol.Transaction) []byte {
-	return GenerateStatusesResponse(txs)
+// Generate response for read discrete inputs function
+func GenerateReadDiscreteInputsResponse(frame TCPFrame, txs []protocol.Transaction) []byte {
+	return GenerateStatusesResponse(frame, txs)
 }
 
-func GenerateReadHoldingRegistersResponse(txs []protocol.Transaction) []byte {
-	return GenerateRegistersResponse(txs)
+// Generate response for read holding registers
+func GenerateReadHoldingRegistersResponse(frame TCPFrame, txs []protocol.Transaction) []byte {
+	return GenerateRegistersResponse(frame, txs)
 }
 
-func GenerateReadInputRegistersResponse(txs []protocol.Transaction) []byte {
-	return GenerateRegistersResponse(txs)
+// Generate response for read input registers
+func GenerateReadInputRegistersResponse(frame TCPFrame, txs []protocol.Transaction) []byte {
+	return GenerateRegistersResponse(frame, txs)
 }
 
 // WriteSingleCoil function 5, write a coil to internal memory.
-/*func WriteSingleCoil(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Transaction, error) {
+func WriteSingleCoil(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Transaction, *Exception) {
 	txs := make([]protocol.Transaction, 0)
 
-	register, _ := registerAddressAndValue(frame)
-	if paramName, exist := params[register]; exist {
-		tx := protocol.Transaction{
-			Payload: make(map[string]any),
-		}
-		tx.Typ = protocol.TxSetParam
-		tx.Payload[paramName] = nil // tu nie ma sensu wrzucac wartosci
-		txs = append(txs, tx)
-	}/*
-	// TODO Should we use 0 for off and 65,280 (FF00 in hexadecimal) for on?
-	//if value != 0 {
-	//	value = 1
-	//}
-	//s.Coils[register] = byte(value)
-	//return frame.GetData()[0:4], nil
+	res := &IllegalDataAddress
 
-	//return txs, nil
-//}
+	register, value := registerAddressAndValue(frame)
+	if value != 0 {
+		value = 1
+	}
+
+	for paramName, mem := range params {
+		if mem.Typ == memory.DataCoil {
+			if mem.Addr == uint16(register) {
+				// means that address was ok
+				res = &Success
+				// transaction generation
+				tx := protocol.Transaction{
+					Payload: make(map[string]any),
+				}
+				tx.CommandName = frame.GetFunctionName()
+				tx.Typ = protocol.TxSetParam
+				tx.Payload[paramName] = uint(value)
+				txs = append(txs, tx)
+			}
+		}
+	}
+
+	return txs, res
+}
+
+// Generate response for write coil
+func GenerateWriteResponse(frame TCPFrame, txs []protocol.Transaction) []byte {
+	return frame.GetData()[0:4]
+}
 
 // WriteHoldingRegister function 6, write a holding register to internal memory.
-/*func WriteHoldingRegister(frame TCPFrame) ([]byte, error) {
+func WriteHoldingRegister(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Transaction, *Exception) {
+	txs := make([]protocol.Transaction, 0)
+
+	res := &IllegalDataAddress
 	register, value := registerAddressAndValue(frame)
-	s.HoldingRegisters[register] = value
-	return frame.GetData()[0:4], nil
-}*/
+
+	for paramName, mem := range params {
+		if mem.Typ == memory.DataHoldingRegister {
+			if mem.Addr == uint16(register) {
+				// means that address was ok
+				res = &Success
+				// transaction generation
+				tx := protocol.Transaction{
+					Payload: make(map[string]any),
+				}
+				tx.CommandName = frame.GetFunctionName()
+				tx.Typ = protocol.TxSetParam
+				tx.Payload[paramName] = uint16(value)
+				txs = append(txs, tx)
+			}
+		}
+	}
+
+	return txs, res
+}
 
 // WriteMultipleCoils function 15, writes holding registers to internal memory.
-/*func WriteMultipleCoils(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Transaction, error) {
-txs := make([]protocol.Transaction, 0)
+func WriteMultipleCoils(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Transaction, *Exception) {
+	txs := make([]protocol.Transaction, 0)
 
-register, numRegs, endRegister := registerAddressAndNumber(frame)
-valueBytes := frame.GetData()[5:]
+	res := &IllegalDataAddress
 
-if endRegister > 65536 {
-	return txs, ErrIllegalDataAddress
-}
+	register, numRegs, endRegister := registerAddressAndNumber(frame)
+	valueBytes := frame.GetData()[5:]
 
-bitCount := 0
-for i, _ := range valueBytes {
-	for bitPos := uint(0); bitPos < 8; bitPos++ {
-		//s.Coils[register+(i*8)+int(bitPos)] = bitAtPosition(value, bitPos)
-		if paramName, exist := params[register+(i*8)+int(bitPos)]; exist {
-			tx := protocol.Transaction{
-				Payload: make(map[string]any),
+	if endRegister > 65536 {
+		return txs, res
+	}
+
+	valuesUpdated := 0
+	for i, value := range valueBytes {
+		for bitPos := uint(0); bitPos < 8; bitPos++ {
+			for paramName, mem := range params {
+				if mem.Typ == memory.DataCoil {
+					if mem.Addr == uint16(register+(i*8)+int(bitPos)) {
+						tx := protocol.Transaction{
+							Payload: make(map[string]any),
+						}
+						tx.Typ = protocol.TxSetParam
+						tx.Payload[paramName] = uint(value)
+						txs = append(txs, tx)
+						valuesUpdated++
+					}
+				}
 			}
-			tx.Typ = protocol.TxSetParam
-			tx.Payload[paramName] = nil // nie ma sensu ustawiac nic konkretnego
-			txs = append(txs, tx)
-		}
-		bitCount++
-		if bitCount >= numRegs {
-			break
 		}
 	}
-	if bitCount >= numRegs {
-		break
+
+	if valuesUpdated == numRegs {
+		res = &Success
+	} else {
+		res = &IllegalDataAddress
 	}
+
+	return txs, res
 }
-*/
-//return frame.GetData()[0:4], nil
-//return txs, nil
-//}
 
 // WriteHoldingRegisters function 16, writes holding registers to internal memory.
-/*func WriteHoldingRegisters(frame TCPFrame) ([]byte, error) {
+func WriteHoldingRegisters(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Transaction, *Exception) {
+	txs := make([]protocol.Transaction, 0)
+
+	res := &Success
+
 	register, numRegs, _ := registerAddressAndNumber(frame)
 	valueBytes := frame.GetData()[5:]
-	var exception *Exception
-	var data []byte
 
 	if len(valueBytes)/2 != numRegs {
-		exception = &IllegalDataAddress
+		res = &IllegalDataAddress
 	}
 
-	// Copy data to memroy
 	values := BytesToUint16(valueBytes)
-	valuesUpdated := copy(s.HoldingRegisters[register:], values)
-	if valuesUpdated == numRegs {
-		exception = &Success
-		data = frame.GetData()[0:4]
-	} else {
-		exception = &IllegalDataAddress
+
+	valuesUpdated := 0
+
+	for i := register; i < register+len(values); i++ {
+		for paramName, mem := range params {
+			if mem.Typ == memory.DataHoldingRegister {
+				if mem.Addr == uint16(i) {
+					// transaction generation
+					tx := protocol.Transaction{
+						Payload: make(map[string]any),
+					}
+					tx.CommandName = frame.GetFunctionName()
+					tx.Typ = protocol.TxSetParam
+					tx.Payload[paramName] = uint16(values[i-register])
+					txs = append(txs, tx)
+					valuesUpdated++
+				}
+			}
+		}
 	}
 
-	return data, nil
-}*/
+	if valuesUpdated == numRegs {
+		res = &Success
+	} else {
+		res = &IllegalDataAddress
+	}
+
+	return txs, res
+}
 
 // BytesToUint16 converts a big endian array of bytes to an array of unit16s
 func BytesToUint16(bytes []byte) []uint16 {
