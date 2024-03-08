@@ -50,7 +50,7 @@ type ConcreteParameter[T paramType] struct {
 // Parameter constructor, the constructor will automatically create the ConcreteParameter instance base on the value passed on in the params
 func New(val any, opt, typ string) (Parameter, error) {
 	switch typ {
-	case "uint":
+	case "uint": // wlasciwie to byte
 		return newParameter[uint](reflect.Uint, val, opt)
 	case "uint16":
 		return newParameter[uint16](reflect.Uint16, val, opt)
