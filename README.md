@@ -34,14 +34,13 @@ The configuration file called `vdfile` is a [TOML](https://toml.io/en/) file and
 Note that some parameters do not contain specific communication patterns. Your configuration can include one or multiple parameters depending on your needs.
 
 It starts with optional error message:
-```toml```
+```toml
 mismatch = "error"
 ```
 then, it contains information about terminators:
 ```toml
-[terminators]
-  intterm = "CR LF"
-  outterm = "CR LF"
+interm = "CR LF"
+outterm = "CR LF"
 ```
 and finally describes parameters available in the simulated device:
 
@@ -89,9 +88,8 @@ Below is a sample configuration:
 
 mismatch = "Wrong query"
 
-[[terminators]]
-  intterm = "CR LF"
-  outterm = "CR LF"
+interm = "CR LF"
+outterm = "CR LF"
 
 [[parameter]]
   name = "version"
