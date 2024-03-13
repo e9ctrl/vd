@@ -131,7 +131,7 @@ func WriteVDFile(path string, config Config) error {
 		return err
 	}
 
-	return os.WriteFile(path, buf.Bytes(), os.ModePerm)
+	return os.WriteFile(path, buf.Bytes(), 0666)
 }
 
 // Checks if string can be converted to time.Duration
