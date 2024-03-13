@@ -31,7 +31,7 @@ func TestDecode(t *testing.T) {
 	}{
 		{"get command int", []byte("CUR?"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_current"}}},
 		{"get command str", []byte("VER?"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_version"}}},
-		{"get status two params", []byte("S?"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status"}}},
+		{"get status two params", []byte("S?"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status_1"}}},
 		{"get status two params with new line", []byte("get status ch 3"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status_3"}}},
 		{"set psi command", []byte("PSI 30.42"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_psi", Payload: map[string]any{"psi": 30.42}}}},
 		{"empty command", []byte(""), []protocol.Transaction{{Typ: protocol.TxUnknown, CommandName: ""}}},
@@ -401,7 +401,7 @@ func TestEncode(t *testing.T) {
 	}{
 		{"current param", []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_current", Payload: map[string]any{"current": 20}}}, []byte("CUR 20\r\n")},
 		{"get command str", []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_version", Payload: map[string]any{"version": "version 1.0"}}}, []byte("version 1.0\r\n")},
-		{"get status two params", []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status", Payload: map[string]any{"version": "version 1.0", "temp": 30.0}}}, []byte("version 1.0 - 30.0\r\n")},
+		{"get status two params", []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status_1", Payload: map[string]any{"version": "version 1.0", "temp": 30.0}}}, []byte("version 1.0 - 30.0\r\n")},
 		{"get status two params with new line", []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status_3", Payload: map[string]any{"mode": "NORM", "psi": 6.86}}}, []byte("mode: NORM\npsi: 6.86\r\n")},
 		{"set psi command", []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_psi", Payload: map[string]any{"psi": 30.42}}}, []byte("PSI 30.42 OK\r\n")},
 		{"empty command", []protocol.Transaction{{Typ: protocol.TxUnknown, CommandName: ""}}, []byte(nil)},
