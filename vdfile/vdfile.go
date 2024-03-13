@@ -61,6 +61,14 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 		Commands: make(map[string]*command.Command, 0),
 	}
 
+	paramCount := make(map[string]bool)
+	for _, param := range config.Params {
+		if _, exists := paramCount[param.Name]; exists {
+			return nil, fmt.Errorf("%s name is duplicated", param.Name)
+		}
+		paramCount[param.Name] = true
+	}
+
 	for _, param := range config.Params {
 		currentParam, err := parameter.New(param.Val, param.Opt, param.Typ)
 		if err != nil {
@@ -69,6 +77,14 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 
 		vdfile.Params[param.Name] = currentParam
 
+	}
+
+	commandCount := make(map[string]bool)
+	for _, command := range config.Commands {
+		if _, exists := commandCount[command.Name]; exists {
+			return nil, fmt.Errorf("%s name is duplicated", command.Name)
+		}
+		commandCount[command.Name] = true
 	}
 
 	for _, cmd := range config.Commands {
