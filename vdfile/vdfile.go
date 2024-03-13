@@ -13,11 +13,6 @@ import (
 	"github.com/e9ctrl/vd/parameter"
 )
 
-type terminators struct {
-	InTerminator  string `toml:"intterm"`
-	OutTerminator string `toml:"outterm"`
-}
-
 type configParameter struct {
 	Name string `toml:"name"`
 	Typ  string `toml:"typ"`
@@ -33,10 +28,11 @@ type configCommand struct {
 }
 
 type Config struct {
-	Term     terminators       `toml:"terminators"`
-	Params   []configParameter `toml:"parameter"`
-	Commands []configCommand   `toml:"command"`
-	Mismatch string            `toml:"mismatch,omitempty"`
+	InTerminator  string            `toml:"interm"`
+	OutTerminator string            `toml:"outterm"`
+	Params        []configParameter `toml:"parameter"`
+	Commands      []configCommand   `toml:"command"`
+	Mismatch      string            `toml:"mismatch,omitempty"`
 }
 
 // VDFile struct
@@ -86,8 +82,8 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 		vdfile.Commands[cmd.Name] = currentCmd
 	}
 
-	vdfile.InTerminator = parseTerminator(config.Term.InTerminator)
-	vdfile.OutTerminator = parseTerminator(config.Term.OutTerminator)
+	vdfile.InTerminator = parseTerminator(config.InTerminator)
+	vdfile.OutTerminator = parseTerminator(config.OutTerminator)
 	vdfile.Mismatch = []byte(config.Mismatch)
 
 	return vdfile, nil

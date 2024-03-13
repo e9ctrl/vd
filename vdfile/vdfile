@@ -1,6 +1,5 @@
-[terminators]
-  intterm = "CR LF"
-  outterm = "CR LF"
+interm = "CR LF"
+outterm = "CR LF"
 
 [[parameter]]
   name = "current"
