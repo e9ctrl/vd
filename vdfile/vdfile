@@ -138,7 +138,7 @@ outterm = "CR LF"
   req = "ACK {%t:ack}"
 
 [[command]]
-  name = "get_status"
+  name = "get_status_1"
   req = "S?"
   res = "{%s:version} - {%.1f:temp}"
 
