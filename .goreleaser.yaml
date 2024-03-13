@@ -20,6 +20,9 @@ builds:
       - linux
       - windows
       - darwin
+    ldflags:
+      - -s -w -X "github.com/e9ctrl/vd/cmd.version={{.Version}}"
+
 
 archives:
   - format: tar.gz

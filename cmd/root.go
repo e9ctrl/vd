@@ -20,7 +20,8 @@ import (
 var cfgFile string
 var apiAddr string
 
-const version = "0.1.0"
+var version = "0.0.1"
+
 const website = "https://vd.e9controls.com"
 
 // based on https://github.com/labstack/echo/blob/4bc3e475e3137b6402933eec5e6fde641e0d2320/echo.go#L264C5-L264C71
@@ -37,9 +38,10 @@ ____________________________________O/_______
 
 // rootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "vd",
-	Args:  cobra.ExactArgs(1),
-	Short: "vd is a easy to use device simulator",
+	Use:     "vd",
+	Args:    cobra.ExactArgs(1),
+	Version: version,
+	Short:   "vd is a easy to use device simulator",
 	Long: `Virtual Device is an open source program that can be used to simulate lab device communication streams. 
 It is useful for testing and debugging software that communicates with lab devices, 
 as well as for creating virtual lab environments for education and research.

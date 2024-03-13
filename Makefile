@@ -51,30 +51,30 @@ vendor:
 # ==================================================================================== #
 # BUILD
 # ==================================================================================== #
+git_description = $(shell git describe --always --dirty --tags --long)
+linker_flags = '-s -X github.com/e9ctrl/vd/cmd.version=${git_description}'
 
 ## build: build the application
 .PHONY: build
 build:
 	@echo 'Building virtual device...'
-	go build .
+	go build -ldflags=${linker_flags} .
 
 ## build/vd/x86-64: build binary for x86-64
 .PHONY: build/x86-64
 build/x86-64:
 	@echo 'Building cmd/vd for x86_64...'
-	go build -o=./bin/x86_64/vd .
+	go build -ldflags=${linker_flags} -o=./bin/x86_64/vd .
 
 ## build/vd/arm: build binary for arm
 .PHONY: build/arm
 build/arm:
 	@echo 'Building cmd/vd for arm...'
-	GOOS=linux GOARCH=arm go build -o=./bin/arm/vd .
+	GOOS=linux GOARCH=arm go build -ldflags=${linker_flags} -o=./bin/arm/vd .
 
 ## build/gomonitor/amd64: build binary for amd64
 .PHONY: build/amd64
 build/amd64:
 	@echo 'Building cmd/vd for amd64...'
-	GOOS=linux GOARCH=amd64 go build -o=./bin/amd64/vd .
-
-
+	GOOS=linux GOARCH=amd64 go build -ldflags=${linker_flags} -o=./bin/amd64/vd .
 
