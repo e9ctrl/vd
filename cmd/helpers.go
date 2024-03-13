@@ -33,7 +33,7 @@ func verifyIPAddr(addrStr string) bool {
 }
 
 // generate an example of vdfile
-func generateConfig() error {
+func generateConfig(filename string) error {
 	path, err := os.Getwd()
 	if err != nil {
 		return err
@@ -44,8 +44,12 @@ func generateConfig() error {
 		return err
 	}
 
+	if filename == "" {
+		filename = exampleFileName
+	}
+
 	config = vdfile.GenerateRandomDelay(config)
-	err = vdfile.WriteVDFile(path+"/"+exampleFileName, config)
+	err = vdfile.WriteVDFile(path+"/"+filename, config)
 	if err != nil {
 		return err
 	}

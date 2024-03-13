@@ -7,16 +7,16 @@ import (
 )
 
 var generateCmd = &cobra.Command{
-	Use:   "generate",
-	Args:  cobra.NoArgs,
+	Use:   "generate [filename]",
+	Args:  cobra.ExactArgs(1),
 	Short: "Generate example of config file",
-	Long: `This commands generate an example of .TOML config file in the current directory.
+	Long: `This commands generate an example of config file in the current directory.
 Usage:
 	vd generate
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Fprint(cmd.OutOrStdout(), "Writing vdfile config file...")
-		return generateConfig()
+		return generateConfig(args[0])
 	},
 }
 
