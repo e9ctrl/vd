@@ -21,6 +21,7 @@ var cfgFile string
 var apiAddr string
 
 var version = "0.0.1"
+var longVersion = "0.0.1"
 
 const website = "https://vd.e9controls.com"
 
@@ -40,7 +41,7 @@ ____________________________________O/_______
 var RootCmd = &cobra.Command{
 	Use:     "vd",
 	Args:    cobra.ExactArgs(1),
-	Version: version,
+	Version: longVersion,
 	Short:   "vd is a easy to use device simulator",
 	Long: `Virtual Device is an open source program that can be used to simulate lab device communication streams. 
 It is useful for testing and debugging software that communicates with lab devices, 
@@ -129,7 +130,6 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.vd.yaml)")
 
 	// The default value from here is not used but it is visible in help, that's why it is left here

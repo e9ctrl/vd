@@ -22,6 +22,7 @@ builds:
       - darwin
     ldflags:
       - -s -w -X "github.com/e9ctrl/vd/cmd.version={{.Version}}"
+      - -s -w -X "github.com/e9ctrl/vd/cmd.longVersion={{.Version}}, build {{.ShortCommit}}"
 
 
 archives:
