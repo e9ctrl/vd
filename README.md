@@ -5,23 +5,27 @@
 [![Go Report](https://goreportcard.com/badge/github.com/e9ctrl/vd)](https://goreportcard.com/report/github.com/e9ctrl/vd)
 ![coverage](https://raw.githubusercontent.com/e9ctrl/vd/badges/.badges/main/coverage.svg)
 
-# vd 
-In the complex realm of device integration, aligning multiple software layers is essential. However, if the communication layer falls short, the work invested in the subsequent layers may not bring value to the end-user.
-
-Recognizing this challenge, this project was conceived to streamline the testing of communication layer and accelerate the process. Its design prioritizes simplicity in device testing, paving the way for effortless communication evaluations, particularly in CI/CD environments.
+# vd (virtual device)
+vd is a tool for simulating devices that communicate using stream-based protocols, enabling testing of communication layers and accelerated device integration.
 
 ![](readme.gif)
 
 # For who?
-- Control system engineers who need to integrate a device:
-    - That they don't have access to.
-    - Whose access is restricted.
-    - Accompanied by outdated documentation.
-    - Where sending command data might be hazardous.
+- Control system engineers integrating devices that are:
+    - Inaccessible
+    - Access-restricted
+    - Poorly documented
+    - Potentially hazardous to send commands to
+- Device suppliers aiming for seamless integration of their devices into client systems
+- Security experts validating the integrity of IOC communication
+- Anyone seeking to enhance the quality of their device integrations
 
-- Device suppliers keen on seamless integration of their device into a client's system.
-- Security experts wanting to check if the IOC genuinely sends what it's supposed to.
-- Everyone aiming to enhance the quality of their integrations.
+# Quick Start
+1. Install vd by downloading the appropriate binary for your operating system.
+2. Create a `vdfile` configuration file describing the device communication (see example below).
+3. Launch vd with the path to your `vdfile`: `$ vd <path to vdfile>`
+4. Connect to the simulated device on port `:9999` using an IOC or telnet.
+5. Interact with the device parameters via the HTTP API on port `:8080`.
 
 # How It Works
 The `vd` tool can simulate devices that communicate using stream-based communication, i.e., those that can be integrated using StreamDevice. Creating a simulator doesn't require programming; communication is described in a file called `vdfile`.
