@@ -140,7 +140,7 @@ func TestGetParameter(t *testing.T) {
 		{"get version", "version", "version 1.0", http.StatusOK},
 		{"get current", "current", "300", http.StatusOK},
 		{"get mode", "mode", "NORM", http.StatusOK},
-		{"get wrong paramter", "test", "Error: parameter not found: test", http.StatusInternalServerError},
+		{"get wrong parameter", "test", "Error: parameter not found: test", http.StatusInternalServerError},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
