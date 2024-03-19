@@ -71,8 +71,8 @@ func generateStatusesResponse(frame TCPFrame, txs []protocol.Transaction) []byte
 	data[0] = byte(dataSize)
 	for i, tx := range txs {
 		for _, v := range tx.Payload {
-			if v != uint(0) {
-				shift := uint(i) % 8
+			if v != int32(0) {
+				shift := int32(i) % 8
 				data[1+i/8] |= byte(1 << shift)
 			}
 		}
@@ -134,7 +134,7 @@ func (p *Parser) WriteSingleCoil(frame TCPFrame, params map[string]memory.Memory
 				}
 				tx.CommandName = frame.GetFunctionName()
 				tx.Typ = protocol.TxSetParam
-				tx.Payload[paramName] = uint(value)
+				tx.Payload[paramName] = int32(value)
 				txs = append(txs, tx)
 			}
 		}
