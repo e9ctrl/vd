@@ -98,6 +98,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 
 	for i, tx := range txs {
 		if s.protocolTyp != "modbus" {
+			// move mismatch inside stream
 			if len(mismatch) > 0 && tx.Typ == protocol.TxUnknown {
 				txs[i].Typ = protocol.TxMismatch
 			}

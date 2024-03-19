@@ -2,36 +2,39 @@ protocol = "modbus"
 
 [[parameter]]
   name = "state"
-  typ = "coil"
+  reg = "coil"
   val = "1"
   addr = 0x01
 
 [[parameter]]
   name = "state2"
-  typ = "coil"
+  reg = "coil"
   val = "1"
   addr = 0x02
 
 [[parameter]]
   name = "mode"
-  typ = "di"
+  reg = "di"
   val = "1"
   addr = 0x03
 
 [[parameter]]
   name = "temp"
-  typ = "holdreg"
+  typ = "uint16"
+  reg = "holdreg"
   val = "20"
   addr = 0x05
 
 [[parameter]]
   name = "temp2"
-  typ = "holdreg"
-  val = "54211"
+  typ = "uint32"
+  reg = "holdreg"
+  val = "454211"
   addr = 0x07
 
 [[parameter]]
   name = "volt"
-  typ = "inreg"
+  typ = "int64"
+  reg = "inreg"
   val = "30"
-  addr = 0x06
+  addr = 0x0A
