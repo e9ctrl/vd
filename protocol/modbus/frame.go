@@ -124,5 +124,5 @@ func (frame *TCPFrame) SetException() {
 }
 
 func (frame *TCPFrame) setLength() {
-	frame.Length = uint16(len(frame.Data) + 2)
+	frame.Length = uint16(len(frame.Data))
 }

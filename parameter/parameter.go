@@ -10,7 +10,7 @@ import (
 )
 
 type paramType interface {
-	uint | uint16 | int | int32 | int64 | float32 | float64 | bool | string
+	uint16 | int | int32 | uint32 | int64 | float32 | float64 | bool | string
 }
 
 var (
@@ -33,6 +33,7 @@ type Parameter interface {
 	Value() any
 	String() string
 	Opts() []string
+	Type() reflect.Kind
 }
 
 // ConcreteParameter[T paramType] hold the actual concrete value for each parameter created with New constructor.
@@ -50,14 +51,16 @@ type ConcreteParameter[T paramType] struct {
 // Parameter constructor, the constructor will automatically create the ConcreteParameter instance base on the value passed on in the params
 func New(val any, opt, typ string) (Parameter, error) {
 	switch typ {
-	case "uint": // wlasciwie to byte
-		return newParameter[uint](reflect.Uint, val, opt)
+	case "byte":
+		return newParameter[int32](reflect.Int32, val, opt)
 	case "uint16":
 		return newParameter[uint16](reflect.Uint16, val, opt)
 	case "int16":
 		return newParameter[int](reflect.Int, val, opt)
 	case "int32":
 		return newParameter[int32](reflect.Int32, val, opt)
+	case "uint32":
+		return newParameter[uint32](reflect.Uint32, val, opt)
 	case "int":
 		fallthrough
 	case "int64":
@@ -179,6 +182,13 @@ func convertStringToVal[T paramType](typ reflect.Kind, val string) (*T, error) {
 		if uintVal, err := strconv.ParseUint(val, 10, 16); err == nil {
 			uintVal16 := uint16(uintVal)
 			return interface{}(&uintVal16).(*T), nil
+		} else {
+			return nil, ErrWrongIntVal
+		}
+	case reflect.Uint32:
+		if uintVal, err := strconv.ParseUint(val, 10, 32); err == nil {
+			uintVal32 := uint32(uintVal)
+			return interface{}(&uintVal32).(*T), nil
 		} else {
 			return nil, ErrWrongIntVal
 		}

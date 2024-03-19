@@ -11,7 +11,8 @@ import (
 
 type configParameterMod struct {
 	Name string `toml:"name"`
-	Typ  string `toml:"typ"`
+	Typ  string `toml:"typ,omitempty"`
+	Reg  string `toml:"reg"`
 	Val  any    `toml:"val"`
 	Addr uint16 `toml:"addr"`
 	Opt  string `toml:"opt,omitempty"`
@@ -36,10 +37,16 @@ func ReadVDFileFromConfigMod(config ConfigModbus) (*VDFileMod, error) {
 
 	for _, param := range config.Params {
 		var paramType string
-		if param.Typ == "di" || param.Typ == "coil" {
-			paramType = "uint"
-		} else {
-			paramType = "uint16"
+
+		if param.Reg == "di" || param.Reg == "coil" {
+			paramType = "byte"
+		}
+
+		if param.Reg == "holdreg" || param.Reg == "inreg" {
+			paramType = param.Typ
+			if len(param.Typ) == 0 {
+				paramType = "uint16" // or error?
+			}
 		}
 
 		currentParam, err := parameter.New(param.Val, param.Opt, paramType)
@@ -48,7 +55,12 @@ func ReadVDFileFromConfigMod(config ConfigModbus) (*VDFileMod, error) {
 		}
 
 		vdfile.Params[param.Name] = currentParam
-		vdfile.Mems[param.Name] = memory.New(param.Addr, param.Typ)
+		vdfile.Mems[param.Name] = memory.New(param.Addr, param.Reg, param.Typ)
+	}
+
+	// need to verify if addresses are ok
+	if err := memory.IsMemoryValid(vdfile.Mems); err != nil {
+		return vdfile, err
 	}
 
 	return vdfile, nil
