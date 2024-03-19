@@ -321,8 +321,8 @@ func writeRegisters(frame TCPFrame, params map[string]memory.Memory, holdRegTabl
 
 	// update memory map
 	for i := register; i < register+numRegs; i++ {
-		holdRegTable[register][0] = valueBytes[(i-register)*2]
-		holdRegTable[register][1] = valueBytes[(i-register)*2+1]
+		holdRegTable[i][0] = valueBytes[(i-register)*2]
+		holdRegTable[i][1] = valueBytes[(i-register)*2+1]
 	}
 
 	bytesCnt := 0
