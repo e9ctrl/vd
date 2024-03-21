@@ -3,6 +3,7 @@ package device
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -126,6 +127,11 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 					txs[i].Typ = protocol.TxMismatch
 				}
 			}
+			typ, err := s.GetParameterType(p)
+			if err != nil {
+				log.ERR(err)
+			}
+			txs[i].DataTyp[p] = typ
 			txs[i].Payload[p] = v
 		}
 	}
@@ -173,6 +179,17 @@ func (s *StreamDevice) SetParameter(name string, value any) error {
 	}
 
 	return param.SetValue(value)
+}
+
+// Method to access value type, it is crucial for modbus and binary protocols to find out how many bytes value takes
+func (s *StreamDevice) GetParameterType(name string) (reflect.Kind, error) {
+	s.lock.Lock()
+	param, exists := s.vdfileMod.Params[name]
+	s.lock.Unlock()
+	if !exists {
+		return reflect.Invalid, fmt.Errorf("%w: %s", protocol.ErrParamNotFound, name)
+	}
+	return param.Type(), nil
 }
 
 // Get delay of the specified command, return error when command not found

@@ -39,7 +39,7 @@ func ReadVDFileFromConfigMod(config ConfigModbus) (*VDFileMod, error) {
 		var paramType string
 
 		if param.Reg == "di" || param.Reg == "coil" {
-			paramType = "byte"
+			paramType = "uint8"
 		}
 
 		if param.Reg == "holdreg" || param.Reg == "inreg" {
