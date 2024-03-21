@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"errors"
+	"reflect"
 )
 
 var (
@@ -43,6 +44,7 @@ func (t TransactionType) String() string {
 
 type Transaction struct {
 	Typ         TransactionType
+	DataTyp     map[string]reflect.Kind
 	CommandName string
 	Payload     map[string]any
 }
