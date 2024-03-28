@@ -1,12 +1,12 @@
 package vdfile
 
 import (
-	"fmt"
+//"fmt"
 
-	"github.com/BurntSushi/toml"
+//"github.com/BurntSushi/toml"
 
-	"github.com/e9ctrl/vd/memory"
-	"github.com/e9ctrl/vd/parameter"
+//"github.com/e9ctrl/vd/memory"
+//"github.com/e9ctrl/vd/parameter"
 )
 
 type configParameterMod struct {
@@ -18,7 +18,7 @@ type configParameterMod struct {
 	Opt  string `toml:"opt,omitempty"`
 }
 
-type ConfigModbus struct {
+/*type ConfigModbus struct {
 	Protocol string               `toml:"protocol"`
 	Params   []configParameterMod `toml:"parameter"`
 }
@@ -26,10 +26,10 @@ type ConfigModbus struct {
 type VDFileMod struct {
 	Params map[string]parameter.Parameter
 	Mems   map[string]memory.Memory
-}
+}*/
 
 // Creates vdfile struct based on Config containing result of TOML file parsing
-func ReadVDFileFromConfigMod(config ConfigModbus) (*VDFileMod, error) {
+/*func ReadVDFileFromConfigMod(config ConfigModbus) (*VDFileMod, error) {
 	vdfile := &VDFileMod{
 		Params: make(map[string]parameter.Parameter, 0),
 		Mems:   make(map[string]memory.Memory, 0),
@@ -72,4 +72,4 @@ func DecodeVDFileMod(path string) (ConfigModbus, error) {
 	_, err := toml.DecodeFile(path, &config)
 
 	return config, err
-}
+}*/

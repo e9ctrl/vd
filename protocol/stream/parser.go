@@ -180,7 +180,7 @@ func (p *Parser) Trigger(cmdName string) protocol.Transaction {
 }
 
 // Constructor, returns parser struct with processed commands patterns that are used while parsing incoming data.
-func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
+func NewParser(vdfile *vdfile.VDFileStream) (protocol.Protocol, error) {
 	commandPattern, err := buildCommandPatterns(vdfile.Commands)
 	if err != nil {
 		return nil, err

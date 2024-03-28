@@ -2,6 +2,7 @@ package vdfile
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -10,37 +11,66 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/e9ctrl/vd/command"
+	"github.com/e9ctrl/vd/memory"
 	"github.com/e9ctrl/vd/parameter"
 )
 
+var (
+	ErrDecoding      = errors.New("failed decoding file")
+	ErrNotKnownProto = errors.New("not known protocol type")
+)
+
+// always parsed protocol type - decides which parse struct should be used
+type ProtocolType struct {
+	Protocol string `toml:"protocol"`
+}
+
+// Modbus structs
+type ConfigModbus struct {
+	Params []configParameterMod `toml:"parameter"`
+}
+
+type configParameterModbus struct {
+	Name string `toml:"name"`
+	Typ  string `toml:"typ,omitempty"`
+	Reg  string `toml:"reg"`
+	Val  any    `toml:"val"`
+	Addr uint16 `toml:"addr"`
+}
+
+type VDFileModbus struct {
+	Params map[string]parameter.Parameter
+	Mems   map[string]memory.Memory
+}
+
+// Stream structs
 type terminators struct {
 	InTerminator  string `toml:"intterm"`
 	OutTerminator string `toml:"outterm"`
 }
 
-type configParameter struct {
+type configParameterStream struct {
 	Name string `toml:"name"`
 	Typ  string `toml:"typ"`
 	Val  any    `toml:"val"`
 	Opt  string `toml:"opt,omitempty"`
 }
 
-type configCommand struct {
+type configStreamCommand struct {
 	Name string `toml:"name"`
 	Req  string `toml:"req"`
 	Res  string `toml:"res,omitempty"`
 	Dly  string `toml:"dly,omitempty"`
 }
 
-type Config struct {
-	Term     terminators       `toml:"terminators"`
-	Params   []configParameter `toml:"parameter"`
-	Commands []configCommand   `toml:"command"`
-	Mismatch string            `toml:"mismatch,omitempty"`
+type ConfigStream struct {
+	Term     terminators             `toml:"terminators"`
+	Params   []configParameterStream `toml:"parameter"`
+	Commands []configStreamCommand   `toml:"command"`
+	Mismatch string                  `toml:"mismatch,omitempty"`
 }
 
-// VDFile struct
-type VDFile struct {
+type VDFileStream struct {
 	InTerminator  []byte
 	OutTerminator []byte
 	Params        map[string]parameter.Parameter
@@ -48,29 +78,100 @@ type VDFile struct {
 	Mismatch      []byte
 }
 
-// Read VDFile from disk from the given filepath
-func ReadVDFile(path string) (*VDFile, error) {
-	config, err := DecodeVDFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed decoding file with err %w", err)
-	}
-
-	return ReadVDFileFromConfig(config)
+// General struct
+type VDFile struct {
+	Stream   *VDFileStream
+	Modbus   *VDFileModbus
+	Protocol string
 }
 
 // Read VDFile from disk from the given filepath
-func ReadVDFileMod(path string) (*VDFileMod, error) {
-	config, err := DecodeVDFileMod(path)
+func ReadVDFile(path string) (*VDFile, error) {
+	proto, err := DecodeVDProto(path)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed decoding file with err %w", err)
+		return nil, fmt.Errorf("%w with err %w", ErrDecoding, err)
 	}
 
-	return ReadVDFileFromConfigMod(config)
+	switch typ := proto.Protocol; typ {
+	case "stream":
+		config, err := DecodeVDFileStream(path)
+		if err != nil {
+			return nil, fmt.Errorf("%w with err %w", ErrDecoding, err)
+		}
+
+		vdstream, err := ReadVDFileStreamFromConfig(config)
+		if err != nil {
+			return nil, err
+		}
+
+		vdfile := &VDFile{
+			Protocol: typ,
+			Stream:   vdstream,
+		}
+		return vdfile, nil
+	case "modbus":
+		config, err := DecodeVDFileModbus(path)
+		if err != nil {
+			return nil, fmt.Errorf("%w with err %w", ErrDecoding, err)
+		}
+
+		vdmodbus, err := ReadVDFileModbusFromConfig(config)
+		if err != nil {
+			return nil, err
+		}
+		vdfile := &VDFile{
+			Protocol: typ,
+			Modbus:   vdmodbus,
+		}
+		return vdfile, nil
+
+	default:
+		return nil, ErrNotKnownProto
+	}
 }
 
 // Creates vdfile struct based on Config containing result of TOML file parsing
-func ReadVDFileFromConfig(config Config) (*VDFile, error) {
-	vdfile := &VDFile{
+func ReadVDFileModbusFromConfig(config ConfigModbus) (*VDFileModbus, error) {
+	vdfile := &VDFileModbus{
+		Params: make(map[string]parameter.Parameter, 0),
+		Mems:   make(map[string]memory.Memory, 0),
+	}
+
+	for _, param := range config.Params {
+		var paramType string
+
+		if param.Reg == "di" || param.Reg == "coil" {
+			paramType = "uint8"
+		}
+
+		if param.Reg == "holdreg" || param.Reg == "inreg" {
+			paramType = param.Typ
+			if len(param.Typ) == 0 {
+				paramType = "uint16" // or error?
+			}
+		}
+
+		currentParam, err := parameter.New(param.Val, param.Opt, paramType)
+		if err != nil {
+			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Val, err)
+		}
+
+		vdfile.Params[param.Name] = currentParam
+		vdfile.Mems[param.Name] = memory.New(param.Addr, param.Reg, param.Typ)
+	}
+
+	// need to verify if addresses are ok
+	if err := memory.IsMemoryValid(vdfile.Mems); err != nil {
+		return vdfile, err
+	}
+
+	return vdfile, nil
+}
+
+// Creates vdfile struct based on Config containing result of TOML file parsing
+func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFileStream, error) {
+	vdfile := &VDFileStream{
 		Params:   make(map[string]parameter.Parameter, 0),
 		Commands: make(map[string]*command.Command, 0),
 	}
@@ -103,24 +204,40 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 	return vdfile, nil
 }
 
-// Parse TOML file to Config struct
-func DecodeVDFile(path string) (Config, error) {
-	var config Config
+// Parse TOML file to ConfigModbus struct
+func DecodeVDFileModbus(path string) (ConfigModbus, error) {
+	var config ConfigModbus
 	_, err := toml.DecodeFile(path, &config)
 
 	return config, err
 }
 
+// Parse TOML file to ConfigStream struct
+func DecodeVDFileStream(path string) (ConfigStream, error) {
+	var config ConfigStream
+	_, err := toml.DecodeFile(path, &config)
+
+	return config, err
+}
+
+// Parse TOML file to detect protocol type
+func DecodeVDProto(path string) (ProtocolType, error) {
+	var proto ProtocolType
+	_, err := toml.DecodeFile(path, &proto)
+
+	return proto, err
+}
+
 // Parse TOML file but using fle system FS to Config struct
-func DecodeVDFS(f fs.FS, path string) (Config, error) {
-	var config Config
+func DecodeVDFS(f fs.FS, path string) (ConfigStream, error) {
+	var config ConfigStream
 	_, err := toml.DecodeFS(f, path, &config)
 
 	return config, err
 }
 
-// Created TOML config file based on Config
-func WriteVDFile(path string, config Config) error {
+// Created TOML config file based on ConfigStream
+func WriteVDFile(path string, config ConfigStream) error {
 	var buf = bytes.Buffer{}
 	var encoder = toml.NewEncoder(&buf)
 

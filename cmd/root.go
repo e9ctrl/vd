@@ -53,23 +53,17 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 
 		fmt.Printf(banner, version, website)
 		// parse config file
-		vdfileMod, err := vdfile.ReadVDFileMod(args[0])
+		vdfile, err := vdfile.ReadVDFile(args[0])
 		if err != nil {
 			fmt.Printf("Config loading failed %v", err)
 			os.Exit(1)
 		}
 
-		/*vdfile, err := vdfile.ReadVDFile(args[0])
-		if err != nil {
-			fmt.Printf("Config loading failed %v", err)
-			os.Exit(1)
-		}*/
-
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 		defer stop()
 
 		// create device instance using loaded vdfile
-		str, err := device.NewDevice(nil, vdfileMod)
+		str, err := device.NewDevice(vdfile)
 		if err != nil {
 			fmt.Printf("Device creation failed %v", err)
 			os.Exit(1)
