@@ -8,6 +8,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/e9ctrl/vd/command"
 	"github.com/e9ctrl/vd/log"
@@ -32,6 +33,7 @@ type Parser struct {
 	outTerminator   []byte
 	mismatch        []byte
 	commandPatterns map[string]CommandPattern
+	delays          map[string]time.Duration
 }
 
 // Method that fullfils main Protocol interface, all logic is implemented here.
@@ -152,12 +154,18 @@ func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
 			buf = append(buf, p.outTerminator...)
 			out = append(out, buf...)
 		}
+		del, exists := p.delays[tx.Name]
+		if !exists {
+			tx.Delay = 0
+		} else {
+			tx.Delay = del
+		}
 	}
 
 	return out, nil
 }
 
-// Method that fulfils Protocl interface. It enforces processing of
+// Method that fulfils Protocol interface. It enforces processing of
 // the specified command
 func (p *Parser) Trigger(cmdName string) protocol.Transaction {
 	tx := protocol.Transaction{}
@@ -186,10 +194,16 @@ func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 		return nil, err
 	}
 
+	dels := make(map[string]time.Duration, len(vdfile.Stream.Commands))
+	for cmdName, cmd := range vdfile.Stream.Commands {
+		dels[cmdName] = cmd.Dly
+	}
+
 	return &Parser{
 		commandPatterns: commandPattern,
 		outTerminator:   vdfile.Stream.OutTerminator,
 		mismatch:        vdfile.Mismatch,
+		delays:          dels,
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
 				return 0, nil, nil

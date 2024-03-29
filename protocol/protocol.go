@@ -3,6 +3,7 @@ package protocol
 import (
 	"errors"
 	"reflect"
+	"time"
 )
 
 var (
@@ -47,4 +48,5 @@ type Transaction struct {
 	DataTyp map[string]reflect.Kind
 	Name    string
 	Payload map[string]any
+	Delay   time.Duration
 }

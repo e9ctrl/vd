@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math"
 	"reflect"
+	"time"
 
 	"github.com/e9ctrl/vd/log"
 	"github.com/e9ctrl/vd/memory"
@@ -29,6 +30,7 @@ type Parser struct {
 	inRegTable   [][]byte
 	coilTable    []byte
 	diTable      []byte
+	delay        time.Duration
 }
 
 func (p *Parser) MemoryMapping(params map[string]parameter.Parameter) {
@@ -139,6 +141,9 @@ func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 
 	parser.MemoryMapping(vdfile.Params)
 
+	// parse delays
+	parser.delay = vdfile.Modbus.Delay
+
 	// Add default functions
 	parser.inFunctions = make(map[uint8]InHandler, 8)
 	parser.inFunctions[1] = parser.ReadCoils
@@ -215,6 +220,11 @@ func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
 		frame.Err = res
 		frame.SetException()
 		return frame.Bytes(), nil
+	}
+
+	// set delays
+	for _, tx := range txs {
+		tx.Delay = p.delay
 	}
 
 	// generate response
