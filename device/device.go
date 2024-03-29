@@ -98,15 +98,21 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		return nil
 	}
 
+	s.lock.Lock()
+	mismatch := s.vdfile.Mismatch
+	s.lock.Unlock()
+
 	for i, tx := range txs {
+		if len(mismatch) > 0 && tx.Typ == protocol.TxUnknown {
+			txs[i].Typ = protocol.TxMismatch
+		}
+
 		// set the parameter
 		if tx.Typ == protocol.TxSetParam {
 			for p, v := range tx.Payload {
 				if err := s.SetParameter(p, v); err != nil {
 					log.ERR(err)
-					if s.protocolTyp != "modbus" {
-						txs[i].Typ = protocol.TxMismatch
-					}
+					txs[i].Typ = protocol.TxMismatch
 				}
 			}
 		}
@@ -117,9 +123,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 			v, err := s.GetParameter(p)
 			if err != nil {
 				log.ERR(err)
-				if s.protocolTyp != "modbus" {
-					txs[i].Typ = protocol.TxMismatch
-				}
+				txs[i].Typ = protocol.TxMismatch
 			}
 			typ, err := s.GetParameterType(p)
 			if err != nil {
