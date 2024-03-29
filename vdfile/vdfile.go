@@ -27,7 +27,8 @@ type ProtocolType struct {
 
 // Modbus structs
 type ConfigModbus struct {
-	Params []configParameterMod `toml:"parameter"`
+	Params []configParameterModbus `toml:"parameter"`
+	Delay  string                  `toml:"delay"`
 }
 
 type configParameterModbus struct {
@@ -36,11 +37,12 @@ type configParameterModbus struct {
 	Reg  string `toml:"reg"`
 	Val  any    `toml:"val"`
 	Addr uint16 `toml:"addr"`
+	Opt  string `toml:"opt,omitempty"`
 }
 
 type VDFileModbus struct {
-	Params map[string]parameter.Parameter
-	Mems   map[string]memory.Memory
+	Mems  map[string]memory.Memory
+	Delay time.Duration
 }
 
 // Stream structs
@@ -73,9 +75,7 @@ type ConfigStream struct {
 type VDFileStream struct {
 	InTerminator  []byte
 	OutTerminator []byte
-	Params        map[string]parameter.Parameter
 	Commands      map[string]*command.Command
-	Mismatch      []byte
 }
 
 // General struct
@@ -83,6 +83,8 @@ type VDFile struct {
 	Stream   *VDFileStream
 	Modbus   *VDFileModbus
 	Protocol string
+	Params   map[string]parameter.Parameter
+	Mismatch []byte
 }
 
 // Read VDFile from disk from the given filepath
@@ -100,15 +102,12 @@ func ReadVDFile(path string) (*VDFile, error) {
 			return nil, fmt.Errorf("%w with err %w", ErrDecoding, err)
 		}
 
-		vdstream, err := ReadVDFileStreamFromConfig(config)
+		vdfile, err := ReadVDFileStreamFromConfig(config)
 		if err != nil {
 			return nil, err
 		}
 
-		vdfile := &VDFile{
-			Protocol: typ,
-			Stream:   vdstream,
-		}
+		vdfile.Protocol = typ
 		return vdfile, nil
 	case "modbus":
 		config, err := DecodeVDFileModbus(path)
@@ -116,14 +115,11 @@ func ReadVDFile(path string) (*VDFile, error) {
 			return nil, fmt.Errorf("%w with err %w", ErrDecoding, err)
 		}
 
-		vdmodbus, err := ReadVDFileModbusFromConfig(config)
+		vdfile, err := ReadVDFileModbusFromConfig(config)
 		if err != nil {
 			return nil, err
 		}
-		vdfile := &VDFile{
-			Protocol: typ,
-			Modbus:   vdmodbus,
-		}
+		vdfile.Protocol = typ
 		return vdfile, nil
 
 	default:
@@ -132,10 +128,14 @@ func ReadVDFile(path string) (*VDFile, error) {
 }
 
 // Creates vdfile struct based on Config containing result of TOML file parsing
-func ReadVDFileModbusFromConfig(config ConfigModbus) (*VDFileModbus, error) {
-	vdfile := &VDFileModbus{
+func ReadVDFileModbusFromConfig(config ConfigModbus) (*VDFile, error) {
+	vd := &VDFile{
 		Params: make(map[string]parameter.Parameter, 0),
-		Mems:   make(map[string]memory.Memory, 0),
+	}
+
+	vdMod := &VDFileModbus{
+		Mems:  make(map[string]memory.Memory, 0),
+		Delay: parseDelays(config.Delay),
 	}
 
 	for _, param := range config.Params {
@@ -157,22 +157,26 @@ func ReadVDFileModbusFromConfig(config ConfigModbus) (*VDFileModbus, error) {
 			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Val, err)
 		}
 
-		vdfile.Params[param.Name] = currentParam
-		vdfile.Mems[param.Name] = memory.New(param.Addr, param.Reg, param.Typ)
+		vd.Params[param.Name] = currentParam
+		vdMod.Mems[param.Name] = memory.New(param.Addr, param.Reg, param.Typ)
 	}
 
 	// need to verify if addresses are ok
-	if err := memory.IsMemoryValid(vdfile.Mems); err != nil {
-		return vdfile, err
+	if err := memory.IsMemoryValid(vdMod.Mems); err != nil {
+		return nil, err
 	}
 
-	return vdfile, nil
+	vd.Modbus = vdMod
+	return vd, nil
 }
 
 // Creates vdfile struct based on Config containing result of TOML file parsing
-func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFileStream, error) {
-	vdfile := &VDFileStream{
-		Params:   make(map[string]parameter.Parameter, 0),
+func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFile, error) {
+	vd := &VDFile{
+		Params: make(map[string]parameter.Parameter, 0),
+	}
+
+	vdStream := &VDFileStream{
 		Commands: make(map[string]*command.Command, 0),
 	}
 
@@ -182,7 +186,7 @@ func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFileStream, error) {
 			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Val, err)
 		}
 
-		vdfile.Params[param.Name] = currentParam
+		vd.Params[param.Name] = currentParam
 
 	}
 
@@ -194,14 +198,15 @@ func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFileStream, error) {
 			Dly:  parseDelays(cmd.Dly),
 		}
 
-		vdfile.Commands[cmd.Name] = currentCmd
+		vdStream.Commands[cmd.Name] = currentCmd
 	}
 
-	vdfile.InTerminator = parseTerminator(config.Term.InTerminator)
-	vdfile.OutTerminator = parseTerminator(config.Term.OutTerminator)
-	vdfile.Mismatch = []byte(config.Mismatch)
+	vdStream.InTerminator = parseTerminator(config.Term.InTerminator)
+	vdStream.OutTerminator = parseTerminator(config.Term.OutTerminator)
+	vd.Mismatch = []byte(config.Mismatch)
 
-	return vdfile, nil
+	vd.Stream = vdStream
+	return vd, nil
 }
 
 // Parse TOML file to ConfigModbus struct

@@ -122,9 +122,9 @@ func (p *Parser) MemoryMapping(params map[string]parameter.Parameter) {
 }
 
 // Constructor, returns struct that fulfils Protocol interface
-func NewParser(vdfile *vdfile.VDFileModbus) (protocol.Protocol, error) {
+func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 	parser := &Parser{
-		paramsAddrs: vdfile.Mems,
+		paramsAddrs: vdfile.Modbus.Mems,
 	}
 	parser.holdRegTable = make([][]byte, MemoryTableSize)
 	for i := range parser.holdRegTable {

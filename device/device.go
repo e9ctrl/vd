@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/e9ctrl/vd/log"
-	"github.com/e9ctrl/vd/parameter"
 	"github.com/e9ctrl/vd/protocol"
 	"github.com/e9ctrl/vd/protocol/modbus"
 	"github.com/e9ctrl/vd/protocol/stream"
@@ -47,12 +46,12 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 
 	switch vdfile.Protocol {
 	case "stream":
-		parser, err = stream.NewParser(vdfile.Stream)
+		parser, err = stream.NewParser(vdfile)
 		if err != nil {
 			return nil, err
 		}
 	case "modbus":
-		parser, err = modbus.NewParser(vdfile.Modbus)
+		parser, err = modbus.NewParser(vdfile)
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +70,7 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 // Return mismatch message together with terminators
 func (s *StreamDevice) Mismatch() (res []byte) {
 	s.lock.Lock()
-	mis := s.vdfile.Stream.Mismatch
+	mis := s.vdfile.Mismatch
 	s.lock.Unlock()
 
 	if len(mis) != 0 {
@@ -137,24 +136,16 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		return nil
 	}
 
+	// delay response if needed
+	s.delayRes(txs[0].Delay)
+
 	return buf
 }
 
 // Method to read value of the specified parameter, returns error when parameter not found
 func (s *StreamDevice) GetParameter(name string) (any, error) {
-	var (
-		param  parameter.Parameter
-		exists bool
-	)
 	s.lock.Lock()
-	switch s.protocolTyp {
-	case "stream":
-		param, exists = s.vdfile.Stream.Params[name]
-	case "modbus":
-		param, exists = s.vdfile.Modbus.Params[name]
-	default:
-		return nil, ErrNotKnownProto
-	}
+	param, exists := s.vdfile.Params[name]
 	s.lock.Unlock()
 	if !exists {
 		return nil, fmt.Errorf("%w: %s", protocol.ErrParamNotFound, name)
@@ -164,19 +155,8 @@ func (s *StreamDevice) GetParameter(name string) (any, error) {
 
 // Method to access value of the specified parameter and change it, return error when parameter not found
 func (s *StreamDevice) SetParameter(name string, value any) error {
-	var (
-		param  parameter.Parameter
-		exists bool
-	)
 	s.lock.Lock()
-	switch s.protocolTyp {
-	case "stream":
-		param, exists = s.vdfile.Stream.Params[name]
-	case "modbus":
-		param, exists = s.vdfile.Modbus.Params[name]
-	default:
-		return ErrNotKnownProto
-	}
+	param, exists := s.vdfile.Params[name]
 	s.lock.Unlock()
 	if !exists {
 		return fmt.Errorf("%w: %s", protocol.ErrParamNotFound, name)
@@ -187,19 +167,8 @@ func (s *StreamDevice) SetParameter(name string, value any) error {
 
 // Method to access value type, it is crucial for modbus and binary protocols to find out how many bytes value takes
 func (s *StreamDevice) GetParameterType(name string) (reflect.Kind, error) {
-	var (
-		param  parameter.Parameter
-		exists bool
-	)
 	s.lock.Lock()
-	switch s.protocolTyp {
-	case "stream":
-		param, exists = s.vdfile.Stream.Params[name]
-	case "modbus":
-		param, exists = s.vdfile.Modbus.Params[name]
-	default:
-		return reflect.Invalid, ErrNotKnownProto
-	}
+	param, exists := s.vdfile.Params[name]
 	s.lock.Unlock()
 	if !exists {
 		return reflect.Invalid, fmt.Errorf("%w: %s", protocol.ErrParamNotFound, name)
@@ -233,14 +202,13 @@ func (s *StreamDevice) SetCommandDelay(name, val string) error {
 	} else {
 		return err
 	}
-
 	return nil
 }
 
 // Return mismatch message
 func (s *StreamDevice) GetMismatch() []byte {
 	s.lock.Lock()
-	mis := s.vdfile.Stream.Mismatch
+	mis := s.vdfile.Mismatch
 	s.lock.Unlock()
 	return mis
 }
@@ -251,7 +219,7 @@ func (s *StreamDevice) SetMismatch(value string) error {
 		return fmt.Errorf("%w: %s", ErrMismatchTooLong, value)
 	}
 	s.lock.Lock()
-	s.vdfile.Stream.Mismatch = []byte(value)
+	s.vdfile.Mismatch = []byte(value)
 	s.lock.Unlock()
 	return nil
 }
