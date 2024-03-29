@@ -190,6 +190,7 @@ func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 	}
 
 	return cmd.Dly, nil
+
 }
 
 // Set delay of the specified command, return error when command not found or when value cannot be converted to time.Duration
@@ -225,40 +226,42 @@ func (s *StreamDevice) SetMismatch(value string) error {
 	s.lock.Lock()
 	s.vdfile.Mismatch = []byte(value)
 	s.lock.Unlock()
+
 	return nil
 }
 
 // Method that cause that value of the parameter associated with the specified command is sent directly via TCP server to connected client.
 // It returns an error when there is no client connected to TCP server or when parameter was not found.
 func (s *StreamDevice) Trigger(cmdName string) error {
-	s.lock.Lock()
-	_, exists := s.vdfile.Stream.Commands[cmdName]
-	s.lock.Unlock()
-	if !exists {
-		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, cmdName)
-	}
+	if s.protocolTyp == "stream" {
+		s.lock.Lock()
+		_, exists := s.vdfile.Stream.Commands[cmdName]
+		s.lock.Unlock()
+		if !exists {
+			return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, cmdName)
+		}
 
-	tx := s.proto.Trigger(cmdName)
-	for p := range tx.Payload {
-		v, err := s.GetParameter(p)
+		tx := s.proto.Trigger(cmdName)
+		for p := range tx.Payload {
+			v, err := s.GetParameter(p)
+			if err != nil {
+				return err
+			}
+
+			tx.Payload[p] = v
+		}
+
+		buf, err := s.proto.Encode([]protocol.Transaction{tx})
 		if err != nil {
 			return err
 		}
 
-		tx.Payload[p] = v
+		select {
+		case s.triggered <- buf:
+		default:
+			return ErrNoClient
+		}
 	}
-
-	buf, err := s.proto.Encode([]protocol.Transaction{tx})
-	if err != nil {
-		return err
-	}
-
-	select {
-	case s.triggered <- buf:
-	default:
-		return ErrNoClient
-	}
-
 	return nil
 }
 
