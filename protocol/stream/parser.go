@@ -109,7 +109,7 @@ func (p *Parser) decode(input string) protocol.Transaction {
 	// alwyas use first index from slice, in that way
 	// it does not matter how many matches we have
 	values := matched[0].vals
-	tx.CommandName = matched[0].cmd
+	tx.Name = matched[0].cmd
 	res := matched[0].res
 
 	if len(values) > 0 {
@@ -145,7 +145,7 @@ func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
 			buf = p.mismatch
 			log.MSM(string(buf))
 		} else {
-			responseItems := p.commandPatterns[tx.CommandName].resItems
+			responseItems := p.commandPatterns[tx.Name].resItems
 			buf = constructOutput(responseItems, tx.Payload)
 		}
 		if len(buf) > 0 {
@@ -168,7 +168,7 @@ func (p *Parser) Trigger(cmdName string) protocol.Transaction {
 	}
 
 	tx.Payload = make(map[string]any)
-	tx.CommandName = cmdName
+	tx.Name = cmdName
 
 	for _, item := range responseItems {
 		if item.Type() == ItemParam {

@@ -43,8 +43,8 @@ func (t TransactionType) String() string {
 //type TxPayload map[string]any
 
 type Transaction struct {
-	Typ         TransactionType
-	DataTyp     map[string]reflect.Kind
-	CommandName string
-	Payload     map[string]any
+	Typ     TransactionType
+	DataTyp map[string]reflect.Kind
+	Name    string
+	Payload map[string]any
 }

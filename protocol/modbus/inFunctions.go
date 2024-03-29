@@ -30,7 +30,7 @@ func readData(frame TCPFrame, params map[string]memory.Memory, memTyp memory.Dat
 							Payload: make(map[string]any),
 							DataTyp: make(map[string]reflect.Kind),
 						}
-						tx.CommandName = frame.GetFunctionName()
+						tx.Name = frame.GetFunctionName()
 						tx.Typ = protocol.TxGetParam
 						tx.Payload[paramName] = nil
 						txs = append(txs, tx)
@@ -80,7 +80,7 @@ func (p *Parser) WriteSingleCoil(frame TCPFrame, params map[string]memory.Memory
 					Payload: make(map[string]any),
 					DataTyp: make(map[string]reflect.Kind),
 				}
-				tx.CommandName = frame.GetFunctionName()
+				tx.Name = frame.GetFunctionName()
 				tx.Typ = protocol.TxSetParam
 				tx.Payload[paramName] = uint8(value)
 				txs = append(txs, tx)
@@ -114,7 +114,7 @@ func writeRegister(frame TCPFrame, params map[string]memory.Memory, holdRegTable
 					Payload: make(map[string]any),
 					DataTyp: make(map[string]reflect.Kind),
 				}
-				tx.CommandName = frame.GetFunctionName()
+				tx.Name = frame.GetFunctionName()
 				tx.Typ = protocol.TxSetParam
 
 				switch mem.DataTyp {
@@ -247,7 +247,7 @@ func writeRegisters(frame TCPFrame, params map[string]memory.Memory, holdRegTabl
 	tx := protocol.Transaction{
 		Payload: make(map[string]any),
 	}
-	tx.CommandName = frame.GetFunctionName()
+	tx.Name = frame.GetFunctionName()
 	tx.Typ = protocol.TxSetParam
 
 	for i := register; i < register+numRegs; i++ {
