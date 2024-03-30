@@ -182,8 +182,3 @@ func generateRegistersResponse(frame TCPFrame, txs []protocol.Transaction, memor
 
 	return res
 }
-
-// Write single value (2 bytes) to single register
-func writeSingleRegister(frame TCPFrame, txs []protocol.Transaction) []byte {
-	return frame.GetData()[0:4]
-}

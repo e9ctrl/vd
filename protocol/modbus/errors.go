@@ -40,29 +40,29 @@ func (e Exception) String() string {
 	var str string
 	switch e {
 	case Success:
-		str = fmt.Sprintf("Success")
+		str = "Success"
 	case IllegalFunction:
-		str = fmt.Sprintf("IllegalFunction")
+		str = "IllegalFunction"
 	case IllegalDataAddress:
-		str = fmt.Sprintf("IllegalDataAddress")
+		str = "IllegalDataAddress"
 	case IllegalDataValue:
-		str = fmt.Sprintf("IllegalDataValue")
+		str = "IllegalDataValue"
 	case SlaveDeviceFailure:
-		str = fmt.Sprintf("SlaveDeviceFailure")
+		str = "SlaveDeviceFailure"
 	case AcknowledgeSlave:
-		str = fmt.Sprintf("AcknowledgeSlave")
+		str = "AcknowledgeSlave"
 	case SlaveDeviceBusy:
-		str = fmt.Sprintf("SlaveDeviceBusy")
+		str = "SlaveDeviceBusy"
 	case NegativeAcknowledge:
-		str = fmt.Sprintf("NegativeAcknowledge")
+		str = "NegativeAcknowledge"
 	case MemoryParityError:
-		str = fmt.Sprintf("MemoryParityError")
+		str = "MemoryParityError"
 	case GatewayPathUnavailable:
-		str = fmt.Sprintf("GatewayPathUnavailable")
+		str = "GatewayPathUnavailable"
 	case GatewayTargetDeviceFailedtoRespond:
-		str = fmt.Sprintf("GatewayTargetDeviceFailedtoRespond")
+		str = "GatewayTargetDeviceFailedtoRespond"
 	default:
-		str = fmt.Sprintf("unknown")
+		str = "unknown"
 	}
 	return str
 }

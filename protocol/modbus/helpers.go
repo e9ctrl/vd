@@ -32,9 +32,9 @@ func SingleUint16ToBytes(value uint16) []byte {
 	return bytes
 }
 
-func bitAtPosition(value uint8, pos uint) uint8 {
-	return (value >> pos) & 0x01
-}
+//func bitAtPosition(value uint8, pos uint) uint8 {
+//	return (value >> pos) & 0x01
+//}
 
 // Read from TCP frame register, number of registers and end register
 func registerAddressAndNumber(frame TCPFrame) (register int, numRegs int, endRegister int) {

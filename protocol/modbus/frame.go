@@ -12,13 +12,13 @@ var (
 
 const (
 	ReadCoilsTyp             uint8 = 1
-	ReadDiscreteInputsTyp          = 2
-	ReadHoldingRegistersTyp        = 3
-	ReadInputRegistersTyp          = 4
-	WriteSingleCoilTyp             = 5
-	WriteHoldingRegisterTyp        = 6
-	WriteMultipleCoilsTyp          = 15
-	WriteHoldingRegistersTyp       = 16
+	ReadDiscreteInputsTyp    uint8 = 2
+	ReadHoldingRegistersTyp  uint8 = 3
+	ReadInputRegistersTyp    uint8 = 4
+	WriteSingleCoilTyp       uint8 = 5
+	WriteHoldingRegisterTyp  uint8 = 6
+	WriteMultipleCoilsTyp    uint8 = 15
+	WriteHoldingRegistersTyp uint8 = 16
 )
 
 // Generate the Modbus function string name using its code

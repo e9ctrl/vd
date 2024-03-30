@@ -13,7 +13,7 @@ const FILE1 = "../vdfile/vdfile_stream"
 
 var (
 	vdfileTestStream vdfile.ConfigStream
-	vdfileTestModbus vdfile.ConfigModbus
+	//vdfileTestModbus vdfile.ConfigModbus
 )
 
 func init() {
