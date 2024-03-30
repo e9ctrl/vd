@@ -5,7 +5,7 @@ import (
 	"github.com/e9ctrl/vd/cmd"
 )
 
-//go:embed vdfile/vdfile
+//go:embed vdfile/vdfile_stream
 var vdTemplate embed.FS
 
 func main() {

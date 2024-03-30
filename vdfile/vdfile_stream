@@ -1,3 +1,5 @@
+protocol = "stream"
+
 [terminators]
   intterm = "CR LF"
   outterm = "CR LF"
