@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -62,6 +63,7 @@ func (p *Parser) decode(input string) protocol.Transaction {
 
 	tx := protocol.Transaction{
 		Payload: make(map[string]any),
+		DataTyp: make(map[string]reflect.Kind),
 	}
 
 	// It happens that input string matches several patterns
@@ -155,6 +157,7 @@ func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
 			out = append(out, buf...)
 		}
 		del, exists := p.delays[tx.Name]
+
 		if !exists {
 			tx.Delay = 0
 		} else {
