@@ -95,7 +95,7 @@ func ReadVDFile(path string) (*VDFile, error) {
 		return nil, fmt.Errorf("%w with err %w", ErrDecoding, err)
 	}
 
-	switch typ := proto.Protocol; typ {
+	switch proto.Protocol {
 	case "stream":
 		config, err := DecodeVDFileStream(path)
 		if err != nil {
@@ -107,7 +107,6 @@ func ReadVDFile(path string) (*VDFile, error) {
 			return nil, err
 		}
 
-		vdfile.Protocol = typ
 		return vdfile, nil
 	case "modbus":
 		config, err := DecodeVDFileModbus(path)
@@ -119,7 +118,6 @@ func ReadVDFile(path string) (*VDFile, error) {
 		if err != nil {
 			return nil, err
 		}
-		vdfile.Protocol = typ
 		return vdfile, nil
 
 	default:
@@ -167,6 +165,7 @@ func ReadVDFileModbusFromConfig(config ConfigModbus) (*VDFile, error) {
 	}
 
 	vd.Modbus = vdMod
+	vd.Protocol = "modbus"
 	return vd, nil
 }
 
@@ -206,6 +205,7 @@ func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFile, error) {
 	vd.Mismatch = []byte(config.Mismatch)
 
 	vd.Stream = vdStream
+	vd.Protocol = "stream"
 	return vd, nil
 }
 
