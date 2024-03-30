@@ -39,8 +39,8 @@ func IsMemoryValid(mems map[string]Memory) error {
 		for key2, mem2 := range mems {
 			if mem2.Typ == mem1.Typ && key1 != key2 {
 				// Check for collision
-				if (mem1.Addr <= mem2.Addr && mem1.Addr+uint16(mem1.Length) > mem2.Addr) ||
-					(mem2.Addr <= mem1.Addr && mem2.Addr+uint16(mem2.Length) > mem1.Addr) {
+				if (mem1.Addr <= mem2.Addr && mem1.Addr+uint16(mem1.Length) >= mem2.Addr) ||
+					(mem2.Addr <= mem1.Addr && mem2.Addr+uint16(mem2.Length) >= mem1.Addr) {
 					return ErrMemoryCollision
 				}
 			}
