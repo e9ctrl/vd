@@ -9,15 +9,16 @@ import (
 )
 
 // path to vdfile used in tests
-const FILE1 = "../vdfile/vdfile"
+const FILE1 = "../vdfile/vdfile_stream"
 
 var (
-	vdfileTest vdfile.Config
+	vdfileTestStream vdfile.ConfigStream
+	vdfileTestModbus vdfile.ConfigModbus
 )
 
 func init() {
 	// use one, common vdfile as a template to create vdfile.Config structures for tests
-	config, err := vdfile.DecodeVDFile(FILE1)
+	config, err := vdfile.DecodeVDFileStream(FILE1)
 	if err != nil {
 		panic(err)
 	}
@@ -34,12 +35,12 @@ func init() {
 
 	config.Mismatch = "Wrong query"
 	// vvdfile with changed mismatch message and delays
-	vdfileTest = config
+	vdfileTestStream = config
 }
 
 func TestGetMismatch(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
+	vdfile, err := vdfile.ReadVDFileStreamFromConfig(vdfileTestStream)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +72,7 @@ func TestGetMismatch(t *testing.T) {
 
 func TestSetMismatch(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
+	vdfile, err := vdfile.ReadVDFileStreamFromConfig(vdfileTestStream)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +115,7 @@ func TestSetMismatch(t *testing.T) {
 
 func TestGetParameter(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
+	vdfile, err := vdfile.ReadVDFileStreamFromConfig(vdfileTestStream)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +141,7 @@ func TestGetParameter(t *testing.T) {
 		{"get version", "version", "version 1.0", http.StatusOK},
 		{"get current", "current", "300", http.StatusOK},
 		{"get mode", "mode", "NORM", http.StatusOK},
-		{"get wrong paramter", "test", "Error: parameter not found: test", http.StatusInternalServerError},
+		{"get wrong parameter", "test", "Error: parameter not found: test", http.StatusInternalServerError},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -159,7 +160,7 @@ func TestGetParameter(t *testing.T) {
 
 func TestSetParameter(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
+	vdfile, err := vdfile.ReadVDFileStreamFromConfig(vdfileTestStream)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,9 +217,55 @@ func TestSetParameter(t *testing.T) {
 	}
 }
 
+func TestGetParameterType(t *testing.T) {
+	t.Parallel()
+	vdfile, err := vdfile.ReadVDFileStreamFromConfig(vdfileTestStream)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dev, err := device.NewDevice(vdfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a := &Api{
+		d: dev,
+	}
+
+	ts := newTestServer(t, a.routes())
+
+	defer ts.Close()
+
+	tests := []struct {
+		name    string
+		param   string
+		exp     string
+		expCode int
+	}{
+		{"get version", "version", "string", http.StatusOK},
+		{"get current", "current", "int64", http.StatusOK},
+		{"get psi", "psi", "float64", http.StatusOK},
+		{"get wrong parameter", "test", "Error: parameter not found: test", http.StatusInternalServerError},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			code, _, body := ts.get(t, "/type/"+tt.param)
+			if code != tt.expCode {
+				t.Errorf("handler returned wrong status code: got %v want %v",
+					code, tt.expCode)
+			}
+			if string(body) != tt.exp {
+				t.Errorf("handler returned unexpected body: got\n %s want\n %v",
+					body, tt.exp)
+			}
+		})
+	}
+}
+
 func TestGetCommandDelay(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
+	vdfile, err := vdfile.ReadVDFileStreamFromConfig(vdfileTestStream)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +309,7 @@ func TestGetCommandDelay(t *testing.T) {
 
 func TestSetCommandDelay(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
+	vdfile, err := vdfile.ReadVDFileStreamFromConfig(vdfileTestStream)
 	if err != nil {
 		t.Fatal(err)
 	}

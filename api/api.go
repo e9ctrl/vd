@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/e9ctrl/vd/log"
@@ -21,6 +22,7 @@ type Device interface {
 	GetMismatch() []byte
 	SetMismatch(mismatch string) error
 	Trigger(param string) error
+	GetParameterType(param string) (reflect.Kind, error)
 }
 
 // Struct that keeps Device interface.
@@ -86,6 +88,7 @@ func (a *Api) routes() http.Handler {
 		r.Get("/mismatch", a.getMismatch)
 		r.Post("/mismatch/{value}", a.setMismatch)
 		r.Post("/trigger/{param}", a.trigger)
+		r.Get("/type/{param}", a.getParameterType)
 	})
 
 	return r
@@ -134,6 +137,18 @@ func (a *Api) setParameter(w http.ResponseWriter, r *http.Request) {
 	}
 	log.API("set", param, "to", value)
 	w.Write([]byte("Parameter set successfully"))
+}
+
+func (a *Api) getParameterType(w http.ResponseWriter, r *http.Request) {
+	param := chi.URLParam(r, "param")
+	typ, err := a.d.GetParameterType(param)
+	if err != nil {
+		errorHandler(w, err)
+		return
+	}
+	log.API("get type", param)
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(fmt.Sprintf("%v", typ)))
 }
 
 func (a *Api) getCommandDelay(w http.ResponseWriter, r *http.Request) {

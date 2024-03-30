@@ -64,6 +64,28 @@ func (c *Client) SetParameter(param, value string) error {
 	return nil
 }
 
+// Get given parameter type from the simulator server via exposed REST API with HTTP GET query.
+func (c *Client) GetParameterType(param string) (string, error) {
+	resp, err := http.Get("http://" + c.url + "/type/" + param)
+	if err != nil {
+		return "", err
+	}
+
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API error %s", body)
+	}
+	return string(body), nil
+}
+
 // Get command delay value via exposed REST API with HTTP Get query.
 func (c *Client) GetCommandDelay(commandName string) (time.Duration, error) {
 	resp, err := http.Get("http://" + c.url + "/delay/" + commandName)

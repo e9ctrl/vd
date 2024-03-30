@@ -138,6 +138,32 @@ func TestGetParameter(t *testing.T) {
 	}
 }
 
+func TestGetParameterType(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		exp   string
+		api   string
+	}{
+		{"get version type", "version", "string\n", API_ADDR},
+		{"get current type", "current", "int64\n", API_ADDR},
+		{"wrong api addr", "version", `Error: Get "http://127.0.0.1:7878/type/version": dial tcp 127.0.0.1:7878: connect: connection refused` + "\n", "127.0.0.1:7878"},
+		{"wrong api addr format", "version", "Error: wrong HTTP address\n", "127.test"},
+		{"wrong cmd", "test", "Error: API error Error: parameter not found: test\n", API_ADDR},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			str := fmt.Sprintf("get type %s --apiAddr %s", tt.input, tt.api)
+			in := strings.Split(str, " ")
+			res := execute(in)
+			if res != tt.exp {
+				t.Errorf("exp value: %s got %s\n", tt.exp, res)
+			}
+		})
+	}
+}
+
 func TestGetDelay(t *testing.T) {
 	tests := []struct {
 		name  string
