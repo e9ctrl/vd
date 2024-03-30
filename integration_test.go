@@ -14,13 +14,13 @@ import (
 )
 
 var (
-	vdfileBase     vdfile.Config
-	vdfileDelay    vdfile.Config
-	vdfileMismatch vdfile.Config
+	vdfileBase     vdfile.ConfigStream
+	vdfileDelay    vdfile.ConfigStream
+	vdfileMismatch vdfile.ConfigStream
 )
 
 const (
-	FILE1 = "vdfile/vdfile"
+	FILE1 = "vdfile/vdfile_stream"
 	ADDR1 = "localhost:3333"
 	ADDR2 = "localhost:4444"
 	ADDR3 = "localhost:5555"
@@ -28,14 +28,14 @@ const (
 )
 
 func init() {
-	config, err := vdfile.DecodeVDFile(FILE1)
+	config, err := vdfile.DecodeVDFileStream(FILE1)
 	if err != nil {
 		panic(err)
 	}
 
 	vdfileBase = config
 
-	config1, _ := vdfile.DecodeVDFile(FILE1)
+	config1, _ := vdfile.DecodeVDFileStream(FILE1)
 	for i := 0; i < len(config1.Commands); i++ {
 		switch config1.Commands[i].Name {
 		case "get_psi":
@@ -52,13 +52,14 @@ func init() {
 	}
 	vdfileDelay = config1
 
-	config2, _ := vdfile.DecodeVDFile(FILE1)
+	config2, _ := vdfile.DecodeVDFileStream(FILE1)
+
 	config2.Mismatch = "Wrong query"
 	vdfileMismatch = config2
 }
 
-func setupTestCase(t *testing.T, addr string, vd vdfile.Config) func() {
-	vdfile, err := vdfile.ReadVDFileFromConfig(vd)
+func setupTestCase(t *testing.T, addr string, vd vdfile.ConfigStream) func() {
+	vdfile, err := vdfile.ReadVDFileStreamFromConfig(vd)
 	if err != nil {
 		t.Fatal(err)
 	}

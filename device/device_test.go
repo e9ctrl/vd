@@ -17,10 +17,14 @@ import (
 )
 
 var myStreamDev = func() *StreamDevice {
-	vd := &vdfile.VDFile{
+	vdStream := &vdfile.VDFileStream{
 		InTerminator:  []byte("\r\n"),
 		OutTerminator: []byte("\r\n"),
-		Mismatch:      []byte("error"),
+	}
+	vd := &vdfile.VDFile{
+		Mismatch: []byte("error"),
+		Stream:   vdStream,
+		Protocol: "stream",
 	}
 	d, _ := NewDevice(vd)
 	return d
@@ -268,7 +272,7 @@ func TestMain(m *testing.M) {
 	}
 	commands[cmdGetStat.Name] = cmdGetStat
 
-	dev.vdfile.Commands = commands
+	dev.vdfile.Stream.Commands = commands
 	dev.vdfile.Params = params
 	dev.proto, _ = stream.NewParser(dev.vdfile)
 	// run tests

@@ -12,7 +12,7 @@ import (
 	"github.com/e9ctrl/vd/vdfile"
 )
 
-const FILE1 = "../../vdfile/vdfile"
+const FILE1 = "../../vdfile/vdfile_stream"
 
 func TestDecode(t *testing.T) {
 	t.Parallel()
@@ -29,18 +29,18 @@ func TestDecode(t *testing.T) {
 		data  []byte
 		expTx []protocol.Transaction
 	}{
-		{"get command int", []byte("CUR?"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_current"}}},
-		{"get command str", []byte("VER?"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_version"}}},
-		{"get status two params", []byte("S?"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status"}}},
-		{"get status two params with new line", []byte("get status ch 3"), []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status_3"}}},
-		{"set psi command", []byte("PSI 30.42"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_psi", Payload: map[string]any{"psi": 30.42}}}},
-		{"empty command", []byte(""), []protocol.Transaction{{Typ: protocol.TxUnknown, CommandName: ""}}},
-		{"non-existent command", []byte("test 30.0"), []protocol.Transaction{{Typ: protocol.TxUnknown, CommandName: ""}}},
-		{"set current command", []byte("CUR 30"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_current", Payload: map[string]any{"current": 30}}}},
-		{"wrong value of the command", []byte("CUR 30.0"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_current", Payload: map[string]any{"current": 30}}}},
-		{"set command with opt", []byte(":PULSE0:MODE SING"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_mode", Payload: map[string]any{"mode": "SING"}}}},
-		{"wrong opt of the command", []byte(":PULSE0:MODE TEST"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_mode", Payload: map[string]any{"mode": "TEST"}}}},
-		{"set hex", []byte("HEX 0x03F"), []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_hex", Payload: map[string]any{"hex": 0x03F}}}},
+		{"get command int", []byte("CUR?"), []protocol.Transaction{{Typ: protocol.TxGetParam, Name: "get_current"}}},
+		{"get command str", []byte("VER?"), []protocol.Transaction{{Typ: protocol.TxGetParam, Name: "get_version"}}},
+		{"get status two params", []byte("S?"), []protocol.Transaction{{Typ: protocol.TxGetParam, Name: "get_status"}}},
+		{"get status two params with new line", []byte("get status ch 3"), []protocol.Transaction{{Typ: protocol.TxGetParam, Name: "get_status_3"}}},
+		{"set psi command", []byte("PSI 30.42"), []protocol.Transaction{{Typ: protocol.TxSetParam, Name: "set_psi", Payload: map[string]any{"psi": 30.42}}}},
+		{"empty command", []byte(""), []protocol.Transaction{{Typ: protocol.TxUnknown, Name: ""}}},
+		{"non-existent command", []byte("test 30.0"), []protocol.Transaction{{Typ: protocol.TxUnknown, Name: ""}}},
+		{"set current command", []byte("CUR 30"), []protocol.Transaction{{Typ: protocol.TxSetParam, Name: "set_current", Payload: map[string]any{"current": 30}}}},
+		{"wrong value of the command", []byte("CUR 30.0"), []protocol.Transaction{{Typ: protocol.TxSetParam, Name: "set_current", Payload: map[string]any{"current": 30}}}},
+		{"set command with opt", []byte(":PULSE0:MODE SING"), []protocol.Transaction{{Typ: protocol.TxSetParam, Name: "set_mode", Payload: map[string]any{"mode": "SING"}}}},
+		{"wrong opt of the command", []byte(":PULSE0:MODE TEST"), []protocol.Transaction{{Typ: protocol.TxSetParam, Name: "set_mode", Payload: map[string]any{"mode": "TEST"}}}},
+		{"set hex", []byte("HEX 0x03F"), []protocol.Transaction{{Typ: protocol.TxSetParam, Name: "set_hex", Payload: map[string]any{"hex": 0x03F}}}},
 	}
 
 	for _, tt := range tests {
@@ -53,8 +53,8 @@ func TestDecode(t *testing.T) {
 				if x.Typ != tt.expTx[i].Typ {
 					t.Errorf("exp typ: %v got: %v", tt.expTx[i].Typ, x.Typ)
 				}
-				if x.CommandName != tt.expTx[i].CommandName {
-					t.Errorf("exp cmd name: %v got: %v", tt.expTx[i].CommandName, x.CommandName)
+				if x.Name != tt.expTx[i].Name {
+					t.Errorf("exp cmd name: %v got: %v", tt.expTx[i].Name, x.Name)
 				}
 			}
 		})
@@ -399,18 +399,18 @@ func TestEncode(t *testing.T) {
 		tx      []protocol.Transaction
 		expData []byte
 	}{
-		{"current param", []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_current", Payload: map[string]any{"current": 20}}}, []byte("CUR 20\r\n")},
-		{"get command str", []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_version", Payload: map[string]any{"version": "version 1.0"}}}, []byte("version 1.0\r\n")},
-		{"get status two params", []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status", Payload: map[string]any{"version": "version 1.0", "temp": 30.0}}}, []byte("version 1.0 - 30.0\r\n")},
-		{"get status two params with new line", []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "get_status_3", Payload: map[string]any{"mode": "NORM", "psi": 6.86}}}, []byte("mode: NORM\npsi: 6.86\r\n")},
-		{"set psi command", []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_psi", Payload: map[string]any{"psi": 30.42}}}, []byte("PSI 30.42 OK\r\n")},
-		{"empty command", []protocol.Transaction{{Typ: protocol.TxUnknown, CommandName: ""}}, []byte(nil)},
-		{"non-existent command", []protocol.Transaction{{Typ: protocol.TxUnknown, CommandName: "wrong_cmd"}}, []byte(nil)},
-		{"non-existent get command", []protocol.Transaction{{Typ: protocol.TxGetParam, CommandName: "wrong_cmd"}}, []byte(nil)},
-		{"set current command", []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_current", Payload: map[string]any{"current": 30}}}, []byte("OK\r\n")},
-		{"wrong value of the command", []protocol.Transaction{{Typ: protocol.TxMismatch, CommandName: "set_current", Payload: map[string]any{"current": "test"}}}, []byte(nil)},
-		{"set command with opt", []protocol.Transaction{{Typ: protocol.TxSetParam, CommandName: "set_mode", Payload: map[string]any{"mode": "SING"}}}, []byte("ok\r\n")},
-		{"wrong opt of the command", []protocol.Transaction{{Typ: protocol.TxMismatch, CommandName: "set_mode", Payload: map[string]any{"mode": "TEST"}}}, []byte(nil)},
+		{"current param", []protocol.Transaction{{Typ: protocol.TxGetParam, Name: "get_current", Payload: map[string]any{"current": 20}}}, []byte("CUR 20\r\n")},
+		{"get command str", []protocol.Transaction{{Typ: protocol.TxGetParam, Name: "get_version", Payload: map[string]any{"version": "version 1.0"}}}, []byte("version 1.0\r\n")},
+		{"get status two params", []protocol.Transaction{{Typ: protocol.TxGetParam, Name: "get_status", Payload: map[string]any{"version": "version 1.0", "temp": 30.0}}}, []byte("version 1.0 - 30.0\r\n")},
+		{"get status two params with new line", []protocol.Transaction{{Typ: protocol.TxGetParam, Name: "get_status_3", Payload: map[string]any{"mode": "NORM", "psi": 6.86}}}, []byte("mode: NORM\npsi: 6.86\r\n")},
+		{"set psi command", []protocol.Transaction{{Typ: protocol.TxSetParam, Name: "set_psi", Payload: map[string]any{"psi": 30.42}}}, []byte("PSI 30.42 OK\r\n")},
+		{"empty command", []protocol.Transaction{{Typ: protocol.TxUnknown, Name: ""}}, []byte(nil)},
+		{"non-existent command", []protocol.Transaction{{Typ: protocol.TxUnknown, Name: "wrong_cmd"}}, []byte(nil)},
+		{"non-existent get command", []protocol.Transaction{{Typ: protocol.TxGetParam, Name: "wrong_cmd"}}, []byte(nil)},
+		{"set current command", []protocol.Transaction{{Typ: protocol.TxSetParam, Name: "set_current", Payload: map[string]any{"current": 30}}}, []byte("OK\r\n")},
+		{"wrong value of the command", []protocol.Transaction{{Typ: protocol.TxMismatch, Name: "set_current", Payload: map[string]any{"current": "test"}}}, []byte(nil)},
+		{"set command with opt", []protocol.Transaction{{Typ: protocol.TxSetParam, Name: "set_mode", Payload: map[string]any{"mode": "SING"}}}, []byte("ok\r\n")},
+		{"wrong opt of the command", []protocol.Transaction{{Typ: protocol.TxMismatch, Name: "set_mode", Payload: map[string]any{"mode": "TEST"}}}, []byte(nil)},
 	}
 
 	for _, tt := range tests {
@@ -443,13 +443,13 @@ func TestTrigger(t *testing.T) {
 		cmdName string
 		exp     protocol.Transaction
 	}{
-		{"trigger get_current", "get_current", protocol.Transaction{CommandName: "get_current", Payload: map[string]any{"current": nil}}},
+		{"trigger get_current", "get_current", protocol.Transaction{Name: "get_current", Payload: map[string]any{"current": nil}}},
 		{"trigger wrong command", "test_get", protocol.Transaction{}},
 		{"empty command name", "", protocol.Transaction{}},
-		{"trigger get_hex", "get_hex", protocol.Transaction{CommandName: "get_hex", Payload: map[string]any{"hex": nil}}},
-		{"trigger set_mode", "set_mode", protocol.Transaction{CommandName: "set_mode", Payload: map[string]any{}}},
-		{"trigger get_version", "get_version", protocol.Transaction{CommandName: "get_version", Payload: map[string]any{"version": nil}}},
-		{"trigger get_status_3", "get_status_3", protocol.Transaction{CommandName: "get_status_3", Payload: map[string]any{"mode": nil, "psi": nil}}},
+		{"trigger get_hex", "get_hex", protocol.Transaction{Name: "get_hex", Payload: map[string]any{"hex": nil}}},
+		{"trigger set_mode", "set_mode", protocol.Transaction{Name: "set_mode", Payload: map[string]any{}}},
+		{"trigger get_version", "get_version", protocol.Transaction{Name: "get_version", Payload: map[string]any{"version": nil}}},
+		{"trigger get_status_3", "get_status_3", protocol.Transaction{Name: "get_status_3", Payload: map[string]any{"mode": nil, "psi": nil}}},
 	}
 
 	for _, tt := range tests {

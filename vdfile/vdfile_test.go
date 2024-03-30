@@ -31,21 +31,49 @@ func TestParseTerminator(t *testing.T) {
 	}
 }
 
-func TestWriteVDFile(t *testing.T) {
+func TestWriteVDFileStream(t *testing.T) {
 	t.Parallel()
-	config, err := DecodeVDFile("vdfile")
+	config, err := DecodeVDFileStream("vdfile_stream")
 	if err != nil {
 		t.Fatal(err)
 		return
 	}
 
-	path := t.TempDir() + "/vdfile"
+	path := t.TempDir() + "/vdfile_stream"
 	err = WriteVDFile(path, config)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	want, err := os.ReadFile("vdfile")
+	want, err := os.ReadFile("vdfile_stream")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cmp.Equal(want, got) {
+		t.Fatal(cmp.Diff(want, got))
+	}
+}
+
+func TestWriteVDFileModbus(t *testing.T) {
+	t.Parallel()
+	config, err := DecodeVDFileModbus("vdfile_modbus")
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	path := t.TempDir() + "/vdfile_modbus"
+	err = WriteVDFile(path, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want, err := os.ReadFile("vdfile_modbus")
 	if err != nil {
 		t.Fatal(err)
 	}

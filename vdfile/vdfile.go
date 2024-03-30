@@ -28,7 +28,7 @@ type ProtocolType struct {
 // Modbus structs
 type ConfigModbus struct {
 	Params []configParameterModbus `toml:"parameter"`
-	Delay  string                  `toml:"delay"`
+	Delay  string                  `toml:"delay,omitempty"`
 }
 
 type configParameterModbus struct {
