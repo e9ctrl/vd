@@ -19,12 +19,12 @@ import (
 )
 
 const (
-	FILE     = "../vdfile/vdfile"
+	FILE     = "../vdfile/vdfile_stream"
 	API_ADDR = "127.0.0.1:7777"
 )
 
 func TestMain(m *testing.M) {
-	config, err := vdfile.DecodeVDFile(FILE)
+	config, err := vdfile.DecodeVDFileStream(FILE)
 	if err != nil {
 		panic(err)
 	}
@@ -43,7 +43,7 @@ func TestMain(m *testing.M) {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
-	vdfile, err := vdfile.ReadVDFileFromConfig(config)
+	vdfile, err := vdfile.ReadVDFileStreamFromConfig(config)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
