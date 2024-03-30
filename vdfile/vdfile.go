@@ -242,11 +242,25 @@ func DecodeVDFS(f fs.FS, path string) (ConfigStream, error) {
 }
 
 // Created TOML config file based on ConfigStream
-func WriteVDFile(path string, config ConfigStream) error {
+func WriteVDFile(path string, config any) error {
 	var buf = bytes.Buffer{}
 	var encoder = toml.NewEncoder(&buf)
 
-	err := encoder.Encode(config)
+	var p ProtocolType
+	_, ok := config.(ConfigModbus)
+	if ok {
+		p.Protocol = "modbus"
+	} else {
+		p.Protocol = "stream"
+
+	}
+
+	err := encoder.Encode(p)
+	if err != nil {
+		return err
+	}
+
+	err = encoder.Encode(config)
 	if err != nil {
 		return err
 	}
