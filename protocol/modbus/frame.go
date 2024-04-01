@@ -33,7 +33,7 @@ func getFunctionName(f uint8) string {
 	case ReadInputRegistersTyp:
 		return "ReadInputRegisters"
 	case WriteSingleCoilTyp:
-		return "WriteSingleCoin"
+		return "WriteSingleCoil"
 	case WriteHoldingRegisterTyp:
 		return "WriteHoldingRegister"
 	case WriteMultipleCoilsTyp:
