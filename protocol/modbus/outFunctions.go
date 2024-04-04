@@ -16,36 +16,47 @@ var (
 	ErrValueWrongType     = errors.New("wrong type of value")
 	ErrMemoryWrongType    = errors.New("wrong memory type")
 	ErrParameterWrongType = errors.New("wrong parameter data type")
+	ErrEmptyMemoryTable   = errors.New("not initialised memory table")
 )
 
-// Generate response for read discrete inputs or read coils function
-func (p *Parser) GenerateReadDIsCoilsResponse(frame TCPFrame, txs []protocol.Transaction) ([]byte, *Exception) {
+// Generate response for read coils function
+func (p *Parser) GenerateReadCoilsResponse(frame TCPFrame, txs []protocol.Transaction) ([]byte, *Exception) {
 	res := &Success
-	err := p.updateSingleBitsMemory(txs)
+	err := updateSingleBitsMemory(txs, p.paramsAddrs, p.coilTable)
 	if err != nil {
 		res = &IllegalDataValue
 	}
-	return generateStatusesResponse(frame, txs), res
+	return generateStatusesResponse(txs), res
+}
+
+// Generate response for read discrete inputs function
+func (p *Parser) GenerateReadDIsResponse(frame TCPFrame, txs []protocol.Transaction) ([]byte, *Exception) {
+	res := &Success
+	err := updateSingleBitsMemory(txs, p.paramsAddrs, p.diTable)
+	if err != nil {
+		res = &IllegalDataValue
+	}
+	return generateStatusesResponse(txs), res
 }
 
 // Generate response for read holding registers
 func (p *Parser) GenerateReadHoldingRegistersResponse(frame TCPFrame, txs []protocol.Transaction) ([]byte, *Exception) {
 	res := &Success
-	err := updateRegisterMemory(txs, p.paramsAddrs, p.holdRegTable, frame)
+	err := updateRegisterMemory(txs, p.paramsAddrs, p.holdRegTable)
 	if err != nil {
 		res = &IllegalDataValue
 	}
-	return generateRegistersResponse(frame, txs, p.holdRegTable, p.paramsAddrs), res
+	return generateRegistersResponse(frame, p.holdRegTable), res
 }
 
 // Generate response for read input registers
 func (p *Parser) GenerateReadInputRegistersResponse(frame TCPFrame, txs []protocol.Transaction) ([]byte, *Exception) {
 	res := &Success
-	err := updateRegisterMemory(txs, p.paramsAddrs, p.inRegTable, frame)
+	err := updateRegisterMemory(txs, p.paramsAddrs, p.inRegTable)
 	if err != nil {
 		res = &IllegalDataValue
 	}
-	return generateRegistersResponse(frame, txs, p.inRegTable, p.paramsAddrs), res
+	return generateRegistersResponse(frame, p.inRegTable), res
 }
 
 // Generate response for all write functions
@@ -54,10 +65,10 @@ func (p *Parser) GenerateWriteResponse(frame TCPFrame, txs []protocol.Transactio
 }
 
 // updating memory map if parameter has been modified by http client, only coil or discrete inputs
-func (p *Parser) updateSingleBitsMemory(txs []protocol.Transaction) error {
+func updateSingleBitsMemory(txs []protocol.Transaction, params map[string]memory.Memory, memoryTable []byte) error {
 	for _, tx := range txs {
 		for name, val := range tx.Payload {
-			param, exists := p.paramsAddrs[name]
+			param, exists := params[name]
 			if !exists {
 				return fmt.Errorf("%s - %w", name, ErrParameterNotFound)
 			}
@@ -65,18 +76,17 @@ func (p *Parser) updateSingleBitsMemory(txs []protocol.Transaction) error {
 			if !ok {
 				return fmt.Errorf("%s - %w, cannot be assigned to byte", name, ErrValueWrongType)
 			}
-			if param.Typ == memory.DataCoil {
-				p.coilTable[param.Addr] = v
-			} else if param.Typ == memory.DataDiscreteInput {
-				p.diTable[param.Addr] = v
+			if len(memoryTable) == 0 {
+				return ErrEmptyMemoryTable
 			}
+			memoryTable[param.Addr] = v
 		}
 	}
 	return nil
 }
 
 // Read status values for coils or discrete inputs
-func generateStatusesResponse(frame TCPFrame, txs []protocol.Transaction) []byte {
+func generateStatusesResponse(txs []protocol.Transaction) []byte {
 	// count byte size
 	dataSize := len(txs) / 8
 	if (len(txs) % 8) != 0 {
@@ -96,7 +106,7 @@ func generateStatusesResponse(frame TCPFrame, txs []protocol.Transaction) []byte
 }
 
 // Update memory map if parameter has been modified by HTTP client, inly input and holding registers
-func updateRegisterMemory(txs []protocol.Transaction, params map[string]memory.Memory, memoryMap [][]byte, frame TCPFrame) error {
+func updateRegisterMemory(txs []protocol.Transaction, params map[string]memory.Memory, memoryMap [][]byte) error {
 	// updating memory map if parameter has been modified by http client
 	for _, tx := range txs {
 		for name, val := range tx.Payload {
@@ -158,6 +168,10 @@ func updateRegisterMemory(txs []protocol.Transaction, params map[string]memory.M
 			default:
 				return fmt.Errorf("%s: should be register type - %w", name, ErrParameterWrongType)
 			}
+			if len(memoryMap) == 0 {
+				return ErrEmptyMemoryTable
+			}
+
 			j := 0
 			for i := addr; i < addr+uint16(length); i++ {
 				memoryMap[i][0] = buf[j]
@@ -170,7 +184,11 @@ func updateRegisterMemory(txs []protocol.Transaction, params map[string]memory.M
 }
 
 // Generate response for read holding or input registers
-func generateRegistersResponse(frame TCPFrame, txs []protocol.Transaction, memory [][]byte, params map[string]memory.Memory) []byte {
+func generateRegistersResponse(frame TCPFrame, memory [][]byte) []byte {
+	if len(memory) == 0 {
+		return []byte(nil)
+	}
+
 	register, numRegs, endRegister := registerAddressAndNumber(frame)
 
 	var res []byte
