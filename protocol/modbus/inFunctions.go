@@ -102,6 +102,11 @@ func writeRegister(frame TCPFrame, params map[string]memory.Memory, holdRegTable
 
 	register, value := registerAddressAndValue(frame)
 	b := SingleUint16ToBytes(value)
+
+	if len(holdRegTable) == 0 {
+		return txs, &IllegalDataAddress
+	}
+
 	// update map
 	holdRegTable[register][0] = b[0]
 	holdRegTable[register][1] = b[1]
@@ -190,7 +195,12 @@ func (p *Parser) WriteMultipleCoils(frame TCPFrame, params map[string]memory.Mem
 	txs := make([]protocol.Transaction, 0)
 
 	register, _, endRegister := registerAddressAndNumber(frame)
-	valueBytes := frame.GetData()[5:]
+	data := frame.GetData()
+	if len(data) < 5 {
+		return txs, &IllegalDataAddress
+	}
+
+	valueBytes := data[5:]
 
 	if endRegister > MemoryTableSize {
 		return txs, &IllegalDataAddress
@@ -226,13 +236,21 @@ func writeRegisters(frame TCPFrame, params map[string]memory.Memory, holdRegTabl
 	txs := make([]protocol.Transaction, 0)
 
 	register, numRegs, _ := registerAddressAndNumber(frame)
-	valueBytes := frame.GetData()[5:]
+	data := frame.GetData()
+	if len(data) < 5 {
+		return txs, &IllegalDataAddress
+	}
+
+	valueBytes := data[5:]
 
 	// two bytes per register
 	if len(valueBytes)/2 != numRegs {
 		return txs, &IllegalDataAddress
 	}
 
+	if len(holdRegTable) == 0 {
+		return txs, &IllegalDataAddress
+	}
 	// update memory map
 	// needs to be done here cause written registers doesn't have to cover the whole variable
 	// i.e that we can update one register of 4 bytes number
