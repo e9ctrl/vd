@@ -208,7 +208,7 @@ func (p *Parser) WriteMultipleCoils(frame TCPFrame, params map[string]memory.Mem
 
 	bits := byteToBits(valueBytes)
 
-	for i, _ := range bits {
+	for i := range bits {
 		for paramName, mem := range params {
 			if mem.Typ == memory.DataCoil {
 				if mem.Addr == uint16(register+i) {
