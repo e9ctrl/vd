@@ -19,7 +19,7 @@ var ErrMemoryCollision = errors.New("Memory collision")
 type Memory struct {
 	Typ     DataTyp
 	Addr    uint16
-	Length  uint8 // na potem
+	Length  uint8
 	DataTyp string
 }
 

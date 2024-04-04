@@ -157,8 +157,8 @@ func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 
 	// Add default functions
 	parser.outFunctions = make(map[uint8]OutHandler, 8)
-	parser.outFunctions[1] = parser.GenerateReadDIsCoilsResponse
-	parser.outFunctions[2] = parser.GenerateReadDIsCoilsResponse
+	parser.outFunctions[1] = parser.GenerateReadCoilsResponse
+	parser.outFunctions[2] = parser.GenerateReadDIsResponse
 	parser.outFunctions[3] = parser.GenerateReadHoldingRegistersResponse
 	parser.outFunctions[4] = parser.GenerateReadInputRegistersResponse
 	parser.outFunctions[5] = parser.GenerateWriteResponse
