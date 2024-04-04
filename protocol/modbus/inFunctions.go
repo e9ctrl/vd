@@ -206,18 +206,20 @@ func (p *Parser) WriteMultipleCoils(frame TCPFrame, params map[string]memory.Mem
 		return txs, &IllegalDataAddress
 	}
 
-	for i, value := range valueBytes {
-		for bitPos := uint(0); bitPos < 8; bitPos++ {
-			for paramName, mem := range params {
-				if mem.Typ == memory.DataCoil {
-					if mem.Addr == uint16(register+(i*8)+int(bitPos)) {
-						tx := protocol.Transaction{
-							Payload: make(map[string]any),
-						}
-						tx.Typ = protocol.TxSetParam
-						tx.Payload[paramName] = uint(value)
-						txs = append(txs, tx)
+	bits := byteToBits(valueBytes)
+
+	for i, _ := range bits {
+		for paramName, mem := range params {
+			if mem.Typ == memory.DataCoil {
+				if mem.Addr == uint16(register+i) {
+					tx := protocol.Transaction{
+						Payload: make(map[string]any),
+						DataTyp: make(map[string]reflect.Kind),
 					}
+					tx.Name = frame.GetFunctionName()
+					tx.Typ = protocol.TxSetParam
+					tx.Payload[paramName] = uint8(bits[len(bits)-i-1])
+					txs = append(txs, tx)
 				}
 			}
 		}
@@ -261,19 +263,19 @@ func writeRegisters(frame TCPFrame, params map[string]memory.Memory, holdRegTabl
 
 	bytesCnt := 0
 
-	// always one transaction
-	tx := protocol.Transaction{
-		Payload: make(map[string]any),
-	}
-	tx.Name = frame.GetFunctionName()
-	tx.Typ = protocol.TxSetParam
-
 	for i := register; i < register+numRegs; i++ {
 		for paramName, mem := range params {
 			if mem.Typ == memory.DataHoldingRegister {
-				if uint16(register) >= mem.Addr && mem.Addr+uint16(mem.Length) > uint16(register) {
+				if uint16(i) >= mem.Addr && mem.Addr+uint16(mem.Length) > uint16(i) {
 					value := BytesToUint16(valueBytes[bytesCnt*2 : bytesCnt*2+2])[0]
 					bytesCnt++
+
+					tx := protocol.Transaction{
+						Payload: make(map[string]any),
+						DataTyp: make(map[string]reflect.Kind),
+					}
+					tx.Name = frame.GetFunctionName()
+					tx.Typ = protocol.TxSetParam
 
 					switch mem.DataTyp {
 					case "int16":
@@ -331,18 +333,17 @@ func writeRegisters(frame TCPFrame, params map[string]memory.Memory, holdRegTabl
 						for i := 0; i < 4; i++ {
 							for j := 0; j < 2; j++ {
 								res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+
 							}
 						}
 						val := math.Float64frombits(binary.BigEndian.Uint64(res))
 						tx.Payload[paramName] = val
 					}
+					txs = append(txs, tx)
 				}
 			}
 		}
 	}
 
-	if len(tx.Payload) > 0 {
-		txs = append(txs, tx)
-	}
 	return txs, &Success
 }

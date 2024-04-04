@@ -24,17 +24,13 @@ func Uint16ToBytes(values []uint16) []byte {
 	return bytes
 }
 
-// Uint16ToBytes converts an array of uint16s to a big endian array of bytes
+// SingleUint16ToBytes converts an uint16 to a big endian array of bytes
 func SingleUint16ToBytes(value uint16) []byte {
 	bytes := make([]byte, 2)
 	binary.BigEndian.PutUint16(bytes, value)
 
 	return bytes
 }
-
-//func bitAtPosition(value uint8, pos uint) uint8 {
-//	return (value >> pos) & 0x01
-//}
 
 // Read from TCP frame register, number of registers and end register
 func registerAddressAndNumber(frame TCPFrame) (register int, numRegs int, endRegister int) {
@@ -51,4 +47,15 @@ func registerAddressAndValue(frame TCPFrame) (int, uint16) {
 	register := int(binary.BigEndian.Uint16(data[0:2]))
 	value := binary.BigEndian.Uint16(data[2:4])
 	return register, value
+}
+
+// Convert []byte to []int bits
+func byteToBits(bs []byte) []int {
+	r := make([]int, len(bs)*8)
+	for i, b := range bs {
+		for j := 0; j < 8; j++ {
+			r[i*8+j] = int(b >> uint(7-j) & 0x01)
+		}
+	}
+	return r
 }
