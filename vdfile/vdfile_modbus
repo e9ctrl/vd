@@ -13,6 +13,12 @@ protocol = "modbus"
   addr = 2
 
 [[parameter]]
+  name = "state3"
+  reg = "coil"
+  val = "1"
+  addr = 3
+
+[[parameter]]
   name = "mode"
   reg = "di"
   val = "1"
@@ -38,3 +44,10 @@ protocol = "modbus"
   reg = "inreg"
   val = "30"
   addr = 10
+
+[[parameter]]
+  name = "pressure"
+  typ = "float64"
+  reg = "inreg"
+  val = 34.5
+  addr = 15
