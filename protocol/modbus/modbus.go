@@ -223,8 +223,8 @@ func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
 	}
 
 	// set delays
-	for _, tx := range txs {
-		tx.Delay = p.delay
+	for i := range txs {
+		txs[i].Delay = p.delay
 	}
 
 	// generate response

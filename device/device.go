@@ -140,8 +140,10 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		return nil
 	}
 
-	// delay response if needed
-	s.delayRes(txs[0].Delay)
+	if len(txs) > 0 {
+		// delay response if needed
+		s.delayRes(txs[0].Delay)
+	}
 
 	return buf
 }
