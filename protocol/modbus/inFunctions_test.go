@@ -758,8 +758,8 @@ func TestWriteRegisters(t *testing.T) {
 		memoryTable [][]byte
 		expBytes    [][]byte
 	}{
-		{"Wrong data length", wrongDataLengthFrame, &IllegalDataAddress, []protocol.Transaction{}, holdRegTable, holdRegTable},
-		{"Wrong bytes number", wrongBytesNumberFrame, &IllegalDataAddress, []protocol.Transaction{}, holdRegTable, holdRegTable},
+		{"Wrong data length", wrongDataLengthFrame, &IllegalDataValue, []protocol.Transaction{}, holdRegTable, holdRegTable},
+		{"Wrong bytes number", wrongBytesNumberFrame, &IllegalDataValue, []protocol.Transaction{}, holdRegTable, holdRegTable},
 		{"Write one parameter", writeSingleRegFrame, &Success, txsOneReg, holdRegTable, singleRegTable},
 		{"Write part of two parameters", writeTwoPartsParamFrame, &Success, txsTwoRegs, holdRegTable, twoPartsRegTable},
 		{"Write to reg that is not parameter", writeNotParamFrame, &Success, []protocol.Transaction{}, holdRegTable, singleNotParamTable},
