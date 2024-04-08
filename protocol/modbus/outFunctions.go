@@ -22,21 +22,57 @@ var (
 // Generate response for read coils function
 func (p *Parser) GenerateReadCoilsResponse(frame TCPFrame, txs []protocol.Transaction) ([]byte, *Exception) {
 	res := &Success
+
 	err := updateSingleBitsMemory(txs, p.paramsAddrs, p.coilTable)
 	if err != nil {
 		res = &IllegalDataValue
 	}
-	return generateStatusesResponse(txs), res
+
+	register, numRegs, endRegister := registerAddressAndNumber(frame)
+	if endRegister > MemoryTableSize {
+		res = &IllegalDataAddress
+	}
+	dataSize := numRegs / 8
+	if (numRegs % 8) != 0 {
+		dataSize++
+	}
+	data := make([]byte, 1+dataSize)
+	data[0] = byte(dataSize)
+	for i, value := range p.coilTable[register:endRegister] {
+		if value != 0 {
+			shift := uint(i) % 8
+			data[1+i/8] |= byte(1 << shift)
+		}
+	}
+	return data, res
 }
 
 // Generate response for read discrete inputs function
 func (p *Parser) GenerateReadDIsResponse(frame TCPFrame, txs []protocol.Transaction) ([]byte, *Exception) {
 	res := &Success
+
 	err := updateSingleBitsMemory(txs, p.paramsAddrs, p.diTable)
 	if err != nil {
 		res = &IllegalDataValue
 	}
-	return generateStatusesResponse(txs), res
+
+	register, numRegs, endRegister := registerAddressAndNumber(frame)
+	if endRegister > MemoryTableSize {
+		res = &IllegalDataAddress
+	}
+	dataSize := numRegs / 8
+	if (numRegs % 8) != 0 {
+		dataSize++
+	}
+	data := make([]byte, 1+dataSize)
+	data[0] = byte(dataSize)
+	for i, value := range p.diTable[register:endRegister] {
+		if value != 0 {
+			shift := uint(i) % 8
+			data[1+i/8] |= byte(1 << shift)
+		}
+	}
+	return data, res
 }
 
 // Generate response for read holding registers
@@ -86,7 +122,7 @@ func updateSingleBitsMemory(txs []protocol.Transaction, params map[string]memory
 }
 
 // Read status values for coils or discrete inputs
-func generateStatusesResponse(txs []protocol.Transaction) []byte {
+/*func generateStatusesResponse(txs []protocol.Transaction) []byte {
 	// count byte size
 	dataSize := len(txs) / 8
 	if (len(txs) % 8) != 0 {
@@ -103,7 +139,7 @@ func generateStatusesResponse(txs []protocol.Transaction) []byte {
 		}
 	}
 	return data
-}
+}*/
 
 // Update memory map if parameter has been modified by HTTP client, inly input and holding registers
 func updateRegisterMemory(txs []protocol.Transaction, params map[string]memory.Memory, memoryMap [][]byte) error {

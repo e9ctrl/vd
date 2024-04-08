@@ -133,70 +133,80 @@ func TestUpdateSingleBitsMemory(t *testing.T) {
 	}
 }
 
-func TestGenerateStatuesResponse(t *testing.T) {
+func TestGenerateReadCoilsResponse(t *testing.T) {
 	t.Parallel()
 
-	one_tx_one_param := make([]protocol.Transaction, 1)
-	tx1 := protocol.Transaction{
-		Payload: make(map[string]any),
-		DataTyp: make(map[string]reflect.Kind),
-	}
-	tx1.Name = "ReadMultipleCoils"
-	tx1.Typ = protocol.TxGetParam
-	tx1.Payload["param1"] = int8(1)
-	tx1.DataTyp["param1"] = reflect.Uint8
-
-	one_tx_one_param[0] = tx1
-
-	one_tx_two_params := make([]protocol.Transaction, 1)
-	tx2 := protocol.Transaction{
-		Payload: make(map[string]any, 2),
-		DataTyp: make(map[string]reflect.Kind, 2),
-	}
-	tx2.Name = "ReadMultipleCoils"
-	tx2.Typ = protocol.TxGetParam
-	tx2.Payload["param1"] = int8(1)
-	tx2.DataTyp["param1"] = reflect.Uint8
-	tx2.Payload["param2"] = int8(0)
-	tx2.DataTyp["param2"] = reflect.Uint8
-	one_tx_two_params[0] = tx2
-
-	two_txs := make([]protocol.Transaction, 2)
-	two_txs[0] = tx1
-	two_txs[1] = tx2
-
-	nine_txs := make([]protocol.Transaction, 9)
-	nine_txs[0] = tx1
-	nine_txs[1] = tx1
-	nine_txs[2] = tx2
-	nine_txs[3] = tx2
-	nine_txs[4] = tx1
-	nine_txs[5] = tx1
-	nine_txs[6] = tx2
-	nine_txs[7] = tx2
-	nine_txs[8] = tx2
-
-	tests := []struct {
-		name string
-		txs  []protocol.Transaction
-		want []byte
-	}{
-		{"empty txs", []protocol.Transaction{}, []byte{0}},
-		{"one tx one param", one_tx_one_param, []byte{0x01, 0x01}},
-		{"one tx two params", one_tx_two_params, []byte{0x01, 0x01}},
-		{"two txs", two_txs, []byte{0x01, 0x03}},
-		{"nine txs", nine_txs, []byte{0x02, 0xff, 0x01}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := generateStatusesResponse(tt.txs)
-			if !bytes.Equal(got, tt.want) {
-				t.Errorf("exp resp: %v got: %v\n", tt.want, got)
-			}
-		})
-	}
 }
 
+func TestGenerateDIsREsponse(t *testing.T) {
+	t.Parallel()
+}
+
+/*
+	func TestGenerateStatuesResponse(t *testing.T) {
+		t.Parallel()
+
+		one_tx_one_param := make([]protocol.Transaction, 1)
+		tx1 := protocol.Transaction{
+			Payload: make(map[string]any),
+			DataTyp: make(map[string]reflect.Kind),
+		}
+		tx1.Name = "ReadMultipleCoils"
+		tx1.Typ = protocol.TxGetParam
+		tx1.Payload["param1"] = int8(1)
+		tx1.DataTyp["param1"] = reflect.Uint8
+
+		one_tx_one_param[0] = tx1
+
+		one_tx_two_params := make([]protocol.Transaction, 1)
+		tx2 := protocol.Transaction{
+			Payload: make(map[string]any, 2),
+			DataTyp: make(map[string]reflect.Kind, 2),
+		}
+		tx2.Name = "ReadMultipleCoils"
+		tx2.Typ = protocol.TxGetParam
+		tx2.Payload["param1"] = int8(1)
+		tx2.DataTyp["param1"] = reflect.Uint8
+		tx2.Payload["param2"] = int8(0)
+		tx2.DataTyp["param2"] = reflect.Uint8
+		one_tx_two_params[0] = tx2
+
+		two_txs := make([]protocol.Transaction, 2)
+		two_txs[0] = tx1
+		two_txs[1] = tx2
+
+		nine_txs := make([]protocol.Transaction, 9)
+		nine_txs[0] = tx1
+		nine_txs[1] = tx1
+		nine_txs[2] = tx2
+		nine_txs[3] = tx2
+		nine_txs[4] = tx1
+		nine_txs[5] = tx1
+		nine_txs[6] = tx2
+		nine_txs[7] = tx2
+		nine_txs[8] = tx2
+
+		tests := []struct {
+			name string
+			txs  []protocol.Transaction
+			want []byte
+		}{
+			{"empty txs", []protocol.Transaction{}, []byte{0}},
+			{"one tx one param", one_tx_one_param, []byte{0x01, 0x01}},
+			{"one tx two params", one_tx_two_params, []byte{0x01, 0x01}},
+			{"two txs", two_txs, []byte{0x01, 0x03}},
+			{"nine txs", nine_txs, []byte{0x02, 0xff, 0x01}},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				got := generateStatusesResponse(tt.txs)
+				if !bytes.Equal(got, tt.want) {
+					t.Errorf("exp resp: %v got: %v\n", tt.want, got)
+				}
+			})
+		}
+	}
+*/
 func TestUpdateRegisterMemory(t *testing.T) {
 	t.Parallel()
 
