@@ -29,7 +29,7 @@ const (
 	ADDR3       = "localhost:5555"
 	ADDR4       = "localhost:6666"
 	ADDR5       = "localhost:2222"
-	ADDR6       = "localhost:7777"
+	ADDR6       = "localhost:2233"
 	ADDR7       = "localhost:8888"
 )
 
