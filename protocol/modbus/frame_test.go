@@ -156,7 +156,6 @@ func init() {
 }
 
 func TestBytes(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name  string
 		frame *TCPFrame
@@ -183,8 +182,6 @@ func TestBytes(t *testing.T) {
 }
 
 func TestNewTCPFrame(t *testing.T) {
-	t.Parallel()
-
 	tests := []struct {
 		name   string
 		in     []byte
@@ -210,7 +207,6 @@ func TestNewTCPFrame(t *testing.T) {
 	}
 }
 func TestGetFunctionName(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name string
 		in   *TCPFrame
@@ -238,7 +234,6 @@ func TestGetFunctionName(t *testing.T) {
 }
 
 func TestGetFunction(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name string
 		in   *TCPFrame
@@ -265,7 +260,6 @@ func TestGetFunction(t *testing.T) {
 }
 
 func TestGetData(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name string
 		in   *TCPFrame
@@ -292,7 +286,6 @@ func TestGetData(t *testing.T) {
 }
 
 func TestSetData(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name string
 		in   *TCPFrame
@@ -321,7 +314,6 @@ func TestSetData(t *testing.T) {
 }
 
 func TestSetException(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		name    string
 		in      *TCPFrame
