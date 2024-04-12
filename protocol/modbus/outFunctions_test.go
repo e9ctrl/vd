@@ -136,77 +136,309 @@ func TestUpdateSingleBitsMemory(t *testing.T) {
 func TestGenerateReadCoilsResponse(t *testing.T) {
 	t.Parallel()
 
-}
-
-func TestGenerateDIsREsponse(t *testing.T) {
-	t.Parallel()
-}
-
-/*
-	func TestGenerateStatuesResponse(t *testing.T) {
-		t.Parallel()
-
-		one_tx_one_param := make([]protocol.Transaction, 1)
-		tx1 := protocol.Transaction{
-			Payload: make(map[string]any),
-			DataTyp: make(map[string]reflect.Kind),
-		}
-		tx1.Name = "ReadMultipleCoils"
-		tx1.Typ = protocol.TxGetParam
-		tx1.Payload["param1"] = int8(1)
-		tx1.DataTyp["param1"] = reflect.Uint8
-
-		one_tx_one_param[0] = tx1
-
-		one_tx_two_params := make([]protocol.Transaction, 1)
-		tx2 := protocol.Transaction{
-			Payload: make(map[string]any, 2),
-			DataTyp: make(map[string]reflect.Kind, 2),
-		}
-		tx2.Name = "ReadMultipleCoils"
-		tx2.Typ = protocol.TxGetParam
-		tx2.Payload["param1"] = int8(1)
-		tx2.DataTyp["param1"] = reflect.Uint8
-		tx2.Payload["param2"] = int8(0)
-		tx2.DataTyp["param2"] = reflect.Uint8
-		one_tx_two_params[0] = tx2
-
-		two_txs := make([]protocol.Transaction, 2)
-		two_txs[0] = tx1
-		two_txs[1] = tx2
-
-		nine_txs := make([]protocol.Transaction, 9)
-		nine_txs[0] = tx1
-		nine_txs[1] = tx1
-		nine_txs[2] = tx2
-		nine_txs[3] = tx2
-		nine_txs[4] = tx1
-		nine_txs[5] = tx1
-		nine_txs[6] = tx2
-		nine_txs[7] = tx2
-		nine_txs[8] = tx2
-
-		tests := []struct {
-			name string
-			txs  []protocol.Transaction
-			want []byte
-		}{
-			{"empty txs", []protocol.Transaction{}, []byte{0}},
-			{"one tx one param", one_tx_one_param, []byte{0x01, 0x01}},
-			{"one tx two params", one_tx_two_params, []byte{0x01, 0x01}},
-			{"two txs", two_txs, []byte{0x01, 0x03}},
-			{"nine txs", nine_txs, []byte{0x02, 0xff, 0x01}},
-		}
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				got := generateStatusesResponse(tt.txs)
-				if !bytes.Equal(got, tt.want) {
-					t.Errorf("exp resp: %v got: %v\n", tt.want, got)
-				}
-			})
-		}
+	// 0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x01, 0x00, 0x05, 0x00, 0x01
+	readCoilFrame := TCPFrame{
+		TransactionIdentifier: uint16(1),
+		ProtocolIdentifier:    uint16(0),
+		Length:                uint16(6),
+		Device:                0x01,
+		Function:              0x01,
+		Data:                  []byte{0x00, 0x05, 0x00, 0x01},
+		Err:                   &Success,
 	}
-*/
+
+	// 0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x01, 0x00, 0x01, 0x00, 0x03
+	readCoilsFrame := TCPFrame{
+		TransactionIdentifier: uint16(1),
+		ProtocolIdentifier:    uint16(0),
+		Length:                uint16(6),
+		Device:                0x01,
+		Function:              0x01,
+		Data:                  []byte{0x00, 0x01, 0x00, 0x03},
+		Err:                   &Success,
+	}
+
+	// 0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0xFF, 0x01, 0x00, 0x00, 0x00, 0x0A
+	readCoilsTwoBytesFrame := TCPFrame{
+		TransactionIdentifier: uint16(1),
+		ProtocolIdentifier:    uint16(0),
+		Length:                uint16(6),
+		Device:                0xFF,
+		Function:              0x01,
+		Data:                  []byte{0x00, 0x00, 0x00, 0x0A},
+		Err:                   &Success,
+	}
+
+	// 0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0xFF, 0x01, 0x00, 0x00, 0x00, 0x0A
+	wrongAddressFrame := TCPFrame{
+		TransactionIdentifier: uint16(1),
+		ProtocolIdentifier:    uint16(0),
+		Length:                uint16(6),
+		Device:                0xFF,
+		Function:              0x01,
+		Data:                  []byte{0xFF, 0xFF, 0x00, 0x0A},
+		Err:                   &Success,
+	}
+
+	p := &Parser{}
+	m0 := memory.New(2, "coil", "uint8")
+	m1 := memory.New(5, "coil", "uint8")
+	m2 := memory.New(6, "coil", "uint8")
+
+	params := make(map[string]memory.Memory, 5)
+	params["param0"] = m0
+	params["param1"] = m1
+	params["param2"] = m2
+
+	p.coilTable = make([]byte, 20)
+	p.paramsAddrs = params
+
+	one_tx_one_param := make([]protocol.Transaction, 1)
+	tx1 := protocol.Transaction{
+		Payload: make(map[string]any),
+		DataTyp: make(map[string]reflect.Kind),
+	}
+	tx1.Name = "ReadCoils"
+	tx1.Typ = protocol.TxGetParam
+	tx1.Payload["param1"] = uint8(1)
+	tx1.DataTyp["param1"] = reflect.Uint8
+
+	one_tx_one_param[0] = tx1
+
+	one_tx_two_params := make([]protocol.Transaction, 1)
+	tx2 := protocol.Transaction{
+		Payload: make(map[string]any, 2),
+		DataTyp: make(map[string]reflect.Kind, 2),
+	}
+	tx2.Name = "ReadCoils"
+	tx2.Typ = protocol.TxGetParam
+	tx2.Payload["param0"] = uint8(1)
+	tx2.DataTyp["param0"] = reflect.Uint8
+	tx2.Payload["param2"] = uint8(0)
+	tx2.DataTyp["param2"] = reflect.Uint8
+	one_tx_two_params[0] = tx2
+
+	two_txs := make([]protocol.Transaction, 2)
+	two_txs[0] = tx1
+	two_txs[1] = tx2
+
+	nine_txs := make([]protocol.Transaction, 9)
+	nine_txs[0] = tx1
+	nine_txs[1] = tx1
+	nine_txs[2] = tx2
+	nine_txs[3] = tx2
+	nine_txs[4] = tx1
+	nine_txs[5] = tx1
+	nine_txs[6] = tx2
+	nine_txs[7] = tx2
+	nine_txs[8] = tx2
+
+	wrongParam := make([]protocol.Transaction, 1)
+	tx3 := protocol.Transaction{
+		Payload: make(map[string]any),
+		DataTyp: make(map[string]reflect.Kind),
+	}
+	tx3.Name = "ReadCoils"
+	tx3.Typ = protocol.TxGetParam
+	tx3.Payload["wrongParam"] = uint8(1)
+	tx3.DataTyp["wrongParam"] = reflect.Uint8
+
+	wrongParam[0] = tx3
+
+	wrongType := make([]protocol.Transaction, 1)
+	tx4 := protocol.Transaction{
+		Payload: make(map[string]any),
+		DataTyp: make(map[string]reflect.Kind),
+	}
+	tx4.Name = "ReadCoils"
+	tx4.Typ = protocol.TxGetParam
+	tx4.Payload["wrongType"] = int64(1)
+	tx4.DataTyp["wrongType"] = reflect.Int64
+
+	wrongType[0] = tx4
+
+	tests := []struct {
+		name   string
+		txs    []protocol.Transaction
+		frame  TCPFrame
+		want   []byte
+		expExc *Exception
+	}{
+		{"empty txs", []protocol.Transaction{}, readCoilFrame, []byte{0x01, 0x00}, &Success},
+		{"one tx one param", one_tx_one_param, readCoilFrame, []byte{0x01, 0x01}, &Success},
+		{"one tx two params", one_tx_two_params, readCoilsFrame, []byte{0x01, 0x02}, &Success},
+		{"two txs", two_txs, readCoilsFrame, []byte{0x01, 0x02}, &Success},
+		{"nine txs", nine_txs, readCoilsTwoBytesFrame, []byte{0x02, 0x24, 0x00}, &Success},
+		{"not known param", wrongParam, readCoilFrame, []byte{}, &IllegalDataValue},
+		{"wrong value type", wrongType, readCoilFrame, []byte{}, &IllegalDataValue},
+		{"frame address over limit", one_tx_one_param, wrongAddressFrame, []byte{}, &IllegalDataAddress},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, exc := p.GenerateReadCoilsResponse(tt.frame, tt.txs)
+			if !bytes.Equal(got, tt.want) {
+				t.Errorf("exp resp: %v got: %v\n", tt.want, got)
+			}
+			if exc != tt.expExc {
+				t.Errorf("exp exception: %v got: %v\n", tt.expExc, exc)
+			}
+		})
+	}
+}
+
+func TestGenerateDIsResponse(t *testing.T) {
+	t.Parallel()
+	// 0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x02, 0x00, 0x05, 0x00, 0x01
+	readCoilFrame := TCPFrame{
+		TransactionIdentifier: uint16(1),
+		ProtocolIdentifier:    uint16(0),
+		Length:                uint16(6),
+		Device:                0x01,
+		Function:              0x02,
+		Data:                  []byte{0x00, 0x05, 0x00, 0x01},
+		Err:                   &Success,
+	}
+
+	// 0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x02, 0x00, 0x01, 0x00, 0x03
+	readCoilsFrame := TCPFrame{
+		TransactionIdentifier: uint16(1),
+		ProtocolIdentifier:    uint16(0),
+		Length:                uint16(6),
+		Device:                0x01,
+		Function:              0x02,
+		Data:                  []byte{0x00, 0x01, 0x00, 0x03},
+		Err:                   &Success,
+	}
+
+	// 0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0xFF, 0x02, 0x00, 0x00, 0x00, 0x0A
+	readCoilsTwoBytesFrame := TCPFrame{
+		TransactionIdentifier: uint16(1),
+		ProtocolIdentifier:    uint16(0),
+		Length:                uint16(6),
+		Device:                0xFF,
+		Function:              0x02,
+		Data:                  []byte{0x00, 0x00, 0x00, 0x0A},
+		Err:                   &Success,
+	}
+
+	// 0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0xFF, 0x02, 0x00, 0x00, 0x00, 0x0A
+	wrongAddressFrame := TCPFrame{
+		TransactionIdentifier: uint16(1),
+		ProtocolIdentifier:    uint16(0),
+		Length:                uint16(6),
+		Device:                0xFF,
+		Function:              0x02,
+		Data:                  []byte{0xFF, 0xFF, 0x00, 0x0A},
+		Err:                   &Success,
+	}
+
+	p := &Parser{}
+	m0 := memory.New(2, "di", "uint8")
+	m1 := memory.New(5, "di", "uint8")
+	m2 := memory.New(6, "di", "uint8")
+
+	params := make(map[string]memory.Memory, 5)
+	params["param0"] = m0
+	params["param1"] = m1
+	params["param2"] = m2
+
+	p.diTable = make([]byte, 20)
+	p.paramsAddrs = params
+
+	one_tx_one_param := make([]protocol.Transaction, 1)
+	tx1 := protocol.Transaction{
+		Payload: make(map[string]any),
+		DataTyp: make(map[string]reflect.Kind),
+	}
+	tx1.Name = "ReadDiscreteInput"
+	tx1.Typ = protocol.TxGetParam
+	tx1.Payload["param1"] = uint8(1)
+	tx1.DataTyp["param1"] = reflect.Uint8
+
+	one_tx_one_param[0] = tx1
+
+	one_tx_two_params := make([]protocol.Transaction, 1)
+	tx2 := protocol.Transaction{
+		Payload: make(map[string]any, 2),
+		DataTyp: make(map[string]reflect.Kind, 2),
+	}
+	tx2.Name = "ReadDiscreteInput"
+	tx2.Typ = protocol.TxGetParam
+	tx2.Payload["param0"] = uint8(1)
+	tx2.DataTyp["param0"] = reflect.Uint8
+	tx2.Payload["param2"] = uint8(0)
+	tx2.DataTyp["param2"] = reflect.Uint8
+	one_tx_two_params[0] = tx2
+
+	two_txs := make([]protocol.Transaction, 2)
+	two_txs[0] = tx1
+	two_txs[1] = tx2
+
+	nine_txs := make([]protocol.Transaction, 9)
+	nine_txs[0] = tx1
+	nine_txs[1] = tx1
+	nine_txs[2] = tx2
+	nine_txs[3] = tx2
+	nine_txs[4] = tx1
+	nine_txs[5] = tx1
+	nine_txs[6] = tx2
+	nine_txs[7] = tx2
+	nine_txs[8] = tx2
+
+	wrongParam := make([]protocol.Transaction, 1)
+	tx3 := protocol.Transaction{
+		Payload: make(map[string]any),
+		DataTyp: make(map[string]reflect.Kind),
+	}
+	tx3.Name = "ReadDiscreteInput"
+	tx3.Typ = protocol.TxGetParam
+	tx3.Payload["wrongParam"] = uint8(1)
+	tx3.DataTyp["wrongParam"] = reflect.Uint8
+
+	wrongParam[0] = tx3
+
+	wrongType := make([]protocol.Transaction, 1)
+	tx4 := protocol.Transaction{
+		Payload: make(map[string]any),
+		DataTyp: make(map[string]reflect.Kind),
+	}
+	tx4.Name = "ReadDiscreteInput"
+	tx4.Typ = protocol.TxGetParam
+	tx4.Payload["wrongType"] = int64(1)
+	tx4.DataTyp["wrongType"] = reflect.Int64
+
+	wrongType[0] = tx4
+
+	tests := []struct {
+		name   string
+		txs    []protocol.Transaction
+		frame  TCPFrame
+		want   []byte
+		expExc *Exception
+	}{
+		{"empty txs", []protocol.Transaction{}, readCoilFrame, []byte{0x01, 0x00}, &Success},
+		{"one tx one param", one_tx_one_param, readCoilFrame, []byte{0x01, 0x01}, &Success},
+		{"one tx two params", one_tx_two_params, readCoilsFrame, []byte{0x01, 0x02}, &Success},
+		{"two txs", two_txs, readCoilsFrame, []byte{0x01, 0x02}, &Success},
+		{"nine txs", nine_txs, readCoilsTwoBytesFrame, []byte{0x02, 0x24, 0x00}, &Success},
+		{"not known param", wrongParam, readCoilFrame, []byte{}, &IllegalDataValue},
+		{"wrong value type", wrongType, readCoilFrame, []byte{}, &IllegalDataValue},
+		{"frame address over limit", one_tx_one_param, wrongAddressFrame, []byte{}, &IllegalDataAddress},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, exc := p.GenerateReadDIsResponse(tt.frame, tt.txs)
+			if !bytes.Equal(got, tt.want) {
+				t.Errorf("exp resp: %v got: %v\n", tt.want, got)
+			}
+			if exc != tt.expExc {
+				t.Errorf("exp exception: %v got: %v\n", tt.expExc, exc)
+			}
+		})
+	}
+
+}
+
 func TestUpdateRegisterMemory(t *testing.T) {
 	t.Parallel()
 
