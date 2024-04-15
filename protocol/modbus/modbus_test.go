@@ -242,7 +242,6 @@ func TestDecode(t *testing.T) {
 }
 
 func TestEncode(t *testing.T) {
-	t.Parallel()
 	txState := protocol.Transaction{
 		Payload: make(map[string]any),
 		DataTyp: make(map[string]reflect.Kind),
