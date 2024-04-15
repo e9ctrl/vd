@@ -35,6 +35,9 @@ func SingleUint16ToBytes(value uint16) []byte {
 // Read from TCP frame register, number of registers and end register
 func registerAddressAndNumber(frame TCPFrame) (register int, numRegs int, endRegister int) {
 	data := frame.GetData()
+	if len(data) < 4 {
+		return 0, 0, 0
+	}
 	register = int(binary.BigEndian.Uint16(data[0:2]))
 	numRegs = int(binary.BigEndian.Uint16(data[2:4]))
 	endRegister = register + numRegs
@@ -44,6 +47,9 @@ func registerAddressAndNumber(frame TCPFrame) (register int, numRegs int, endReg
 // Read from TCP frame register and value
 func registerAddressAndValue(frame TCPFrame) (int, uint16) {
 	data := frame.GetData()
+	if len(data) < 4 {
+		return 0, 0
+	}
 	register := int(binary.BigEndian.Uint16(data[0:2]))
 	value := binary.BigEndian.Uint16(data[2:4])
 	return register, value
