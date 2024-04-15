@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math"
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/e9ctrl/vd/log"
@@ -25,12 +26,15 @@ type Parser struct {
 	inFunctions  map[uint8]InHandler
 	outFunctions map[uint8]OutHandler
 	paramsAddrs  map[string]memory.Memory
-	frames       []*TCPFrame
+	delay        time.Duration
+
+	mu     sync.RWMutex
+	frames []*TCPFrame
+
 	holdRegTable [][]byte
 	inRegTable   [][]byte
 	coilTable    []byte
 	diTable      []byte
-	delay        time.Duration
 }
 
 func (p *Parser) MemoryMapping(params map[string]parameter.Parameter) {
@@ -193,9 +197,10 @@ func (p *Parser) Decode(data []byte) ([]protocol.Transaction, error) {
 
 func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
 	// get origin frame from the queue
-	// add mutex
+	p.mu.Lock()
 	frame := p.frames[0]
 	p.frames = p.frames[1:]
+	p.mu.Unlock()
 
 	// check if there was an error while decoding
 	if frame.Err != &Success {
