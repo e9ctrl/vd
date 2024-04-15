@@ -251,3 +251,9 @@ func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
 func (p *Parser) Trigger(string) protocol.Transaction {
 	return protocol.Transaction{}
 }
+
+func (p *Parser) addFrame(frame []*TCPFrame) {
+	p.mu.Lock()
+	p.frames = append(p.frames, frame...)
+	p.mu.Unlock()
+}

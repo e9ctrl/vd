@@ -591,7 +591,8 @@ func TestEncode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			realParser, _ := parser.(*Parser)
-			realParser.frames = tt.frame
+			realParser.addFrame(tt.frame)
+
 			got, err := parser.Encode(tt.txs)
 			if err != nil {
 				if !errors.Is(err, tt.expErr) {
