@@ -194,18 +194,22 @@ func (p *Parser) Decode(data []byte) ([]protocol.Transaction, error) {
 	}
 
 	frame.Err = res
+
+	p.mu.Lock()
 	p.frames = append(p.frames, frame)
+	p.mu.Unlock()
 
 	return txs, nil
 }
 
 func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
+	// get origin frame from the queue
+	p.mu.Lock()
 	if len(p.frames) == 0 {
+		p.mu.Unlock()
 		return []byte(nil), ErrEmptyFrameQueue
 
 	}
-	// get origin frame from the queue
-	p.mu.Lock()
 	frame := p.frames[0]
 	p.frames = p.frames[1:]
 	p.mu.Unlock()
