@@ -15,7 +15,10 @@ import (
 	"github.com/e9ctrl/vd/vdfile"
 )
 
-var ErrNotKnownFunctionCode = errors.New("not known function code")
+var (
+	ErrNotKnownFunctionCode = errors.New("not known function code")
+	ErrEmptyFrameQueue      = errors.New("empty frame queue")
+)
 
 const MemoryTableSize = 9999
 
@@ -182,6 +185,7 @@ func (p *Parser) Decode(data []byte) ([]protocol.Transaction, error) {
 	txs := make([]protocol.Transaction, 0)
 
 	function := frame.GetFunction()
+
 	var res *Exception
 	if f, exist := p.inFunctions[function]; exist {
 		txs, res = f(*frame, p.paramsAddrs)
@@ -196,6 +200,10 @@ func (p *Parser) Decode(data []byte) ([]protocol.Transaction, error) {
 }
 
 func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
+	if len(p.frames) == 0 {
+		return []byte(nil), ErrEmptyFrameQueue
+
+	}
 	// get origin frame from the queue
 	p.mu.Lock()
 	frame := p.frames[0]
@@ -219,7 +227,6 @@ func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
 		log.ERR(ErrNotKnownFunctionCode)
 		return []byte(nil), nil
 	}
-
 	// check if there was an error while encoding
 	if res != &Success {
 		frame.Err = res
