@@ -270,6 +270,7 @@ func writeRegisters(frame TCPFrame, params map[string]memory.Memory, holdRegTabl
 
 	bytesCnt := 0
 
+	paramRepeatedName := ""
 	for i := register; i < register+numRegs; i++ {
 		for paramName, mem := range params {
 			if mem.Typ == memory.DataHoldingRegister {
@@ -277,76 +278,82 @@ func writeRegisters(frame TCPFrame, params map[string]memory.Memory, holdRegTabl
 					value := BytesToUint16(valueBytes[bytesCnt*2 : bytesCnt*2+2])[0]
 					bytesCnt++
 
-					tx := protocol.Transaction{
-						Payload: make(map[string]any),
-						DataTyp: make(map[string]reflect.Kind),
-					}
-					tx.Name = frame.GetFunctionName()
-					tx.Typ = protocol.TxSetParam
+					// this is not to double transactions for same parameter that is written on several registers
+					if paramRepeatedName != paramName {
+						paramRepeatedName = paramName
+						tx := protocol.Transaction{
+							Payload: make(map[string]any),
+							DataTyp: make(map[string]reflect.Kind),
+						}
+						tx.Name = frame.GetFunctionName()
+						tx.Typ = protocol.TxSetParam
 
-					switch mem.DataTyp {
-					case "int16":
-						val := int16(value)
-						tx.Payload[paramName] = val
-					case "uint16":
-						tx.Payload[paramName] = value
-					case "int32":
-						res := make([]byte, 4)
-						for i := 0; i < 2; i++ {
-							for j := 0; j < 2; j++ {
-								res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+						switch mem.DataTyp {
+						case "int16":
+							val := int16(value)
+							tx.Payload[paramName] = val
+						case "uint16":
+							tx.Payload[paramName] = value
+						case "int32":
+							res := make([]byte, 4)
+							for i := 0; i < 2; i++ {
+								for j := 0; j < 2; j++ {
+									res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+								}
 							}
-						}
-						val := int32(binary.BigEndian.Uint32(res))
-						tx.Payload[paramName] = val
-					case "uint32":
-						res := make([]byte, 4)
-						for i := 0; i < 2; i++ {
-							for j := 0; j < 2; j++ {
-								res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+							val := int32(binary.BigEndian.Uint32(res))
+							tx.Payload[paramName] = val
+						case "uint32":
+							res := make([]byte, 4)
+							for i := 0; i < 2; i++ {
+								for j := 0; j < 2; j++ {
+									res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+								}
 							}
-						}
-						val := binary.BigEndian.Uint32(res)
-						tx.Payload[paramName] = val
-					case "float32":
-						res := make([]byte, 4)
-						for i := 0; i < 2; i++ {
-							for j := 0; j < 2; j++ {
-								res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+							val := binary.BigEndian.Uint32(res)
+							tx.Payload[paramName] = val
+						case "float32":
+							res := make([]byte, 4)
+							for i := 0; i < 2; i++ {
+								for j := 0; j < 2; j++ {
+									res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+								}
 							}
-						}
-						val := math.Float32frombits(binary.BigEndian.Uint32(res))
-						tx.Payload[paramName] = val
-					case "int64":
-						res := make([]byte, 8)
-						for i := 0; i < 4; i++ {
-							for j := 0; j < 2; j++ {
-								res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+							val := math.Float32frombits(binary.BigEndian.Uint32(res))
+							tx.Payload[paramName] = val
+						case "int64":
+							res := make([]byte, 8)
+							for i := 0; i < 4; i++ {
+								for j := 0; j < 2; j++ {
+									res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+								}
 							}
-						}
-						val := int64(binary.BigEndian.Uint64(res))
-						tx.Payload[paramName] = val
-					case "uint64":
-						res := make([]byte, 8)
-						for i := 0; i < 4; i++ {
-							for j := 0; j < 2; j++ {
-								res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+							val := int64(binary.BigEndian.Uint64(res))
+							tx.Payload[paramName] = val
+						case "uint64":
+							res := make([]byte, 8)
+							for i := 0; i < 4; i++ {
+								for j := 0; j < 2; j++ {
+									res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+								}
 							}
-						}
-						val := binary.BigEndian.Uint64(res)
-						tx.Payload[paramName] = val
-					case "float64":
-						res := make([]byte, 8)
-						for i := 0; i < 4; i++ {
-							for j := 0; j < 2; j++ {
-								res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+							val := binary.BigEndian.Uint64(res)
+							tx.Payload[paramName] = val
+						case "float64":
+							res := make([]byte, 8)
+							for i := 0; i < 4; i++ {
+								for j := 0; j < 2; j++ {
+									res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
 
+								}
 							}
+							val := math.Float64frombits(binary.BigEndian.Uint64(res))
+							tx.Payload[paramName] = val
 						}
-						val := math.Float64frombits(binary.BigEndian.Uint64(res))
-						tx.Payload[paramName] = val
+						txs = append(txs, tx)
+					} else {
+						continue
 					}
-					txs = append(txs, tx)
 				}
 			}
 		}
