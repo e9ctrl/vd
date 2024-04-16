@@ -182,33 +182,45 @@ func (s *StreamDevice) GetParameterType(name string) (reflect.Kind, error) {
 	return param.Type(), nil
 }
 
-// Get delay of the specified command, return error when command not found
+// Get delay of the specified command or general modbus delay, return error when command not found
 func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
-	s.lock.Lock()
-	cmd, exists := s.vdfile.Stream.Commands[name]
-	s.lock.Unlock()
-	if !exists {
-		return 0, fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
+	if s.protocolTyp == "stream" {
+		s.lock.Lock()
+		cmd, exists := s.vdfile.Stream.Commands[name]
+		s.lock.Unlock()
+		if !exists {
+			return 0, fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
+		}
+		return cmd.Dly, nil
+	} else if s.protocolTyp == "modbus" {
+		s.lock.Lock()
+		del := s.vdfile.Modbus.Delay
+		s.lock.Unlock()
+		return del, nil
 	}
-
-	return cmd.Dly, nil
-
+	return 0, ErrNotKnownProto
 }
 
-// Set delay of the specified command, return error when command not found or when value cannot be converted to time.Duration
+// Set delay of the specified command or modbus general delay, return error when command not found or when value cannot be converted to time.Duration
 func (s *StreamDevice) SetCommandDelay(name, val string) error {
-	s.lock.Lock()
-	cmd, exists := s.vdfile.Stream.Commands[name]
-	s.lock.Unlock()
-	if !exists {
-		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
-	}
-
-	if val, err := time.ParseDuration(val); err == nil {
-		cmd.Dly = val
-	} else {
+	timeVal, err := time.ParseDuration(val)
+	if err != nil {
 		return err
 	}
+	if s.protocolTyp == "stream" {
+		s.lock.Lock()
+		cmd, exists := s.vdfile.Stream.Commands[name]
+		s.lock.Unlock()
+		if !exists {
+			return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
+		}
+		cmd.Dly = timeVal
+	} else if s.protocolTyp == "modbus" {
+		s.lock.Lock()
+		s.vdfile.Modbus.Delay = timeVal
+		s.lock.Unlock()
+	}
+
 	return nil
 }
 
@@ -218,6 +230,14 @@ func (s *StreamDevice) GetMismatch() []byte {
 	mis := s.vdfile.Mismatch
 	s.lock.Unlock()
 	return mis
+}
+
+// Return protocol type
+func (s *StreamDevice) GetProtocol() string {
+	s.lock.Lock()
+	proto := s.vdfile.Protocol
+	s.lock.Unlock()
+	return proto
 }
 
 // Method to set mismatch message, returns error when string it too long

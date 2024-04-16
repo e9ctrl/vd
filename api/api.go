@@ -23,6 +23,7 @@ type Device interface {
 	SetMismatch(mismatch string) error
 	Trigger(param string) error
 	GetParameterType(param string) (reflect.Kind, error)
+	GetProtocol() string
 }
 
 // Struct that keeps Device interface.
@@ -81,10 +82,13 @@ func (a *Api) routes() http.Handler {
 	r := chi.NewRouter()
 
 	r.Route("/", func(r chi.Router) {
+		r.Get("/protocol", a.getProtocolType)
 		r.Get("/{param}", a.getParameter)
 		r.Post("/{param}/{value}", a.setParameter)
-		r.Get("/delay/{command}", a.getCommandDelay)
-		r.Post("/delay/{command}/{value}", a.setCommandDelay)
+		r.Get("/delay/modbus", a.getDelay)
+		r.Post("/delay/modbus/{value}", a.setDelay)
+		r.Get("/delay/stream/{command}", a.getCommandDelay)
+		r.Post("/delay/stream/{command}/{value}", a.setCommandDelay)
 		r.Get("/mismatch", a.getMismatch)
 		r.Post("/mismatch/{value}", a.setMismatch)
 		r.Post("/trigger/{param}", a.trigger)
@@ -111,6 +115,13 @@ func (a *Api) setMismatch(w http.ResponseWriter, r *http.Request) {
 
 	log.API("set mismatch to", value)
 	w.Write([]byte("Mismatch set successfully"))
+}
+
+func (a *Api) getProtocolType(w http.ResponseWriter, r *http.Request) {
+	value := a.d.GetProtocol()
+	log.API("get protocol type")
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(fmt.Sprintf("%v", value)))
 }
 
 func (a *Api) getParameter(w http.ResponseWriter, r *http.Request) {
@@ -163,6 +174,31 @@ func (a *Api) getCommandDelay(w http.ResponseWriter, r *http.Request) {
 	log.API("get delay of", commandName)
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(del.String()))
+}
+
+func (a *Api) getDelay(w http.ResponseWriter, r *http.Request) {
+	del, err := a.d.GetCommandDelay("")
+	if err != nil {
+		errorHandler(w, err)
+		return
+	}
+
+	log.API("get modbus delay")
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte(del.String()))
+}
+
+func (a *Api) setDelay(w http.ResponseWriter, r *http.Request) {
+	value := chi.URLParam(r, "value")
+
+	err := a.d.SetCommandDelay("", value)
+	if err != nil {
+		errorHandler(w, err)
+		return
+	}
+
+	log.API("set modbus delay to ", value)
+	w.Write([]byte("Delay set successfully"))
 }
 
 func (a *Api) setCommandDelay(w http.ResponseWriter, r *http.Request) {

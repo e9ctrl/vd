@@ -19,6 +19,28 @@ func NewClient(url string) *Client {
 	}
 }
 
+// Get communication protocol type from the simulator server via exposed REST API with HTTP GET query.
+func (c *Client) GetProtocol() (string, error) {
+	resp, err := http.Get("http://" + c.url + "/protocol")
+	if err != nil {
+		return "", err
+	}
+
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("API error %s", body)
+	}
+	return string(body), nil
+}
+
 // Get given parameter name from the simulator server via exposed REST API with HTTP GET query.
 func (c *Client) GetParameter(param string) (string, error) {
 	resp, err := http.Get("http://" + c.url + "/" + param)
@@ -88,7 +110,7 @@ func (c *Client) GetParameterType(param string) (string, error) {
 
 // Get command delay value via exposed REST API with HTTP Get query.
 func (c *Client) GetCommandDelay(commandName string) (time.Duration, error) {
-	resp, err := http.Get("http://" + c.url + "/delay/" + commandName)
+	resp, err := http.Get("http://" + c.url + "/delay/stream/" + commandName)
 	if err != nil {
 		return 0, err
 	}
@@ -109,9 +131,55 @@ func (c *Client) GetCommandDelay(commandName string) (time.Duration, error) {
 	return time.ParseDuration(string(body))
 }
 
+// Get modbus delay value via exposed REST API with HTTP Get query.
+func (c *Client) GetDelay() (time.Duration, error) {
+	resp, err := http.Get("http://" + c.url + "/delay/modbus")
+	if err != nil {
+		return 0, err
+	}
+
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("API error %s", body)
+	}
+
+	return time.ParseDuration(string(body))
+}
+
+// Set modbus delay via exposed REST aPI with HTTP Post query.
+func (c *Client) SetDelay(value string) error {
+	resp, err := http.Post("http://"+c.url+"/delay/modbus/"+value, "text/plain", nil)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("API error %s", body)
+	}
+
+	return nil
+}
+
 // Set command delay via exposed REST aPI with HTTP Post query.
 func (c *Client) SetCommandDelay(commandName, value string) error {
-	resp, err := http.Post("http://"+c.url+"/delay/"+commandName+"/"+value, "text/plain", nil)
+	resp, err := http.Post("http://"+c.url+"/delay/stream/"+commandName+"/"+value, "text/plain", nil)
 	if err != nil {
 		return err
 	}
