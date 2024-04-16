@@ -6,8 +6,11 @@ import (
 )
 
 //go:embed vdfile/vdfile_stream
-var vdTemplate embed.FS
+var vdTemplateStream embed.FS
+
+//go:embed vdfile/vdfile_modbus
+var vdTemplateModbus embed.FS
 
 func main() {
-	cmd.Execute(vdTemplate)
+	cmd.Execute(vdTemplateStream, vdTemplateModbus)
 }

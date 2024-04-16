@@ -239,9 +239,17 @@ func DecodeVDProto(path string) (ProtocolType, error) {
 	return proto, err
 }
 
-// Parse TOML file but using fle system FS to Config struct
-func DecodeVDFS(f fs.FS, path string) (ConfigStream, error) {
+// Parse TOML file but using fle system FS to ConfigStream struct
+func DecodeVDFSStream(f fs.FS, path string) (ConfigStream, error) {
 	var config ConfigStream
+	_, err := toml.DecodeFS(f, path, &config)
+
+	return config, err
+}
+
+// Parse TOML file but using fle system FS to ConfigModbus struct
+func DecodeVDFSModbus(f fs.FS, path string) (ConfigModbus, error) {
+	var config ConfigModbus
 	_, err := toml.DecodeFS(f, path, &config)
 
 	return config, err
