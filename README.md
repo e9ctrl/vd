@@ -24,7 +24,7 @@ Recognizing this challenge, this project was conceived to streamline the testing
 - Everyone aiming to enhance the quality of their integrations.
 
 # How It Works
-The `vd` tool can simulate devices that communicate using stream-based communication, i.e., those that can be integrated using StreamDevice. Creating a simulator doesn't require programming; communication is described in a file called `vdfile`.
+The `vd` tool can simulate devices that communicate using stream-based communication, i.e., those that can be integrated using StreamDevice and Modbus devices. Creating a simulator doesn't require programming; communication is described in a file called `vdfile`.
 
 `vd` is able to lex and parse incoming messages from the client and, based on them, determine action.
 
@@ -33,11 +33,23 @@ The configuration file called `vdfile` is a [TOML](https://toml.io/en/) file and
 
 Note that some parameters do not contain specific communication patterns. Your configuration can include one or multiple parameters depending on your needs.
 
-It starts with optional error message:
-```toml```
+Current implementation supports two type of communication protocol:
+ - stream-based 
+ - Modbus
+
+For each type of communication `vdfile` varies.
+
+## stream-based vdfile 
+
+It starts with obligatory information about communication protcol:
+```toml
+protocol = "stream"
+```
+then, there is an optional error message:
+```toml
 mismatch = "error"
 ```
-then, it contains information about terminators:
+after that, it contains information about terminators:
 ```toml
 [terminators]
   intterm = "CR LF"
@@ -74,7 +86,7 @@ and finally describes parameters available in the simulated device:
   res = "OK"
 ```
 
-Here's a breakdown of the configuration:
+Here's a breakdown of the stream-based configuration:
 
 * `name`: Parameter's name, not used in client communication but utilized in the HTTP API.
 * `typ`:  Parameter type (available values - `int`, `float`, `string`, `bool`).
@@ -158,22 +170,103 @@ mismatch = "Wrong query"
 
 ```
 
+## Modbus vdfile
+It starts with obligatory information about communication protcol:
+```toml
+protocol = "modbus"
+```
+it may contain global delay:
+```toml
+delay = "3s"
+```
+then, it has parameter descriptions:
+```toml
+[[parameter]]
+  name = "state"
+  typ = "uint8"
+  reg = "coil"
+  val = 1
+  addr = 1
+
+[[parameter]]
+  name = "temp"
+  typ = "uint16"
+  reg = "holdreg"
+  val = 20
+  addr = 5
+
+```
+Here's a breakdown of the modbus configuration:
+
+* `name`: Parameter's name, not used in client communication but utilized in the HTTP API.
+* `typ`:  Parameter type (available values - `uint8`, `uint16`,` int16`, `uint32`, `int32`, `uint64`, `int64`, `float32`, `float64`).
+* `reg`:  Modbus internal memory type used to store parameter's value (`di`, `coil`, `holdreg`, `inreg`)
+* `addr`: The first register address where value of the parameter will be stored.
+
+Below is a sample configuration:
+```toml
+
+protocol = "modbus"
+
+delay = "3s"
+
+[[parameter]]
+  name = "state"
+  reg = "coil"
+  val = "1"
+  addr = 1
+
+[[parameter]]
+  name = "mode"
+  reg = "di"
+  val = "1"
+  addr = 3
+
+[[parameter]]
+  name = "temp"
+  typ = "uint16"
+  reg = "holdreg"
+  val = "20"
+  addr = 5
+
+[[parameter]]
+  name = "temp2"
+  typ = "uint32"
+  reg = "holdreg"
+  val = "454211"
+  addr = 7
+
+[[parameter]]
+  name = "volt"
+  typ = "int64"
+  reg = "inreg"
+  val = "30"
+  addr = 10
+
+[[parameter]]
+  name = "pressure"
+  typ = "float64"
+  reg = "inreg"
+  val = 34.5
+  addr = 15
+```
+
 # Parameter
-`parameter` is a place where parameter together with its name, type, possible values, and initial value are defined. 
+`parameter` is a place where parameter together with its name, type, possible values, and initial value are defined. In `modbus` configuration, it contains also information about register type and its address.
 
 # Command
-`command` is section that keeps information about accepted request strings and responses to them. The command can reference none, one or more parameters. One can assign command to the parameter using `{` `}` with proper placeholder and parameter name between brackets e.g. `{%d:parameter}`.
+`command` is section that keeps information about accepted request strings and responses to them. The command can reference none, one or more parameters. One can assign command to the parameter using `{` `}` with proper placeholder and parameter name between brackets e.g. `{%d:parameter}`. `command` is used only by `stream` protocol.
 
 # Delays
 The `vd` tool enables the introduction of delays when sending responses to requests. This feature allows you to define custom wait times for the `vd` to hold off on every response and acknowledgment, enhancing the simulation of real-world network conditions or server response times.
 
-The delays are specific for single command, you can use `dly` to define delay time for the given command.
+In case of `stream`, the delays are specific for single command, you can use `dly` to define delay time for the given command. For `modbus` there is one, global delay that affects read and write messages.
 
 # Mismatch
-`vd` allows to specify mismatch that is sent back to the client when received string does not match any of the expected commands. It is send back to the client automatically without delay.
+`vd` allows to specify mismatch that is sent back to the client when received string does not match any of the expected commands. It is send back to the client automatically without delay. This is only valid for `stream`.
 
 # Triggering reply
-The `vd` tool enables the triggering of responses, simulating scenarios where a device sends data autonomously, without a specific request from the client. It is done by sending proper request via HTTP API. 
+The `vd` tool enables the triggering of responses, simulating scenarios where a device sends data autonomously, without a specific request from the client. It is done by sending proper request via HTTP API. This is only valid for `stream`. 
 
 # Installation
 `vd` is supplied as a binary file. Download the appropriate version for your operating system and you are good to go.
@@ -210,6 +303,12 @@ To change the value of command delay:
 ```
 $ vd get delay get_status
 $ vd set delay get_status 200ms
+```
+
+To change `modbus` global delay:
+```
+$ vd get delay
+$ vd set delay 3s
 ```
 
 To change mismatch message string:
