@@ -25,6 +25,8 @@ var (
 	ErrMismatchTooLong = errors.New("new mismatch message exceeded 255 characters limit")
 	// Error return by NewDevice when protocol type is now known
 	ErrNotKnownProto = errors.New("not know protocol type")
+	// Error to inform that method is not implemented by certain protocol
+	ErrNotSupported = errors.New("feature not supported")
 )
 
 // Stream device store the information of a set of parameters
@@ -242,13 +244,16 @@ func (s *StreamDevice) GetProtocol() string {
 
 // Method to set mismatch message, returns error when string it too long
 func (s *StreamDevice) SetMismatch(value string) error {
-	if len(value) > MISMATCH_LIMIT {
-		return fmt.Errorf("%w: %s", ErrMismatchTooLong, value)
+	if s.protocolTyp == "stream" {
+		if len(value) > MISMATCH_LIMIT {
+			return fmt.Errorf("%w: %s", ErrMismatchTooLong, value)
+		}
+		s.lock.Lock()
+		s.vdfile.Mismatch = []byte(value)
+		s.lock.Unlock()
+	} else if s.protocolTyp == "modbus" {
+		return ErrNotSupported
 	}
-	s.lock.Lock()
-	s.vdfile.Mismatch = []byte(value)
-	s.lock.Unlock()
-
 	return nil
 }
 
@@ -283,6 +288,8 @@ func (s *StreamDevice) Trigger(cmdName string) error {
 		default:
 			return ErrNoClient
 		}
+	} else if s.protocolTyp == "modbus" {
+		return ErrNotSupported
 	}
 	return nil
 }
