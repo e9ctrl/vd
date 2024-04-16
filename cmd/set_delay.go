@@ -10,13 +10,14 @@ import (
 
 var setDelayCmd = &cobra.Command{
 	Use:   "delay [command name] [value]",
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.RangeArgs(1, 2),
 	Short: "Command to set value of delays",
-	Long: `The command sets value of command delays.
+	Long: `The command sets value of stream command delays and modbus delay.
 It communicates with REST API of the simulator and using HTTP POST verb modifies value of the specified delay.
 Examples:
 	vd set delay get_temp 100ms	-> set response delay of get temp command
 	vd set delay set_volt 1m	-> set response delay of set volt command
+	vd set delay 1m			-> set general modbus delay
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !verifyIPAddr(apiAddr) {
@@ -24,7 +25,13 @@ Examples:
 		}
 
 		c := api.NewClient(apiAddr)
-		err := c.SetCommandDelay(args[0], args[1])
+
+		var err error
+		if len(args) == 2 {
+			err = c.SetCommandDelay(args[0], args[1])
+		} else {
+			err = c.SetDelay(args[0])
+		}
 		if err != nil {
 			return err
 		}

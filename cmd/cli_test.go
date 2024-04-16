@@ -19,49 +19,49 @@ import (
 )
 
 const (
-	FILE     = "../vdfile/vdfile_stream"
-	API_ADDR = "127.0.0.1:7777"
+	FILE_STREAM     = "../vdfile/vdfile_stream"
+	API_ADDR_STREAM = "127.0.0.1:7777"
 )
 
 func TestMain(m *testing.M) {
-	config, err := vdfile.DecodeVDFileStream(FILE)
+	configStream, err := vdfile.DecodeVDFileStream(FILE_STREAM)
 	if err != nil {
 		panic(err)
 	}
 
-	for i := 0; i < len(config.Commands); i++ {
-		switch config.Commands[i].Name {
+	for i := 0; i < len(configStream.Commands); i++ {
+		switch configStream.Commands[i].Name {
 		case "get_psi":
-			config.Commands[i].Dly = "3s"
+			configStream.Commands[i].Dly = "3s"
 		case "get_temp":
-			config.Commands[i].Dly = "1s"
+			configStream.Commands[i].Dly = "1s"
 		case "get_mode":
-			config.Commands[i].Dly = "5s"
+			configStream.Commands[i].Dly = "5s"
 		}
 	}
-	config.Mismatch = "Wrong query"
+	configStream.Mismatch = "Wrong query"
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
-	vdfile, err := vdfile.ReadVDFileStreamFromConfig(config)
+	vdfileStream, err := vdfile.ReadVDFileStreamFromConfig(configStream)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
 	// create stream device
-	d, err := device.NewDevice(vdfile)
+	devStream, err := device.NewDevice(vdfileStream)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	// create instance of HTTP server
-	a := api.NewHttpApiServer(d)
+	// create instance of modbus HTTP server
+	apiStream := api.NewHttpApiServer(devStream)
 
 	go func() {
 		// run HTTP server with REST API
-		err = a.Serve(ctx, API_ADDR)
+		err = apiStream.Serve(ctx, API_ADDR_STREAM)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "HTTP server failed %v", err)
 			os.Exit(1)
@@ -95,7 +95,7 @@ func TestGetMismatch(t *testing.T) {
 		exp  string
 		api  string
 	}{
-		{"get mismatch", "Wrong query\n", API_ADDR},
+		{"get mismatch", "Wrong query\n", API_ADDR_STREAM},
 		{"wrong api addr", `Error: Get "http://127.0.0.1:7878/mismatch": dial tcp 127.0.0.1:7878: connect: connection refused` + "\n", "127.0.0.1:7878"},
 		{"wrong api addr format", "Error: wrong HTTP address\n", "127.test"},
 	}
@@ -119,11 +119,11 @@ func TestGetParameter(t *testing.T) {
 		exp   string
 		api   string
 	}{
-		{"get version", "version", "version 1.0\n", API_ADDR},
-		{"get mode", "mode", "NORM\n", API_ADDR},
+		{"get version", "version", "version 1.0\n", API_ADDR_STREAM},
+		{"get mode", "mode", "NORM\n", API_ADDR_STREAM},
 		{"wrong api addr", "version", `Error: Get "http://127.0.0.1:7878/version": dial tcp 127.0.0.1:7878: connect: connection refused` + "\n", "127.0.0.1:7878"},
 		{"wrong api addr format", "version", "Error: wrong HTTP address\n", "127.test"},
-		{"wrong cmd", "test", "Error: API error Error: parameter not found: test\n", API_ADDR},
+		{"wrong cmd", "test", "Error: API error Error: parameter not found: test\n", API_ADDR_STREAM},
 	}
 
 	for _, tt := range tests {
@@ -145,11 +145,11 @@ func TestGetParameterType(t *testing.T) {
 		exp   string
 		api   string
 	}{
-		{"get version type", "version", "string\n", API_ADDR},
-		{"get current type", "current", "int64\n", API_ADDR},
+		{"get version type", "version", "string\n", API_ADDR_STREAM},
+		{"get current type", "current", "int64\n", API_ADDR_STREAM},
 		{"wrong api addr", "version", `Error: Get "http://127.0.0.1:7878/type/version": dial tcp 127.0.0.1:7878: connect: connection refused` + "\n", "127.0.0.1:7878"},
 		{"wrong api addr format", "version", "Error: wrong HTTP address\n", "127.test"},
-		{"wrong cmd", "test", "Error: API error Error: parameter not found: test\n", API_ADDR},
+		{"wrong cmd", "test", "Error: API error Error: parameter not found: test\n", API_ADDR_STREAM},
 	}
 
 	for _, tt := range tests {
@@ -171,10 +171,10 @@ func TestGetDelay(t *testing.T) {
 		exp   string
 		api   string
 	}{
-		{"get_psi delay", "get_psi", "3s\n", API_ADDR},
-		{"wrong api addr", "get_psi", `Error: Get "http://127.0.0.1:7878/delay/get_psi": dial tcp 127.0.0.1:7878: connect: connection refused` + "\n", "127.0.0.1:7878"},
+		{"get_psi delay", "get_psi", "3s\n", API_ADDR_STREAM},
+		{"wrong api addr", "get_psi", `Error: Get "http://127.0.0.1:7878/delay/stream/get_psi": dial tcp 127.0.0.1:7878: connect: connection refused` + "\n", "127.0.0.1:7878"},
 		{"wrong api addr format", "get_psi", "Error: wrong HTTP address\n", "127.test"},
-		{"wrong cmd", "get_test", "Error: API error Error: command not found: get_test\n", API_ADDR},
+		{"wrong cmd", "get_test", "Error: API error Error: command not found: get_test\n", API_ADDR_STREAM},
 	}
 
 	for _, tt := range tests {
@@ -196,10 +196,10 @@ func TestTrigger(t *testing.T) {
 		exp   string
 		api   string
 	}{
-		{"trig get_current", "get_current", "Error: API error Error: no client available\n", API_ADDR},
+		{"trig get_current", "get_current", "Error: API error Error: no client available\n", API_ADDR_STREAM},
 		{"wrong api addr", "get_psi", `Error: Post "http://127.0.0.1:7878/trigger/get_psi": dial tcp 127.0.0.1:7878: connect: connection refused` + "\n", "127.0.0.1:7878"},
 		{"wrong api addr format", "get_psi", "Error: wrong HTTP address\n", "127.test"},
-		{"wrong cmd", "get_test", "Error: API error Error: command not found: get_test\n", API_ADDR},
+		{"wrong cmd", "get_test", "Error: API error Error: command not found: get_test\n", API_ADDR_STREAM},
 	}
 
 	for _, tt := range tests {
@@ -215,14 +215,14 @@ func TestTrigger(t *testing.T) {
 }
 
 func TestSetParameter(t *testing.T) {
-	res := execute([]string{"set", "current", "20", "--apiAddr", API_ADDR})
+	res := execute([]string{"set", "current", "20", "--apiAddr", API_ADDR_STREAM})
 
 	expected := "OK\n"
 	if res != expected {
 		t.Errorf("exp value: %s got %s\n", expected, res)
 	}
 
-	res = execute([]string{"get", "current", "--apiAddr", API_ADDR})
+	res = execute([]string{"get", "current", "--apiAddr", API_ADDR_STREAM})
 	expected = "20\n"
 	if res != expected {
 		t.Errorf("exp value: %s got %s\n", expected, res)
@@ -238,8 +238,8 @@ func TestSetParameterWrong(t *testing.T) {
 	}{
 		{"wrong api addr", "current 30", `Error: Post "http://127.0.0.1:7878/current/30": dial tcp 127.0.0.1:7878: connect: connection refused` + "\n", "127.0.0.1:7878"},
 		{"wrong api addr format", "current 30", "Error: wrong HTTP address\n", "127.test"},
-		{"wrong set value", "current test", "Error: API error Error: received param type that cannot be converted to int\n", API_ADDR},
-		{"wrong param", "test 20", "Error: API error Error: parameter not found: test\n", API_ADDR},
+		{"wrong set value", "current test", "Error: API error Error: received param type that cannot be converted to int\n", API_ADDR_STREAM},
+		{"wrong param", "test 20", "Error: API error Error: parameter not found: test\n", API_ADDR_STREAM},
 	}
 
 	for _, tt := range tests {
@@ -255,14 +255,14 @@ func TestSetParameterWrong(t *testing.T) {
 }
 
 func TestSetMismatch(t *testing.T) {
-	res := execute([]string{"set", "mismatch", "Error", "--apiAddr", API_ADDR})
+	res := execute([]string{"set", "mismatch", "Error", "--apiAddr", API_ADDR_STREAM})
 
 	expected := "OK\n"
 	if res != expected {
 		t.Errorf("exp value: %s got %s\n", expected, res)
 	}
 
-	res = execute([]string{"get", "mismatch", "--apiAddr", API_ADDR})
+	res = execute([]string{"get", "mismatch", "--apiAddr", API_ADDR_STREAM})
 
 	expected = "Error\n"
 	if res != expected {
@@ -286,7 +286,7 @@ func TestSetMismatchWrong(t *testing.T) {
 	}{
 		{"wrong api addr", "error", `Error: Post "http://127.0.0.1:7878/mismatch/error": dial tcp 127.0.0.1:7878: connect: connection refused` + "\n", "127.0.0.1:7878"},
 		{"wrong api addr format", "error", "Error: wrong HTTP address\n", "127.test"},
-		{"too long message", mis, "Error: API error Error: new mismatch message exceeded 255 characters limit: " + mis + "\n", API_ADDR},
+		{"too long message", mis, "Error: API error Error: new mismatch message exceeded 255 characters limit: " + mis + "\n", API_ADDR_STREAM},
 	}
 
 	for _, tt := range tests {
@@ -302,14 +302,14 @@ func TestSetMismatchWrong(t *testing.T) {
 }
 
 func TestSetDelay(t *testing.T) {
-	res := execute([]string{"set", "delay", "get_temp", "5s", "--apiAddr", API_ADDR})
+	res := execute([]string{"set", "delay", "get_temp", "5s", "--apiAddr", API_ADDR_STREAM})
 
 	expected := "OK\n"
 	if res != expected {
 		t.Errorf("exp value: %s got %s\n", expected, res)
 	}
 
-	res = execute([]string{"get", "delay", "get_temp", "--apiAddr", API_ADDR})
+	res = execute([]string{"get", "delay", "get_temp", "--apiAddr", API_ADDR_STREAM})
 
 	expected = "5s\n"
 	if res != expected {
@@ -324,10 +324,10 @@ func TestSetDelayWrong(t *testing.T) {
 		exp   string
 		api   string
 	}{
-		{"wrong api addr", "get_psi 10s", `Error: Post "http://127.0.0.1:7878/delay/get_psi/10s": dial tcp 127.0.0.1:7878: connect: connection refused` + "\n", "127.0.0.1:7878"},
+		{"wrong api addr", "get_psi 10s", `Error: Post "http://127.0.0.1:7878/delay/stream/get_psi/10s": dial tcp 127.0.0.1:7878: connect: connection refused` + "\n", "127.0.0.1:7878"},
 		{"wrong api addr format", "get_psi 10s", "Error: wrong HTTP address\n", "127.test"},
-		{"wrong set value", "get_psi test", "Error: API error Error: time: invalid duration \"test\"\n", API_ADDR},
-		{"wrong cmd", "get_test 10s", "Error: API error Error: command not found: get_test\n", API_ADDR},
+		{"wrong set value", "get_psi test", "Error: API error Error: time: invalid duration \"test\"\n", API_ADDR_STREAM},
+		{"wrong cmd", "get_test 10s", "Error: API error Error: command not found: get_test\n", API_ADDR_STREAM},
 	}
 
 	for _, tt := range tests {
@@ -359,7 +359,7 @@ func TestCLIEnvVars(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Setenv("VD_API_ADDR", API_ADDR)
+			os.Setenv("VD_API_ADDR", API_ADDR_STREAM)
 			in := strings.Split(tt.input, " ")
 			res := execute(in)
 			os.Unsetenv("VD_API_ADDR")
