@@ -428,11 +428,11 @@ func TestSetMismatchModbus(t *testing.T) {
 	ts := newTestServer(t, a.routes())
 
 	defer ts.Close()
-	expectedSet := `Mismatch set successfully`
-	expectedGet := `found error`
+	expectedSet := `Error: feature not supported`
+	expectedGet := ``
 
 	code, _, body := ts.set(t, "/mismatch/found error")
-	if code != http.StatusOK {
+	if code != http.StatusInternalServerError {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			code, http.StatusOK)
 	}
