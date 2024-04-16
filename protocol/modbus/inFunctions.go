@@ -9,7 +9,7 @@ import (
 	"github.com/e9ctrl/vd/protocol"
 )
 
-// General function to read data
+// General function to read any type of data
 func readData(frame TCPFrame, params map[string]memory.Memory, memTyp memory.DataTyp) ([]protocol.Transaction, *Exception) {
 	txs := make([]protocol.Transaction, 0)
 
@@ -34,6 +34,8 @@ func readData(frame TCPFrame, params map[string]memory.Memory, memTyp memory.Dat
 						tx.Typ = protocol.TxGetParam
 						tx.Payload[paramName] = nil
 						txs = append(txs, tx)
+						// not to produce many transactions for one parameter
+						// that covers multiple registers
 						i = i + int(mem.Length)
 					}
 				}
@@ -91,7 +93,7 @@ func (p *Parser) WriteSingleCoil(frame TCPFrame, params map[string]memory.Memory
 	return txs, &Success
 }
 
-// WriteHoldingRegister function 16,
+// WriteHoldingRegister function 16, write to single holding register
 func (p *Parser) WriteHoldingRegister(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Transaction, *Exception) {
 	return writeRegister(frame, params, p.holdRegTable)
 }
@@ -250,10 +252,12 @@ func writeRegisters(frame TCPFrame, params map[string]memory.Memory, holdRegTabl
 		return txs, &IllegalDataValue
 	}
 
+	// check if table is empty
 	if len(holdRegTable) == 0 {
 		return txs, &IllegalDataAddress
 	}
 
+	// check if first register and end register are in internal table memory range
 	for i := register; i < register+numRegs; i++ {
 		if i >= len(holdRegTable) {
 			return txs, &IllegalDataAddress

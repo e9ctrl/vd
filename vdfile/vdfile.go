@@ -20,17 +20,18 @@ var (
 	ErrNotKnownProto = errors.New("not known protocol type")
 )
 
-// always parsed protocol type - decides which parse struct should be used
+// Always parsed protocol type - decides which parse struct should be used
 type ProtocolType struct {
 	Protocol string `toml:"protocol"`
 }
 
-// Modbus structs
+// Modbus config struct, result of toml parsing
 type ConfigModbus struct {
 	Params []configParameterModbus `toml:"parameter"`
 	Delay  string                  `toml:"delay,omitempty"`
 }
 
+// Modbus parameter struct
 type configParameterModbus struct {
 	Name string `toml:"name"`
 	Typ  string `toml:"typ,omitempty"`
@@ -40,17 +41,19 @@ type configParameterModbus struct {
 	Opt  string `toml:"opt,omitempty"`
 }
 
+// Modbus struct encapsulated into main VDFile struct
 type VDFileModbus struct {
 	Mems  map[string]memory.Memory
 	Delay time.Duration
 }
 
-// Stream structs
+// Stream terminator structs
 type terminators struct {
 	InTerminator  string `toml:"intterm"`
 	OutTerminator string `toml:"outterm"`
 }
 
+// Stream parameter struct
 type configParameterStream struct {
 	Name string `toml:"name"`
 	Typ  string `toml:"typ"`
@@ -58,6 +61,7 @@ type configParameterStream struct {
 	Opt  string `toml:"opt,omitempty"`
 }
 
+// Stream command struct
 type configStreamCommand struct {
 	Name string `toml:"name"`
 	Req  string `toml:"req"`
@@ -65,6 +69,7 @@ type configStreamCommand struct {
 	Dly  string `toml:"dly,omitempty"`
 }
 
+// Stream config struct, result of toml parsing
 type ConfigStream struct {
 	Term     terminators             `toml:"terminators"`
 	Params   []configParameterStream `toml:"parameter"`
@@ -72,13 +77,14 @@ type ConfigStream struct {
 	Mismatch string                  `toml:"mismatch,omitempty"`
 }
 
+// Stream struct encapsulated into main VDFile struct
 type VDFileStream struct {
 	InTerminator  []byte
 	OutTerminator []byte
 	Commands      map[string]*command.Command
 }
 
-// General struct
+// General struct, holding all configurations
 type VDFile struct {
 	Stream   *VDFileStream
 	Modbus   *VDFileModbus
@@ -125,7 +131,7 @@ func ReadVDFile(path string) (*VDFile, error) {
 	}
 }
 
-// Creates vdfile struct based on Config containing result of TOML file parsing
+// Creates modbus vdfile struct based on Config containing result of TOML file parsing
 func ReadVDFileModbusFromConfig(config ConfigModbus) (*VDFile, error) {
 	vd := &VDFile{
 		Params: make(map[string]parameter.Parameter, 0),
@@ -169,7 +175,7 @@ func ReadVDFileModbusFromConfig(config ConfigModbus) (*VDFile, error) {
 	return vd, nil
 }
 
-// Creates vdfile struct based on Config containing result of TOML file parsing
+// Creates stream vdfile struct based on Config containing result of TOML file parsing
 func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFile, error) {
 	vd := &VDFile{
 		Params: make(map[string]parameter.Parameter, 0),
@@ -241,7 +247,7 @@ func DecodeVDFS(f fs.FS, path string) (ConfigStream, error) {
 	return config, err
 }
 
-// Created TOML config file based on ConfigStream
+// Created TOML config file based on config struct
 func WriteVDFile(path string, config any) error {
 	var buf = bytes.Buffer{}
 	var encoder = toml.NewEncoder(&buf)

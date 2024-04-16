@@ -1,40 +1,15 @@
 package modbus
 
-import (
-	"fmt"
-)
-
-// Exception codes.
-type Exception uint8
+import "errors"
 
 var (
-	// Success operation successful.
-	Success Exception
-	// IllegalFunction function code received in the query is not recognized or allowed by slave.
-	IllegalFunction Exception = 1
-	// IllegalDataAddress data address of some or all the required entities are not allowed or do not exist in slave.
-	IllegalDataAddress Exception = 2
-	// IllegalDataValue value is not accepted by slave.
-	IllegalDataValue Exception = 3
+	ErrNotKnownFunctionCode = errors.New("not known function code")
+	ErrEmptyFrameQueue      = errors.New("empty frame queue")
+	ErrParameterNotFound    = errors.New("parameter not found")
+	ErrValueWrongType       = errors.New("wrong type of value")
+	ErrMemoryWrongType      = errors.New("wrong memory type")
+	ErrParameterWrongType   = errors.New("wrong parameter data type")
+	ErrEmptyMemoryTable     = errors.New("not initialised memory table")
+	ErrTCPPacketTooShort    = errors.New("tcp frame error: packet less than 9 bytes")
+	ErrTCPLengthMismatch    = errors.New("specified packet length does not match actual packet length")
 )
-
-func (e Exception) Error() string {
-	return fmt.Sprintf("%d", e)
-}
-
-func (e Exception) String() string {
-	var str string
-	switch e {
-	case Success:
-		str = "Success"
-	case IllegalFunction:
-		str = "IllegalFunction"
-	case IllegalDataAddress:
-		str = "IllegalDataAddress"
-	case IllegalDataValue:
-		str = "IllegalDataValue"
-	default:
-		str = "unknown"
-	}
-	return str
-}

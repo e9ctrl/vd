@@ -2,7 +2,6 @@ package modbus
 
 import (
 	"encoding/binary"
-	"errors"
 	"math"
 	"reflect"
 	"sync"
@@ -15,16 +14,16 @@ import (
 	"github.com/e9ctrl/vd/vdfile"
 )
 
-var (
-	ErrNotKnownFunctionCode = errors.New("not known function code")
-	ErrEmptyFrameQueue      = errors.New("empty frame queue")
-)
-
+// Internal memory tables size
 const MemoryTableSize = 9999
 
+// Type that is used to decode byte message
 type InHandler func(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Transaction, *Exception)
+
+// Type to encode transactions into response bytes
 type OutHandler func(frame TCPFrame, txs []protocol.Transaction) ([]byte, *Exception)
 
+// Structure that modbus bytes messages
 type Parser struct {
 	inFunctions  map[uint8]InHandler
 	outFunctions map[uint8]OutHandler
@@ -40,6 +39,7 @@ type Parser struct {
 	diTable      []byte
 }
 
+// MemoryMapping that fulfills memory tables based on their addresses and their lengths
 func (p *Parser) MemoryMapping(params map[string]parameter.Parameter) {
 	for paramName, memUnit := range p.paramsAddrs {
 		if memUnit.Typ == memory.DataCoil {
@@ -130,7 +130,7 @@ func (p *Parser) MemoryMapping(params map[string]parameter.Parameter) {
 	}
 }
 
-// Constructor, returns struct that fulfils Protocol interface
+// Constructor, returns struct that fulfills Protocol interface
 func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 	parser := &Parser{
 		paramsAddrs: vdfile.Modbus.Mems,
@@ -176,6 +176,7 @@ func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 	return parser, nil
 }
 
+// Method that fulfills Protocol interface, it converts bytes to transactions
 func (p *Parser) Decode(data []byte) ([]protocol.Transaction, error) {
 	frame, err := NewTCPFrame(data)
 	if err != nil {
@@ -202,6 +203,7 @@ func (p *Parser) Decode(data []byte) ([]protocol.Transaction, error) {
 	return txs, nil
 }
 
+// Method that fulfills Protocol interface, it converts transactions into byte reponse
 func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
 	// get origin frame from the queue
 	p.mu.Lock()
@@ -248,10 +250,13 @@ func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
 	return frame.Bytes(), nil
 }
 
+// Method that fulfills Protocol interface, in the Modbus case it
+// does not have any sense
 func (p *Parser) Trigger(string) protocol.Transaction {
 	return protocol.Transaction{}
 }
 
+// Method to add frames to parser queue, used in tests
 func (p *Parser) addFrame(frame []*TCPFrame) {
 	p.mu.Lock()
 	p.frames = append(p.frames, frame...)

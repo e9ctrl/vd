@@ -2,7 +2,6 @@ package modbus
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -11,24 +10,16 @@ import (
 	"github.com/e9ctrl/vd/protocol"
 )
 
-var (
-	ErrParameterNotFound  = errors.New("parameter not found")
-	ErrValueWrongType     = errors.New("wrong type of value")
-	ErrMemoryWrongType    = errors.New("wrong memory type")
-	ErrParameterWrongType = errors.New("wrong parameter data type")
-	ErrEmptyMemoryTable   = errors.New("not initialised memory table")
-)
-
 // Generate response for read coils function
 func (p *Parser) GenerateReadCoilsResponse(frame TCPFrame, txs []protocol.Transaction) ([]byte, *Exception) {
 	err := updateSingleBitsMemory(txs, p.paramsAddrs, p.coilTable)
 	if err != nil {
-		return []byte{}, &IllegalDataValue
+		return []byte(nil), &IllegalDataValue
 	}
 
 	register, numRegs, endRegister := registerAddressAndNumber(frame)
 	if endRegister > MemoryTableSize {
-		return []byte{}, &IllegalDataAddress
+		return []byte(nil), &IllegalDataAddress
 	}
 	dataSize := numRegs / 8
 	if (numRegs % 8) != 0 {

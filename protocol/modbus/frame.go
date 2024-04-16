@@ -2,14 +2,9 @@ package modbus
 
 import (
 	"encoding/binary"
-	"errors"
 )
 
-var (
-	ErrTCPPacketTooShort = errors.New("tcp frame error: packet less than 9 bytes")
-	ErrTCPLengthMismatch = errors.New("specified packet length does not match actual packet length")
-)
-
+// Constants with the Modbus function codes
 const (
 	ReadCoilsTyp             uint8 = 1
 	ReadDiscreteInputsTyp    uint8 = 2
@@ -95,6 +90,7 @@ func (frame *TCPFrame) Bytes() []byte {
 	return bytes
 }
 
+// GetFunctionName returns the Modbus function name
 func (frame *TCPFrame) GetFunctionName() string {
 	return getFunctionName(frame.Function)
 }
@@ -123,6 +119,7 @@ func (frame *TCPFrame) SetException() {
 	frame.setLength()
 }
 
+// setLength sets length field according to data length
 func (frame *TCPFrame) setLength() {
 	frame.Length = uint16(len(frame.Data))
 }
