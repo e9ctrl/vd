@@ -152,7 +152,7 @@ func ReadVDFileModbusFromConfig(config ConfigModbus) (*VDFile, error) {
 		if param.Reg == "holdreg" || param.Reg == "inreg" {
 			paramType = param.Typ
 			if len(param.Typ) == 0 {
-				paramType = "uint16" // or error?
+				paramType = "uint16"
 			}
 		}
 

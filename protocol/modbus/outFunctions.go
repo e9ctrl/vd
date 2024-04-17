@@ -87,7 +87,7 @@ func (p *Parser) GenerateWriteResponse(frame TCPFrame, txs []protocol.Transactio
 	return frame.GetData()[0:4], &Success
 }
 
-// updating memory map if parameter has been modified by http client, only coil or discrete inputs
+// Update memory map if parameter has been modified by http client, only coil or discrete inputs
 func updateSingleBitsMemory(txs []protocol.Transaction, params map[string]memory.Memory, memoryTable []byte) error {
 	for _, tx := range txs {
 		for name, val := range tx.Payload {

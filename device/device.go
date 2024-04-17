@@ -161,7 +161,7 @@ func (s *StreamDevice) GetParameter(name string) (any, error) {
 	return param.Value(), nil
 }
 
-// Method to access value of the specified parameter and change it, return error when parameter not found
+// Method to access value of the specified parameter and change it, returns error when parameter not found
 func (s *StreamDevice) SetParameter(name string, value any) error {
 	s.lock.Lock()
 	param, exists := s.vdfile.Params[name]
@@ -184,7 +184,7 @@ func (s *StreamDevice) GetParameterType(name string) (reflect.Kind, error) {
 	return param.Type(), nil
 }
 
-// Get delay of the specified command or general modbus delay, return error when command not found
+// Get delay of the specified command or general modbus delay, return error when command not found or when protocol type is not unknown
 func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 	if s.protocolTyp == "stream" {
 		s.lock.Lock()
@@ -203,7 +203,8 @@ func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 	return 0, ErrNotKnownProto
 }
 
-// Set delay of the specified command or modbus general delay, return error when command not found or when value cannot be converted to time.Duration
+// Set delay of the specified command or modbus general delay, return error when command not found or when value cannot be converted to time.Duration.
+// It also returns error when the protocol is unknown.
 func (s *StreamDevice) SetCommandDelay(name, val string) error {
 	timeVal, err := time.ParseDuration(val)
 	if err != nil {
@@ -242,7 +243,7 @@ func (s *StreamDevice) GetProtocol() string {
 	return proto
 }
 
-// Method to set mismatch message, returns error when string it too long
+// Method to set mismatch message, returns error when string it too long or when the protocol is unknown
 func (s *StreamDevice) SetMismatch(value string) error {
 	if s.protocolTyp == "stream" {
 		if len(value) > MISMATCH_LIMIT {
@@ -258,7 +259,7 @@ func (s *StreamDevice) SetMismatch(value string) error {
 }
 
 // Method that cause that value of the parameter associated with the specified command is sent directly via TCP server to connected client.
-// It returns an error when there is no client connected to TCP server or when parameter was not found.
+// It returns an error when there is no client connected to TCP server or when parameter was not found. It also returns error when the protocol is unknown.
 func (s *StreamDevice) Trigger(cmdName string) error {
 	if s.protocolTyp == "stream" {
 		s.lock.Lock()

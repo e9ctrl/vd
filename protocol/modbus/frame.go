@@ -76,7 +76,7 @@ func NewTCPFrame(packet []byte) (*TCPFrame, error) {
 	return frame, nil
 }
 
-// Bytes returns the Modbus byte stream based on the TCPFrame fields
+// Bytes returns the Modbus byte stream based on the TCPFrame fields.
 func (frame *TCPFrame) Bytes() []byte {
 	bytes := make([]byte, 8)
 
@@ -90,7 +90,7 @@ func (frame *TCPFrame) Bytes() []byte {
 	return bytes
 }
 
-// GetFunctionName returns the Modbus function name
+// GetFunctionName returns the Modbus function name.
 func (frame *TCPFrame) GetFunctionName() string {
 	return getFunctionName(frame.Function)
 }
@@ -119,7 +119,7 @@ func (frame *TCPFrame) SetException() {
 	frame.setLength()
 }
 
-// setLength sets length field according to data length
+// setLength sets length field according to data length.
 func (frame *TCPFrame) setLength() {
 	frame.Length = uint16(len(frame.Data))
 }

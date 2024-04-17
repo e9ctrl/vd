@@ -16,6 +16,7 @@ const (
 
 var ErrMemoryCollision = errors.New("Memory collision")
 
+// Struct that keeps data needed for modbus communication
 type Memory struct {
 	Typ     DataTyp
 	Addr    uint16
@@ -23,6 +24,7 @@ type Memory struct {
 	DataTyp string
 }
 
+// Constructor, returns memory struct for the specific parameter
 func New(addr uint16, regTyp, dataTyp string) Memory {
 	return Memory{
 		Addr:    addr,
@@ -32,7 +34,7 @@ func New(addr uint16, regTyp, dataTyp string) Memory {
 	}
 }
 
-// do poprawki bo rejestr ma 16 bitów
+// Check if there is no memory collision while defininf parameters in vdfile
 func IsMemoryValid(mems map[string]Memory) error {
 	// Iterate over the map
 	for key1, mem1 := range mems {

@@ -36,6 +36,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
+	// set random delays for stream-based communication
 	for i := 0; i < len(configStream.Commands); i++ {
 		switch configStream.Commands[i].Name {
 		case "get_psi":
@@ -48,16 +49,19 @@ func TestMain(m *testing.M) {
 	}
 	configStream.Mismatch = "Wrong query"
 
+	// set delay for modbus communication
 	configModbus.Delay = "3s"
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
+	// generate vdfile for stream-based communication
 	vdfileStream, err := vdfile.ReadVDFileStreamFromConfig(configStream)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
+	// generate vdfile for modbus communication
 	vdfileModbus, err := vdfile.ReadVDFileModbusFromConfig(configModbus)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -84,8 +88,8 @@ func TestMain(m *testing.M) {
 	// create instance of modbus HTTP server
 	apiModbus := api.NewHttpApiServer(devModbus)
 
+	// run stream HTTP server with REST API - stream-based simulator
 	go func() {
-		// run stream HTTP server with REST API
 		err := apiStream.Serve(ctx, API_ADDR_STREAM)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "HTTP server failed %v", err)
@@ -93,8 +97,8 @@ func TestMain(m *testing.M) {
 		}
 	}()
 
+	// run modbus HTTP server with REST API - modbus communication
 	go func() {
-		// run modbus HTTP server with REST API
 		err := apiModbus.Serve(ctx, API_ADDR_MODBUS)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "HTTP server failed %v", err)

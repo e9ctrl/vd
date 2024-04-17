@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-// Exception codes.
+// Exception codes
 type Exception uint8
 
 var (

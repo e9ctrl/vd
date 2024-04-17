@@ -12,7 +12,7 @@ type Client struct {
 	url string
 }
 
-// Create new Client isntance with configurable HTTP address.
+// Create new Client instance with configurable HTTP address.
 func NewClient(url string) *Client {
 	return &Client{
 		url: url,
@@ -86,7 +86,7 @@ func (c *Client) SetParameter(param, value string) error {
 	return nil
 }
 
-// Get given parameter type from the simulator server via exposed REST API with HTTP GET query.
+// Get given parameter type (int, float, string etc.) from the simulator server via exposed REST API with HTTP GET query.
 func (c *Client) GetParameterType(param string) (string, error) {
 	resp, err := http.Get("http://" + c.url + "/type/" + param)
 	if err != nil {
@@ -131,7 +131,7 @@ func (c *Client) GetCommandDelay(commandName string) (time.Duration, error) {
 	return time.ParseDuration(string(body))
 }
 
-// Get modbus delay value via exposed REST API with HTTP Get query.
+// Get modbus, general delay value via exposed REST API with HTTP Get query.
 func (c *Client) GetDelay() (time.Duration, error) {
 	resp, err := http.Get("http://" + c.url + "/delay/modbus")
 	if err != nil {
@@ -154,7 +154,7 @@ func (c *Client) GetDelay() (time.Duration, error) {
 	return time.ParseDuration(string(body))
 }
 
-// Set modbus delay via exposed REST aPI with HTTP Post query.
+// Set modbus, general delay via exposed REST aPI with HTTP Post query.
 func (c *Client) SetDelay(value string) error {
 	resp, err := http.Post("http://"+c.url+"/delay/modbus/"+value, "text/plain", nil)
 	if err != nil {
@@ -201,6 +201,7 @@ func (c *Client) SetCommandDelay(commandName, value string) error {
 }
 
 // Get mismatch string (message that is returned when ) via exposed REST API with Get query.
+// For Modbus always returns nothing.
 func (c *Client) GetMismatch() (string, error) {
 	resp, err := http.Get("http://" + c.url + "/mismatch")
 	if err != nil {
@@ -223,6 +224,7 @@ func (c *Client) GetMismatch() (string, error) {
 }
 
 // Set new mismatch message via exposed REST API with POST query.
+// Only valid for stream-based communication.
 func (c *Client) SetMismatch(value string) error {
 	resp, err := http.Post("http://"+c.url+"/mismatch/"+value, "text/plain", nil)
 	if err != nil {
@@ -246,6 +248,7 @@ func (c *Client) SetMismatch(value string) error {
 }
 
 // Method to trigger returning parameter value on the TCP server side, uses HTTP Post query.
+// Only valid for stream-based communication.
 func (c *Client) Trigger(param string) error {
 	resp, err := http.Post("http://"+c.url+"/trigger/"+param, "text/plain", nil)
 	if err != nil {
