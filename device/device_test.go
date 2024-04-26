@@ -16,7 +16,7 @@ import (
 	"testing"
 )
 
-var myStreamDev = func() *StreamDevice {
+var myStreamDev = func() *Device {
 	vd := &vdfile.VDFile{
 		InTerminator:  []byte("\r\n"),
 		OutTerminator: []byte("\r\n"),
