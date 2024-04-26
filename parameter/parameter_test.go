@@ -24,13 +24,21 @@ func TestSetValue(t *testing.T) {
 		{"string param wrong int value", "string", "init", 50, "", "init", ErrWrongTypeVal},
 		{"string param wrong bool value", "string", "init", false, "", "init", ErrWrongTypeVal},
 
-		{"int16 param", "int16", 20, 50, "", 50, nil},
-		{"int16 param with opts", "int16", 60, 50, "50|60", 50, nil},
-		{"int16 param string value", "int16", 20, "50", "", 50, nil},
-		{"int16 param wrong bool value", "int16", 50, false, "", 50, ErrWrongTypeVal},
-		{"int16 param wrong string value", "int16", 30, "test", "", 30, ErrWrongIntVal},
-		{"int16 param wrong float value", "int16", 30, 50.0, "", 30, ErrWrongTypeVal},
-		{"int16 param wrong int value", "int16", 30, int64(50), "", 30, ErrWrongTypeVal},
+		{"int8 param", "int8", int8(20), int8(50), "", int8(50), nil},
+		{"int8 param with opts", "int8", int8(60), int8(50), "50|60", int8(50), nil},
+		{"int8 param string value", "int8", int8(20), "50", "", int8(50), nil},
+		{"int8 param wrong bool value", "int8", int8(50), false, "", int8(50), ErrWrongTypeVal},
+		{"int8 param wrong string value", "int8", int8(30), "test", "", int8(30), ErrWrongIntVal},
+		{"int8 param wrong float value", "int8", int8(30), 50.0, "", int8(30), ErrWrongTypeVal},
+		{"int8 param wrong int value", "int8", int8(30), int64(50), "", int8(30), ErrWrongTypeVal},
+
+		{"int16 param", "int16", int16(20), int16(50), "", int16(50), nil},
+		{"int16 param with opts", "int16", int16(60), int16(50), "50|60", int16(50), nil},
+		{"int16 param string value", "int16", int16(20), "50", "", int16(50), nil},
+		{"int16 param wrong bool value", "int16", int16(50), false, "", int16(50), ErrWrongTypeVal},
+		{"int16 param wrong string value", "int16", int16(30), "test", "", int16(30), ErrWrongIntVal},
+		{"int16 param wrong float value", "int16", int16(30), 50.0, "", int16(30), ErrWrongTypeVal},
+		{"int16 param wrong int value", "int16", int16(30), int64(50), "", int16(30), ErrWrongTypeVal},
 
 		{"int param", "int", int64(20), int64(50), "", int64(50), nil},
 		{"int param with opts", "int", int64(60), int64(50), "50|60", int64(50), nil},
@@ -47,12 +55,43 @@ func TestSetValue(t *testing.T) {
 		{"int32 param wrong int value", "int32", int32(30), 50, "", int32(30), ErrWrongTypeVal},
 		{"int32 param wrong int64 value", "int32", int32(30), int64(50), "", int32(30), ErrWrongTypeVal},
 
-		{"int64 param", "int64", int64(30), int64(50), "", int64(50), nil},
-		{"int64 param string value", "int64", int64(20), "50", "", int64(50), nil},
-		{"int64 param wrong bool value", "int64", int64(50), false, "", int64(50), ErrWrongTypeVal},
-		{"int64 param wrong string value", "int64", int64(30), "test", "", int64(30), ErrWrongIntVal},
-		{"int64 param wrong float value", "int64", int64(30), 50.0, "", int64(30), ErrWrongTypeVal},
-		{"int64 param wrong int value", "int64", int64(30), int32(50), "", int64(30), ErrWrongTypeVal},
+		{"uint8 param", "uint8", uint8(20), uint8(50), "", uint8(50), nil},
+		{"uint8 param with opts", "uint8", uint8(60), uint8(50), "50|60", uint8(50), nil},
+		{"uint8 param string value", "uint8", uint8(20), "50", "", uint8(50), nil},
+		{"uint8 param wrong bool value", "uint8", uint8(50), false, "", uint8(50), ErrWrongTypeVal},
+		{"uint8 param wrong string value", "uint8", uint8(30), "test", "", uint8(30), ErrWrongUintVal},
+		{"uint8 param wrong float value", "uint8", uint8(30), 50.0, "", uint8(30), ErrWrongTypeVal},
+		{"uint8 param wrong int value", "uint8", uint8(30), int64(50), "", uint8(30), ErrWrongTypeVal},
+
+		{"uint16 param", "uint16", uint16(20), uint16(50), "", uint16(50), nil},
+		{"uint16 param with opts", "uint16", uint16(60), uint16(50), "50|60", uint16(50), nil},
+		{"uint16 param string value", "uint16", uint16(20), "50", "", uint16(50), nil},
+		{"uint16 param wrong bool value", "uint16", uint16(50), false, "", uint16(50), ErrWrongTypeVal},
+		{"uint16 param wrong string value", "uint16", uint16(30), "test", "", uint16(30), ErrWrongUintVal},
+		{"uint16 param wrong float value", "uint16", uint16(30), 50.0, "", uint16(30), ErrWrongTypeVal},
+		{"uint16 param wrong int value", "uint16", uint16(30), int64(50), "", uint16(30), ErrWrongTypeVal},
+
+		{"uint param", "uint", uint64(20), uint64(50), "", uint64(50), nil},
+		{"uint param with opts", "uint", uint64(60), uint64(50), "50|60", uint64(50), nil},
+		{"uint param string value", "uint", uint64(20), "50", "", uint64(50), nil},
+		{"uint param wrong bool value", "uint", uint64(50), false, "", uint64(50), ErrWrongTypeVal},
+		{"uint param wrong string value", "uint", uint64(30), "test", "", uint64(30), ErrWrongUintVal},
+		{"uint param wrong float value", "uint", uint64(30), 50.0, "", uint64(30), ErrWrongTypeVal},
+
+		{"uint32 param", "uint32", uint32(30), uint32(50), "", uint32(50), nil},
+		{"uint32 param string value", "uint32", uint32(20), "50", "", uint32(50), nil},
+		{"uint32 param wrong bool value", "uint32", uint32(50), false, "", uint32(50), ErrWrongTypeVal},
+		{"uint32 param wrong string value", "uint32", uint32(30), "test", "", uint32(30), ErrWrongUintVal},
+		{"uint32 param wrong float value", "uint32", uint32(30), 50.0, "", uint32(30), ErrWrongTypeVal},
+		{"uint32 param wrong int value", "uint32", uint32(30), 50, "", uint32(30), ErrWrongTypeVal},
+		{"uint32 param wrong int64 value", "uint32", uint32(30), int64(50), "", uint32(30), ErrWrongTypeVal},
+
+		{"uint64 param", "uint64", uint64(30), uint64(50), "", uint64(50), nil},
+		{"uint64 param string value", "uint64", uint64(20), "50", "", uint64(50), nil},
+		{"uint64 param wrong bool value", "uint64", uint64(50), false, "", uint64(50), ErrWrongTypeVal},
+		{"uint64 param wrong string value", "uint64", uint64(30), "test", "", uint64(30), ErrWrongUintVal},
+		{"uint64 param wrong float value", "uint64", uint64(30), 50.0, "", uint64(30), ErrWrongTypeVal},
+		{"uint64 param wrong int value", "uint64", uint64(30), int32(50), "", uint64(30), ErrWrongTypeVal},
 
 		{"float param", "float64", 20.0, 50.0, "", 50.0, nil},
 		{"float param with opts", "float32", float32(60.0), float32(50.0), "50|60", float32(50.0), nil},
@@ -100,9 +139,14 @@ func TestConvertStringToVal(t *testing.T) {
 		typ  reflect.Kind
 		exp  any
 	}{
+		{"convert int8", "10", reflect.Int8, int8(10)},
 		{"convert int", "50", reflect.Int, 50},
 		{"convert int32", "50", reflect.Int32, int32(50)},
 		{"convert int64", "50", reflect.Int64, int64(50)},
+		{"convert uint8", "10", reflect.Uint8, uint8(10)},
+		{"convert uint", "50", reflect.Uint, uint(50)},
+		{"convert uint32", "50", reflect.Uint32, uint32(50)},
+		{"convert uint64", "50", reflect.Uint64, uint64(50)},
 		{"convert float32", "50.0", reflect.Float32, float32(50)},
 		{"convert float64", "50.0", reflect.Float64, float64(50)},
 		{"convert bool", "true", reflect.Bool, true},
@@ -118,6 +162,13 @@ func TestConvertStringToVal(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var got any
 			switch tt.typ {
+			case reflect.Int8:
+				res, err := convertStringToVal[int8](tt.typ, tt.val)
+				if err != nil {
+					t.Errorf("unexpected err: %s", err)
+				}
+
+				got = *res
 			case reflect.Int:
 				res, err := convertStringToVal[int](tt.typ, tt.val)
 				if err != nil {
@@ -134,6 +185,41 @@ func TestConvertStringToVal(t *testing.T) {
 				got = *res
 			case reflect.Int64:
 				res, err := convertStringToVal[int64](tt.typ, tt.val)
+				if err != nil {
+					t.Errorf("unexpected err: %s", err)
+				}
+
+				got = *res
+			case reflect.Uint8:
+				res, err := convertStringToVal[uint8](tt.typ, tt.val)
+				if err != nil {
+					t.Errorf("unexpected err: %s", err)
+				}
+
+				got = *res
+			case reflect.Uint16:
+				res, err := convertStringToVal[uint16](tt.typ, tt.val)
+				if err != nil {
+					t.Errorf("unexpected err: %s", err)
+				}
+
+				got = *res
+			case reflect.Uint32:
+				res, err := convertStringToVal[uint32](tt.typ, tt.val)
+				if err != nil {
+					t.Errorf("unexpected err: %s", err)
+				}
+
+				got = *res
+			case reflect.Uint64:
+				res, err := convertStringToVal[uint64](tt.typ, tt.val)
+				if err != nil {
+					t.Errorf("unexpected err: %s", err)
+				}
+
+				got = *res
+			case reflect.Uint:
+				res, err := convertStringToVal[uint](tt.typ, tt.val)
 				if err != nil {
 					t.Errorf("unexpected err: %s", err)
 				}
