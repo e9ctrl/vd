@@ -12,39 +12,38 @@ import (
 const FILE1 = "../vdfile/vdfile"
 
 var (
-	vdfileTest vdfile.Config
+	vdfileTest vdfile.VDFile
 )
 
 func init() {
 	// use one, common vdfile as a template to create vdfile.Config structures for tests
-	config, err := vdfile.DecodeVDFile(FILE1)
+	vd, err := vdfile.DecodeVDFile(FILE1)
 	if err != nil {
 		panic(err)
 	}
 
 	// add delays to get_psi and get_temp commands
-	for i := 0; i < len(config.Commands); i++ {
-		switch config.Commands[i].Name {
+	for i := 0; i < len(vd.Commands); i++ {
+		switch vd.Commands[i].Name {
 		case "get_psi":
-			config.Commands[i].Dly = "3s"
+			vd.Commands[i].Dly = "3s"
 		case "get_temp":
-			config.Commands[i].Dly = "1s"
+			vd.Commands[i].Dly = "1s"
 		}
 	}
 
-	config.Mismatch = "Wrong query"
+	vd.Mismatch = "Wrong query"
 	// vvdfile with changed mismatch message and delays
-	vdfileTest = config
+	vdfileTest = vd
 }
-
 func TestGetMismatch(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
+	config, err := vdfile.GenerateStreamDeviceConfig(vdfileTest)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dev, err := device.NewDevice(vdfile)
+	dev, err := device.NewDevice(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,12 +70,12 @@ func TestGetMismatch(t *testing.T) {
 
 func TestSetMismatch(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
+	config, err := vdfile.GenerateStreamDeviceConfig(vdfileTest)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dev, err := device.NewDevice(vdfile)
+	dev, err := device.NewDevice(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,12 +113,12 @@ func TestSetMismatch(t *testing.T) {
 
 func TestGetParameter(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
+	config, err := vdfile.GenerateStreamDeviceConfig(vdfileTest)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dev, err := device.NewDevice(vdfile)
+	dev, err := device.NewDevice(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,12 +158,12 @@ func TestGetParameter(t *testing.T) {
 
 func TestSetParameter(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
+	config, err := vdfile.GenerateStreamDeviceConfig(vdfileTest)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dev, err := device.NewDevice(vdfile)
+	dev, err := device.NewDevice(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,12 +217,12 @@ func TestSetParameter(t *testing.T) {
 
 func TestGetCommandDelay(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
+	config, err := vdfile.GenerateStreamDeviceConfig(vdfileTest)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dev, err := device.NewDevice(vdfile)
+	dev, err := device.NewDevice(config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,12 +261,12 @@ func TestGetCommandDelay(t *testing.T) {
 
 func TestSetCommandDelay(t *testing.T) {
 	t.Parallel()
-	vdfile, err := vdfile.ReadVDFileFromConfig(vdfileTest)
+	config, err := vdfile.GenerateStreamDeviceConfig(vdfileTest)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	dev, err := device.NewDevice(vdfile)
+	dev, err := device.NewDevice(config)
 	if err != nil {
 		t.Fatal(err)
 	}

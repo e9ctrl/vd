@@ -17,12 +17,12 @@ import (
 )
 
 var myStreamDev = func() *StreamDevice {
-	vd := &vdfile.VDFile{
+	config := &vdfile.StreamConfig{
 		InTerminator:  []byte("\r\n"),
 		OutTerminator: []byte("\r\n"),
 		Mismatch:      []byte("error"),
 	}
-	d, _ := NewDevice(vd)
+	d, _ := NewDevice(config)
 	return d
 }
 
@@ -268,9 +268,9 @@ func TestMain(m *testing.M) {
 	}
 	commands[cmdGetStat.Name] = cmdGetStat
 
-	dev.vdfile.Commands = commands
-	dev.vdfile.Params = params
-	dev.proto, _ = stream.NewParser(dev.vdfile)
+	dev.config.Commands = commands
+	dev.config.Params = params
+	dev.proto, _ = stream.NewParser(dev.config)
 	// run tests
 	os.Exit(m.Run())
 }
@@ -507,13 +507,13 @@ func TestMismatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			old := dev.vdfile.Mismatch
-			dev.vdfile.Mismatch = tt.mismatch
+			old := dev.config.Mismatch
+			dev.config.Mismatch = tt.mismatch
 			res := dev.Mismatch()
 			if !bytes.Equal(res, tt.exp) {
 				t.Errorf("%s: exp mismatch: %[2]s %[2]v got: %[3]s %[3]v\n", tt.name, tt.exp, res)
 			}
-			dev.vdfile.Mismatch = old
+			dev.config.Mismatch = old
 		})
 	}
 }

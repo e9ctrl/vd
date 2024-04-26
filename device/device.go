@@ -26,22 +26,22 @@ var (
 // Stream device store the information of a set of parameters
 type StreamDevice struct {
 	server.Handler
-	vdfile    *vdfile.VDFile
+	config    *vdfile.StreamConfig
 	proto     protocol.Protocol
 	triggered chan []byte
 	lock      sync.RWMutex
 }
 
 // Create a new stream device given the virtual device configuration file
-func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
+func NewDevice(config *vdfile.StreamConfig) (*StreamDevice, error) {
 	// make sure the parser is initialize successfully
-	parser, err := stream.NewParser(vdfile)
+	parser, err := stream.NewParser(config)
 	if err != nil {
 		return nil, err
 	}
 
 	return &StreamDevice{
-		vdfile:    vdfile,
+		config:    config,
 		triggered: make(chan []byte),
 		proto:     parser,
 	}, nil
@@ -50,12 +50,12 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 // Return mismatch message together with terminators
 func (s *StreamDevice) Mismatch() (res []byte) {
 	s.lock.Lock()
-	mis := s.vdfile.Mismatch
+	mis := s.config.Mismatch
 	s.lock.Unlock()
 
 	if len(mis) != 0 {
 		log.MSM(string(mis))
-		res = append(mis, s.vdfile.OutTerminator...)
+		res = append(mis, s.config.OutTerminator...)
 		log.TX(res)
 	}
 	return
@@ -79,7 +79,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 	}
 
 	s.lock.Lock()
-	mismatch := s.vdfile.Mismatch
+	mismatch := s.config.Mismatch
 	s.lock.Unlock()
 
 	for i, tx := range txs {
@@ -121,8 +121,8 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 	cmdName := txs[0].CommandName
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	if cmdName != "" && s.vdfile != nil {
-		if cmd, exist := s.vdfile.Commands[cmdName]; exist {
+	if cmdName != "" && s.config != nil {
+		if cmd, exist := s.config.Commands[cmdName]; exist {
 			s.delayRes(cmd.Dly)
 		} else {
 			log.ERR("command name %s not found", cmdName)
@@ -134,7 +134,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 // Method to read value of the specified parameter, returns error when parameter not found
 func (s *StreamDevice) GetParameter(name string) (any, error) {
 	s.lock.Lock()
-	param, exists := s.vdfile.Params[name]
+	param, exists := s.config.Params[name]
 	s.lock.Unlock()
 	if !exists {
 		return nil, fmt.Errorf("%w: %s", protocol.ErrParamNotFound, name)
@@ -146,7 +146,7 @@ func (s *StreamDevice) GetParameter(name string) (any, error) {
 // Method to access value of the specified parameter and change it, return error when parameter not found
 func (s *StreamDevice) SetParameter(name string, value any) error {
 	s.lock.Lock()
-	param, exists := s.vdfile.Params[name]
+	param, exists := s.config.Params[name]
 	s.lock.Unlock()
 	if !exists {
 		return fmt.Errorf("%w: %s", protocol.ErrParamNotFound, name)
@@ -158,7 +158,7 @@ func (s *StreamDevice) SetParameter(name string, value any) error {
 // Get delay of the specified command, return error when command not found
 func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 	s.lock.Lock()
-	cmd, exists := s.vdfile.Commands[name]
+	cmd, exists := s.config.Commands[name]
 	s.lock.Unlock()
 	if !exists {
 		return 0, fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
@@ -170,7 +170,7 @@ func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 // Set delay of the specified command, return error when command not found or when value cannot be converted to time.Duration
 func (s *StreamDevice) SetCommandDelay(name, val string) error {
 	s.lock.Lock()
-	cmd, exists := s.vdfile.Commands[name]
+	cmd, exists := s.config.Commands[name]
 	s.lock.Unlock()
 	if !exists {
 		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
@@ -188,7 +188,7 @@ func (s *StreamDevice) SetCommandDelay(name, val string) error {
 // Return mismatch message
 func (s *StreamDevice) GetMismatch() []byte {
 	s.lock.Lock()
-	mis := s.vdfile.Mismatch
+	mis := s.config.Mismatch
 	s.lock.Unlock()
 	return mis
 }
@@ -199,7 +199,7 @@ func (s *StreamDevice) SetMismatch(value string) error {
 		return fmt.Errorf("%w: %s", ErrMismatchTooLong, value)
 	}
 	s.lock.Lock()
-	s.vdfile.Mismatch = []byte(value)
+	s.config.Mismatch = []byte(value)
 	s.lock.Unlock()
 	return nil
 }
@@ -208,7 +208,7 @@ func (s *StreamDevice) SetMismatch(value string) error {
 // It returns an error when there is no client connected to TCP server or when parameter was not found.
 func (s *StreamDevice) Trigger(cmdName string) error {
 	s.lock.Lock()
-	_, exists := s.vdfile.Commands[cmdName]
+	_, exists := s.config.Commands[cmdName]
 	s.lock.Unlock()
 	if !exists {
 		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, cmdName)

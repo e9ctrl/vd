@@ -180,26 +180,26 @@ func (p *Parser) Trigger(cmdName string) protocol.Transaction {
 }
 
 // Constructor, returns parser struct with processed commands patterns that are used while parsing incoming data.
-func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
-	commandPattern, err := buildCommandPatterns(vdfile.Commands)
+func NewParser(config *vdfile.StreamConfig) (protocol.Protocol, error) {
+	commandPattern, err := buildCommandPatterns(config.Commands)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Parser{
 		commandPatterns: commandPattern,
-		outTerminator:   vdfile.OutTerminator,
-		mismatch:        vdfile.Mismatch,
+		outTerminator:   config.OutTerminator,
+		mismatch:        config.Mismatch,
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
 				return 0, nil, nil
 			}
-			if vdfile.InTerminator == nil {
+			if config.InTerminator == nil {
 				return 0, nil, nil
 			}
 			// Find sequence of terminator bytes
-			if i := bytes.Index(data, vdfile.InTerminator); i >= 0 {
-				return i + len(vdfile.InTerminator), data[0:i], nil
+			if i := bytes.Index(data, config.InTerminator); i >= 0 {
+				return i + len(config.InTerminator), data[0:i], nil
 			}
 
 			// If we're at EOF, we have a final, non-terminated line. Return it.
