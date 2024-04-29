@@ -9,9 +9,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/e9ctrl/vd/command"
 	"github.com/e9ctrl/vd/log"
 	"github.com/e9ctrl/vd/protocol"
+	"github.com/e9ctrl/vd/protocol/stream/command"
 	"github.com/e9ctrl/vd/vdfile"
 )
 

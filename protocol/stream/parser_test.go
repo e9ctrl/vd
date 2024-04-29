@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/e9ctrl/vd/command"
 	"github.com/e9ctrl/vd/protocol"
+	"github.com/e9ctrl/vd/protocol/stream/command"
 	"github.com/e9ctrl/vd/vdfile"
 )
 

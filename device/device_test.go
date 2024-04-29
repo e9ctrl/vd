@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/e9ctrl/vd/command"
 	"github.com/e9ctrl/vd/parameter"
 	"github.com/e9ctrl/vd/protocol"
 	"github.com/e9ctrl/vd/protocol/stream"
+	"github.com/e9ctrl/vd/protocol/stream/command"
 	"github.com/e9ctrl/vd/vdfile"
 
 	"testing"

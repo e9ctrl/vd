@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/e9ctrl/vd/command"
 	"github.com/e9ctrl/vd/parameter"
+	"github.com/e9ctrl/vd/protocol/stream/command"
 )
 
 type configParameter struct {
