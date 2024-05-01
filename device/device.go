@@ -30,6 +30,22 @@ type StreamDevice struct {
 	proto     protocol.Protocol
 	triggered chan []byte
 	lock      sync.RWMutex
+	resMap    map[string]protocol.Response // key is request name
+}
+
+func createResps(vdfile *vdfile.VDFile) map[string]protocol.Response {
+	resps := make(map[string]protocol.Response, 0)
+
+	for _, cmd := range vdfile.Commands {
+		res := protocol.Response{
+			// Currently, reponse has exactly the same name as requests,
+			// in the future, their names will differ
+			Name: cmd.Name,
+		}
+		resps[cmd.Name] = res
+	}
+
+	return resps
 }
 
 // Create a new stream device given the virtual device configuration file
@@ -44,6 +60,7 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 		vdfile:    vdfile,
 		triggered: make(chan []byte),
 		proto:     parser,
+		resMap:    createResps(vdfile),
 	}, nil
 }
 
@@ -72,7 +89,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		return nil
 	}
 
-	txs, err := s.proto.Decode(cmd)
+	reqs, err := s.proto.Decode(cmd)
 	if err != nil {
 		log.ERR(err)
 		return nil
@@ -82,17 +99,18 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 	mismatch := s.vdfile.Mismatch
 	s.lock.Unlock()
 
-	for i, tx := range txs {
-		if len(mismatch) > 0 && tx.Typ == protocol.TxUnknown {
-			txs[i].Typ = protocol.TxMismatch
+	res := make([]protocol.Response, 0)
+
+	for i, r := range reqs {
+		if len(mismatch) > 0 && r.Typ == protocol.ReqError {
+			reqs[i].Typ = protocol.ReqMismatch
 		}
 
 		// set the parameter
-		if tx.Typ == protocol.TxSetParam {
-			for p, v := range tx.Payload {
-				if err := s.SetParameter(p, v); err != nil {
+		if r.Typ == protocol.ReqSet {
+			for k, v := range r.Params {
+				if err := s.SetParameter(k, v); err != nil {
 					log.ERR(err)
-					txs[i].Typ = protocol.TxMismatch
 				}
 			}
 		}
@@ -100,25 +118,29 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		// the following for range code is to ensure the proper type of the parameter value
 		// that needs to be set back to the transaction payload
 		// it is due to fact that proto does not have information about the type of the parameter
-		for p := range tx.Payload {
-			v, err := s.GetParameter(p)
+		for k, _ := range r.Params {
+			v, err := s.GetParameter(k)
 			if err != nil {
 				log.ERR(err)
-				txs[i].Typ = protocol.TxMismatch
 			}
-
-			txs[i].Payload[p] = v
+			// Add future logic here
+			if r, ok := s.resMap[r.Name]; ok {
+				r.Params[k] = v
+				res = append(res, r)
+			} else {
+				log.ERR("response not found")
+			}
 		}
 	}
 
-	buf, err := s.proto.Encode(txs)
+	buf, err := s.proto.Encode(res)
 	if err != nil {
 		log.ERR(err)
 		return nil
 	}
 
 	//using first command to determine the delay
-	cmdName := txs[0].CommandName
+	/*cmdName := txs[0].CommandName
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if cmdName != "" && s.vdfile != nil {
@@ -127,7 +149,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		} else {
 			log.ERR("command name %s not found", cmdName)
 		}
-	}
+	}*/
 	return buf
 }
 
@@ -214,17 +236,21 @@ func (s *StreamDevice) Trigger(cmdName string) error {
 		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, cmdName)
 	}
 
-	tx := s.proto.Trigger(cmdName)
-	for p := range tx.Payload {
-		v, err := s.GetParameter(p)
+	req := s.proto.Trigger(cmdName)
+	res := make([]protocol.Response, 1)
+	for k, _ := range req.Params {
+		v, err := s.GetParameter(k)
 		if err != nil {
 			return err
 		}
 
-		tx.Payload[p] = v
+		if r, ok := s.resMap[req.Name]; ok {
+			r.Params[k] = v
+			res[0] = r
+		}
 	}
 
-	buf, err := s.proto.Encode([]protocol.Transaction{tx})
+	buf, err := s.proto.Encode(res)
 	if err != nil {
 		return err
 	}
