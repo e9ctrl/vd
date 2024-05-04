@@ -34,7 +34,7 @@ type RequestTyp int
 
 const (
 	ReqRead RequestTyp = iota
-	ReqSet
+	ReqWrite
 	ReqError
 	ReqMismatch
 )

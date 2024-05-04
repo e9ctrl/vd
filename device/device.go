@@ -107,7 +107,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		}
 
 		// set the parameter
-		if r.Typ == protocol.ReqSet {
+		if r.Typ == protocol.ReqWrite {
 			for k, v := range r.Params {
 				if err := s.SetParameter(k, v); err != nil {
 					log.ERR(err)

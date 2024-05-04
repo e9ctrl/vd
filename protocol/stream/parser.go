@@ -114,7 +114,7 @@ func (p *Parser) decode(input string) protocol.Request {
 
 	if len(values) > 0 {
 		// set params
-		req.Typ = protocol.ReqSet
+		req.Typ = protocol.ReqWrite
 		for paramName, val := range values {
 			req.Params[paramName] = val
 		}
