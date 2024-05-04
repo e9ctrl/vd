@@ -158,24 +158,24 @@ func (p *Parser) Encode(resps []protocol.Response) ([]byte, error) {
 
 // Method that fulfils Protocl interface. It enforces processing of
 // the specified command
-func (p *Parser) Trigger(cmdName string) protocol.Request {
-	req := protocol.Request{}
+func (p *Parser) Trigger(cmdName string) protocol.Response {
+	res := protocol.Response{}
 
 	responseItems := p.commandPatterns[cmdName].resItems
 	if len(responseItems) == 0 {
-		return req
+		return res
 	}
 
-	req.Params = make(map[string]any)
-	req.Name = cmdName
+	res.Params = make(map[string]any, 0)
+	res.Name = cmdName
 
 	for _, item := range responseItems {
 		if item.Type() == ItemParam {
-			req.Params[item.Value()] = nil
+			res.Params[item.Value()] = nil
 		}
 	}
 
-	return req
+	return res
 }
 
 // Constructor, returns parser struct with processed commands patterns that are used while parsing incoming data.

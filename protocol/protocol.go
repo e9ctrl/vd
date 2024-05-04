@@ -13,7 +13,7 @@ var (
 type Protocol interface {
 	Decode(data []byte) ([]Request, error)
 	Encode([]Response) ([]byte, error)
-	Trigger(cmdName string) Request
+	Trigger(cmdName string) Response
 }
 
 type Request struct {

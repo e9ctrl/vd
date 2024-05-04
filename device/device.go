@@ -236,21 +236,16 @@ func (s *StreamDevice) Trigger(cmdName string) error {
 		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, cmdName)
 	}
 
-	req := s.proto.Trigger(cmdName)
-	res := make([]protocol.Response, 1)
-	for k, _ := range req.Params {
+	res := s.proto.Trigger(cmdName)
+	for k, _ := range res.Params {
 		v, err := s.GetParameter(k)
 		if err != nil {
 			return err
 		}
-
-		if r, ok := s.resMap[req.Name]; ok {
-			r.Params[k] = v
-			res[0] = r
-		}
+		res.Params[k] = v
 	}
 
-	buf, err := s.proto.Encode(res)
+	buf, err := s.proto.Encode([]protocol.Response{res})
 	if err != nil {
 		return err
 	}
