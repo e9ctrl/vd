@@ -106,11 +106,11 @@ func (s *Device) Handle(cmd []byte) []byte {
 	mismatch := s.vdfile.Mismatch
 	s.lock.Unlock()
 
-	res := make([]protocol.Response, len(reqs))
+	resps := make([]protocol.Response, len(reqs))
 
 	for i, r := range reqs {
 		if r.Typ == protocol.ReqUnknown {
-			setResErr(mismatch, &res[i])
+			setResErr(mismatch, &resps[i])
 		}
 
 		// set the parameter
@@ -118,39 +118,44 @@ func (s *Device) Handle(cmd []byte) []byte {
 			for k, v := range r.Params {
 				if err := s.SetParameter(k, v); err != nil {
 					log.ERR(err)
-					setResErr(mismatch, &res[i])
+					setResErr(mismatch, &resps[i])
 				}
 			}
 		}
 
+		// check if response for this request exists
+		// future logic here
+		if name, ok := s.resMap[r.Name]; ok {
+			resps[i].Name = name
+		} else {
+			log.ERR(ErrResponseNotFound)
+			setResErr(mismatch, &resps[i])
+		}
+
+		// init values
+		resps[i].Params = make(map[string]any, 0)
+
 		// the following for range code is to ensure the proper type of the parameter value
 		// that needs to be set back to the transaction payload
 		// it is due to fact that proto does not have information about the type of the parameter
-		for k, _ := range r.Params {
+		for k := range r.Params {
 			v, err := s.GetParameter(k)
 			if err != nil {
 				log.ERR(err)
-				setResErr(mismatch, &res[i])
+				setResErr(mismatch, &resps[i])
 			}
-			// Add future logic here
-			if r, ok := s.resMap[r.Name]; ok {
-				r.Params[k] = v
-				res = append(res, r)
-			} else {
-				log.ERR(ErrResponseNotFound)
-				setResErr(mismatch, &res[i])
-			}
+			resps[i].Params[k] = v
 		}
 	}
 
-	buf, err := s.proto.Encode(res)
+	buf, err := s.proto.Encode(resps)
 	if err != nil {
 		log.ERR(err)
 		return nil
 	}
 
 	//using first command to determine the delay
-	cmdName := res[0].Name
+	cmdName := resps[0].Name
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if cmdName != "" && s.vdfile != nil {
