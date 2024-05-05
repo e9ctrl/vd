@@ -140,13 +140,13 @@ func (p *Parser) Encode(resps []protocol.Response) ([]byte, error) {
 	var out []byte
 
 	for _, res := range resps {
-		//if res.Typ == protocol.ReqMismatch {
-		//	buf = p.mismatch
-		//	log.MSM(string(buf))
-		//} else {
-		responseItems := p.commandPatterns[res.Name].resItems
-		buf = constructOutput(responseItems, res.Params)
-		//}
+		if res.Err == protocol.ResMismatch {
+			buf = p.mismatch
+			log.MSM(string(buf))
+		} else {
+			responseItems := p.commandPatterns[res.Name].resItems
+			buf = constructOutput(responseItems, res.Params)
+		}
 		if len(buf) > 0 {
 			buf = append(buf, p.outTerminator...)
 			out = append(out, buf...)
