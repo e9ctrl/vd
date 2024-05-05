@@ -20,21 +20,26 @@ type Request struct {
 	Name   string
 	Typ    RequestTyp
 	Params map[string]any
-	//Parameter string // map[string]any // paramName -> value to keep many values from one request
-	//Value     any
 }
 
 type Response struct {
 	Name   string
 	Params map[string]any
-	//Value any
+	Err    ResponseErr
 }
 
 type RequestTyp int
 
 const (
-	ReqRead RequestTyp = iota
+	ReqUnknown RequestTyp = iota
+	ReqRead
 	ReqWrite
-	ReqError
-	ReqMismatch
+)
+
+type ResponseErr int
+
+const (
+	ResOK = iota
+	ResError
+	ResMismatch
 )

@@ -21,6 +21,8 @@ var (
 	ErrNoClient = errors.New("no client available")
 	// Error returned by SetMimsatch if new message is too long
 	ErrMismatchTooLong = errors.New("new mismatch message exceeded 255 characters limit")
+	// Error to inform that response for the request was not found
+	ErrResponseNotFound = errors.New("no response found")
 )
 
 // Stream device store the information of a set of parameters
@@ -78,6 +80,14 @@ func (s *StreamDevice) Mismatch() (res []byte) {
 	return
 }
 
+func setResErr(mismatch []byte, res *protocol.Response) {
+	if len(mismatch) > 0 {
+		res.Err = protocol.ResMismatch
+		return
+	}
+	res.Err = protocol.ResError
+}
+
 // Method that returns channel with value of the parameter
 func (s *StreamDevice) Triggered() chan []byte { return s.triggered }
 
@@ -99,11 +109,11 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 	mismatch := s.vdfile.Mismatch
 	s.lock.Unlock()
 
-	res := make([]protocol.Response, 0)
+	res := make([]protocol.Response, len(reqs))
 
 	for i, r := range reqs {
-		if len(mismatch) > 0 && r.Typ == protocol.ReqError {
-			reqs[i].Typ = protocol.ReqMismatch
+		if r.Typ == protocol.ReqUnknown {
+			setResErr(mismatch, &res[i])
 		}
 
 		// set the parameter
@@ -111,6 +121,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 			for k, v := range r.Params {
 				if err := s.SetParameter(k, v); err != nil {
 					log.ERR(err)
+					setResErr(mismatch, &res[i])
 				}
 			}
 		}
@@ -122,13 +133,15 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 			v, err := s.GetParameter(k)
 			if err != nil {
 				log.ERR(err)
+				setResErr(mismatch, &res[i])
 			}
 			// Add future logic here
 			if r, ok := s.resMap[r.Name]; ok {
 				r.Params[k] = v
 				res = append(res, r)
 			} else {
-				log.ERR("response not found")
+				log.ERR(ErrResponseNotFound)
+				setResErr(mismatch, &res[i])
 			}
 		}
 	}
