@@ -32,19 +32,16 @@ type Device struct {
 	proto     protocol.Protocol
 	triggered chan []byte
 	lock      sync.RWMutex
-	resMap    map[string]protocol.Response // key is request name
+	resMap    map[string]string // key is a request, value is a response
 }
 
-func createResps(vdfile *vdfile.VDFile) map[string]protocol.Response {
-	resps := make(map[string]protocol.Response, 0)
+func createResps(vdfile *vdfile.VDFile) map[string]string {
+	resps := make(map[string]string, len(vdfile.Commands))
 
 	for _, cmd := range vdfile.Commands {
-		res := protocol.Response{
-			// Currently, reponse has exactly the same name as requests,
-			// in the future, their names will differ
-			Name: cmd.Name,
-		}
-		resps[cmd.Name] = res
+		// Currently, reponse has exactly the same name as requests,
+		// in the future, their names will differ
+		resps[cmd.Name] = cmd.Name
 	}
 
 	return resps
