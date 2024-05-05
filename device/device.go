@@ -140,7 +140,7 @@ func (s *Device) Handle(cmd []byte) []byte {
 	}
 
 	//using first command to determine the delay
-	/*cmdName := txs[0].CommandName
+	cmdName := res[0].Name
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if cmdName != "" && s.vdfile != nil {
@@ -149,7 +149,7 @@ func (s *Device) Handle(cmd []byte) []byte {
 		} else {
 			log.ERR("command name %s not found", cmdName)
 		}
-	}*/
+	}
 	return buf
 }
 
