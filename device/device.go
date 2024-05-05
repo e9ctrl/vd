@@ -252,7 +252,7 @@ func (s *StreamDevice) Trigger(cmdName string) error {
 	}
 
 	res := s.proto.Trigger(cmdName)
-	for k, _ := range res.Params {
+	for k := range res.Params {
 		v, err := s.GetParameter(k)
 		if err != nil {
 			return err
