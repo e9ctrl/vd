@@ -124,9 +124,25 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 	commandCount := make(map[string]bool)
 	for _, command := range config.Commands {
 		if _, exists := commandCount[command.Name]; exists {
-			return nil, fmt.Errorf("%s name is duplicated", command.Name)
+			return nil, fmt.Errorf("%s command name is duplicated", command.Name)
 		}
 		commandCount[command.Name] = true
+	}
+
+	reqsCount := make(map[string]bool)
+	for _, req := range config.Requests {
+		if _, exists := reqsCount[req.Name]; exists {
+			return nil, fmt.Errorf("%s request name is duplicated", req.Name)
+		}
+		reqsCount[req.Name] = true
+	}
+
+	respsCount := make(map[string]bool)
+	for _, res := range config.Responses {
+		if _, exists := respsCount[res.Name]; exists {
+			return nil, fmt.Errorf("%s response name is duplicated", res.Name)
+		}
+		respsCount[res.Name] = true
 	}
 
 	for _, cmd := range config.Commands {
