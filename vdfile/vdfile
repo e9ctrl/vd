@@ -58,6 +58,31 @@ outterm = "CR LF"
   val = "on"
   opt = "off|on"
 
+[[parameter]]
+  name = "speed"
+  typ = "float64"
+  val = 36.6
+
+[[request]]
+  name = "get_speed"
+  req = "Speed: {%f:speed}"
+
+[[request]]
+  name = "set_speed"
+  req = "get speed?"
+
+[[response]]
+  name = "return_get_speed_1"
+  req = "get_speed"
+  res = "High speed: {%s:speed}"
+  when = "{%f:speed} > 20"
+
+[[response]]
+  name = "return_get_speed_2"
+  req = "get_speed"
+  res = "Low speed: {%s:speed}"
+  when = "{%f:speed} <= 20"
+
 [[command]]
   name = "get_status"
   req = "get ch1 status"

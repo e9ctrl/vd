@@ -270,6 +270,9 @@ func TestMain(m *testing.M) {
 
 	dev.vdfile.Commands = commands
 	dev.vdfile.Params = params
+	reqs, resps := vdfile.CommandsToReqRes(commands)
+	dev.vdfile.Requests = reqs
+	dev.vdfile.Responses = resps
 	dev.proto, _ = stream.NewParser(dev.vdfile)
 	dev.resMap = createResps(dev.vdfile)
 	// run tests

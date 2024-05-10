@@ -27,11 +27,26 @@ type configCommand struct {
 	Dly  string `toml:"dly,omitempty"`
 }
 
+type configRequest struct {
+	Name    string `toml:"name"`
+	Request string `toml:"req"`
+}
+
+type configResponse struct {
+	Name     string `toml:"name"`
+	ReqName  string `toml:"req"`
+	Response string `toml:"res"`
+	When     string `toml:"when"`
+	Dly      string `toml:"dly,omitempty"`
+}
+
 type Config struct {
 	InTerminator  string            `toml:"interm"`
 	OutTerminator string            `toml:"outterm"`
 	Params        []configParameter `toml:"parameter"`
 	Commands      []configCommand   `toml:"command"`
+	Requests      []configRequest   `toml:"request"`
+	Responses     []configResponse  `toml:"response"`
 	Mismatch      string            `toml:"mismatch,omitempty"`
 }
 
@@ -41,6 +56,8 @@ type VDFile struct {
 	OutTerminator []byte
 	Params        map[string]parameter.Parameter
 	Commands      map[string]*command.Command
+	Requests      map[string]*command.Request
+	Responses     map[string]*command.Response
 	Mismatch      []byte
 }
 
@@ -54,11 +71,37 @@ func ReadVDFile(path string) (*VDFile, error) {
 	return ReadVDFileFromConfig(config)
 }
 
+func CommandsToReqRes(commands map[string]*command.Command) (map[string]*command.Request, map[string]*command.Response) {
+	reqs := make(map[string]*command.Request, 0)
+	resps := make(map[string]*command.Response, 0)
+
+	for _, cmd := range commands {
+		currentReq := &command.Request{
+			Name: cmd.Name,
+			Cmd:  []byte(cmd.Req),
+		}
+
+		reqs[cmd.Name] = currentReq
+
+		currentRes := &command.Response{
+			Name: cmd.Name,
+			Req:  cmd.Name,
+			Cmd:  []byte(cmd.Res),
+			Dly:  cmd.Dly,
+		}
+
+		resps[cmd.Name] = currentRes
+	}
+	return reqs, resps
+}
+
 // Creates vdfile struct based on Config containing result of TOML file parsing
 func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 	vdfile := &VDFile{
-		Params:   make(map[string]parameter.Parameter, 0),
-		Commands: make(map[string]*command.Command, 0),
+		Params:    make(map[string]parameter.Parameter, 0),
+		Commands:  make(map[string]*command.Command, 0),
+		Requests:  make(map[string]*command.Request, 0),
+		Responses: make(map[string]*command.Response, 0),
 	}
 
 	paramCount := make(map[string]bool)
@@ -76,7 +119,6 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 		}
 
 		vdfile.Params[param.Name] = currentParam
-
 	}
 
 	commandCount := make(map[string]bool)
@@ -96,6 +138,28 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 		}
 
 		vdfile.Commands[cmd.Name] = currentCmd
+	}
+
+	reqs, resps := CommandsToReqRes(vdfile.Commands)
+	vdfile.Requests = reqs
+	vdfile.Responses = resps
+
+	for _, req := range config.Requests {
+		currentReq := &command.Request{
+			Name: req.Name,
+			Cmd:  []byte(req.Request),
+		}
+		vdfile.Requests[req.Name] = currentReq
+	}
+
+	for _, res := range config.Responses {
+		currentRes := &command.Response{
+			Name: res.Name,
+			Req:  res.ReqName,
+			Cmd:  []byte(res.Response),
+			Dly:  parseDelays(res.Dly),
+		}
+		vdfile.Responses[res.Name] = currentRes
 	}
 
 	vdfile.InTerminator = parseTerminator(config.InTerminator)

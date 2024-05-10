@@ -32,16 +32,14 @@ type StreamDevice struct {
 	proto     protocol.Protocol
 	triggered chan []byte
 	lock      sync.RWMutex
-	resMap    map[string]string // key is a request, value is a response
+	resMap    map[string][]string // key is a request, value is a response
 }
 
-func createResps(vdfile *vdfile.VDFile) map[string]string {
-	resps := make(map[string]string, len(vdfile.Commands))
+func createResps(vdfile *vdfile.VDFile) map[string][]string {
+	resps := make(map[string][]string, len(vdfile.Responses))
 
-	for _, cmd := range vdfile.Commands {
-		// Currently, reponse has exactly the same name as requests,
-		// in the future, their names will differ
-		resps[cmd.Name] = cmd.Name
+	for _, res := range vdfile.Responses {
+		resps[res.Req] = append(resps[res.Req], res.Name)
 	}
 
 	return resps
@@ -126,7 +124,8 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		// check if response for this request exists
 		// future logic here
 		if name, ok := s.resMap[r.Name]; ok {
-			resps[i].Name = name
+			// temporary solution
+			resps[i].Name = name[0]
 		} else {
 			log.ERR(ErrResponseNotFound)
 			setResErr(mismatch, &resps[i])
