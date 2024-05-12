@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/e9ctrl/vd/command"
 	"github.com/e9ctrl/vd/log"
 	"github.com/e9ctrl/vd/protocol"
 	"github.com/e9ctrl/vd/vdfile"
@@ -23,7 +22,7 @@ var (
 // Keeps request and response tokens
 type CommandPattern struct {
 	reqItems []Item
-	resItems []Item
+	resItems map[string][]Item
 }
 
 // Main parser structure, based on vdfile generates map of commands, and then parses incoming messages
@@ -67,7 +66,7 @@ func (p *Parser) decode(input string) protocol.Request {
 	// and always use the longest slice of Items that matches input
 	matched := []struct {
 		cmd  string
-		res  []Item
+		res  map[string][]Item
 		req  []Item
 		vals map[string]any
 	}{}
@@ -78,11 +77,12 @@ func (p *Parser) decode(input string) protocol.Request {
 		if !match {
 			continue
 		}
+
 		// This copies data from map to struct to sort it
 		// Maps cannot be sorted
 		m := struct {
 			cmd  string
-			res  []Item
+			res  map[string][]Item
 			req  []Item
 			vals map[string]any
 		}{
@@ -91,6 +91,7 @@ func (p *Parser) decode(input string) protocol.Request {
 			res:  pattern.resItems,
 			vals: values,
 		}
+
 		matched = append(matched, m)
 	}
 
@@ -124,11 +125,14 @@ func (p *Parser) decode(input string) protocol.Request {
 
 	//get params
 	req.Typ = protocol.ReqRead
-	for _, item := range res {
-		if item.Type() == ItemParam {
-			req.Params[item.Value()] = nil
+	for _, v := range res {
+		for _, item := range v {
+			if item.Type() == ItemParam {
+				req.Params[item.Value()] = nil
+			}
 		}
 	}
+
 	return req
 }
 
@@ -170,8 +174,10 @@ func (p *Parser) Trigger(cmdName string) protocol.Response {
 	res.Name = cmdName
 
 	for _, item := range responseItems {
-		if item.Type() == ItemParam {
-			res.Params[item.Value()] = nil
+		for _, i := range item {
+			if i.Type() == ItemParam {
+				res.Params[i.Value()] = nil
+			}
 		}
 	}
 
@@ -180,7 +186,7 @@ func (p *Parser) Trigger(cmdName string) protocol.Response {
 
 // Constructor, returns parser struct with processed commands patterns that are used while parsing incoming data.
 func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
-	commandPattern, err := buildCommandPatterns(vdfile.Commands)
+	commandPattern, err := buildCommandPatterns(vdfile)
 	if err != nil {
 		return nil, err
 	}
@@ -211,34 +217,42 @@ func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 	}, nil
 }
 
-func buildCommandPatterns(commands map[string]*command.Command) (map[string]CommandPattern, error) {
+func buildCommandPatterns(vdfile *vdfile.VDFile) (map[string]CommandPattern, error) {
 	patterns := map[string]CommandPattern{}
 
 	// validate the items output for each req and res,
 	// report the error back when there is a IllegalItem
-	for key, cmd := range commands {
+	// this is for [[requests]]
+	for _, req := range vdfile.Requests {
 		pattern := CommandPattern{}
-		if len(cmd.Req) > 0 {
-			pattern.reqItems = ItemsFromConfig(string(cmd.Req))
+		pattern.reqItems = ItemsFromConfig(string(req.Cmd))
+		for _, item := range pattern.reqItems {
+			if item.typ == ItemIllegal || item.typ == ItemError {
+				return nil, ErrWrongReqSyntax
+			}
+		}
+		patterns[req.Name] = pattern
+	}
 
-			for _, item := range pattern.reqItems {
-				if item.typ == ItemIllegal || item.typ == ItemError {
-					return nil, ErrWrongReqSyntax
+	// this is for [[responses]]
+	for _, res := range vdfile.Responses {
+		for k, v := range patterns {
+			if k == res.Req {
+				if len(v.resItems) > 0 {
+					v.resItems[res.Name] = ItemsFromConfig(string(res.Cmd))
+				} else {
+					m := make(map[string][]Item)
+					m[res.Name] = ItemsFromConfig(string(res.Cmd))
+					v.resItems = m
+					patterns[k] = v
+				}
+				for _, item := range v.reqItems {
+					if item.typ == ItemIllegal || item.typ == ItemError {
+						return nil, ErrWrongReqSyntax
+					}
 				}
 			}
 		}
-
-		if len(cmd.Res) > 0 {
-			pattern.resItems = ItemsFromConfig(string(cmd.Res))
-
-			for _, item := range pattern.resItems {
-				if item.typ == ItemIllegal || item.typ == ItemError {
-					return nil, ErrWrongResSyntax
-				}
-			}
-		}
-
-		patterns[key] = pattern
 	}
 
 	return patterns, nil
