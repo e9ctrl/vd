@@ -246,13 +246,19 @@ func (s *StreamDevice) SetMismatch(value string) error {
 // It returns an error when there is no client connected to TCP server or when parameter was not found.
 func (s *StreamDevice) Trigger(cmdName string) error {
 	s.lock.Lock()
-	_, exists := s.vdfile.Commands[cmdName]
+	_, exists := s.resMap[cmdName]
 	s.lock.Unlock()
 	if !exists {
 		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, cmdName)
 	}
 
 	res := s.proto.Trigger(cmdName)
+
+	// check if response for this request exists
+	// future logic here
+	res.Name = s.resMap[cmdName][0]
+	res.ReqName = cmdName
+
 	for k := range res.Params {
 		v, err := s.GetParameter(k)
 		if err != nil {
