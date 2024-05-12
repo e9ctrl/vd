@@ -95,6 +95,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 	}
 
 	reqs, err := s.proto.Decode(cmd)
+
 	if err != nil {
 		log.ERR(err)
 		return nil
@@ -126,6 +127,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		if name, ok := s.resMap[r.Name]; ok {
 			// temporary solution
 			resps[i].Name = name[0]
+			resps[i].ReqName = r.Name
 		} else {
 			log.ERR(ErrResponseNotFound)
 			setResErr(mismatch, &resps[i])

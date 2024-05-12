@@ -144,8 +144,8 @@ func (p *Parser) Encode(resps []protocol.Response) ([]byte, error) {
 			buf = p.mismatch
 			log.MSM(string(buf))
 		} else {
-			responseItems := p.commandPatterns[res.Name].resItems
-			buf = constructOutput(responseItems, res.Params)
+			responseItems := p.commandPatterns[res.ReqName].resItems
+			buf = constructOutput(responseItems[res.Name], res.Params)
 		}
 		if len(buf) > 0 {
 			buf = append(buf, p.outTerminator...)
