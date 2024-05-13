@@ -36,7 +36,7 @@ type configResponse struct {
 	Name     string `toml:"name"`
 	ReqName  string `toml:"req"`
 	Response string `toml:"res"`
-	When     string `toml:"when"`
+	When     string `toml:"when,omitempty"`
 	Dly      string `toml:"dly,omitempty"`
 }
 
@@ -44,9 +44,9 @@ type Config struct {
 	InTerminator  string            `toml:"interm"`
 	OutTerminator string            `toml:"outterm"`
 	Params        []configParameter `toml:"parameter"`
-	Commands      []configCommand   `toml:"command"`
-	Requests      []configRequest   `toml:"request"`
-	Responses     []configResponse  `toml:"response"`
+	Commands      []configCommand   `toml:"command,omitempty"`
+	Requests      []configRequest   `toml:"request,omitempty"`
+	Responses     []configResponse  `toml:"response,omitempty"`
 	Mismatch      string            `toml:"mismatch,omitempty"`
 }
 
