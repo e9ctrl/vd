@@ -63,26 +63,6 @@ outterm = "CR LF"
   typ = "float64"
   val = 36.6
 
-[[request]]
-  name = "set_speed"
-  req = "Speed: {%f:speed}"
-
-[[request]]
-  name = "get_speed"
-  req = "get speed?"
-
-[[response]]
-  name = "return_get_speed_1"
-  req = "get_speed"
-  res = "High speed: {%f:speed}"
-  when = "{%f:speed} > 20"
-
-[[response]]
-  name = "return_get_speed_2"
-  req = "get_speed"
-  res = "Low speed: {%f:speed}"
-  when = "{%f:speed} <= 20"
-
 [[command]]
   name = "get_status"
   req = "get ch1 status"
@@ -201,3 +181,23 @@ outterm = "CR LF"
   name = "set_hex0"
   req = "HEX0 {%3X:hex0}"
   res = "{%03X:hex0}"
+
+[[request]]
+  name = "set_speed"
+  req = "Speed: {%f:speed}"
+
+[[request]]
+  name = "get_speed"
+  req = "get speed?"
+
+[[response]]
+  name = "return_get_speed_1"
+  req = "get_speed"
+  res = "High speed: {%f:speed}"
+  when = "{%f:speed} > 20"
+
+[[response]]
+  name = "return_get_speed_2"
+  req = "get_speed"
+  res = "Low speed: {%f:speed}"
+  when = "{%f:speed} <= 20"
