@@ -196,7 +196,7 @@ func (s *StreamDevice) SetParameter(name string, value any) error {
 // Get delay of the specified command, return error when command not found
 func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 	s.lock.Lock()
-	cmd, exists := s.vdfile.Commands[name]
+	cmd, exists := s.vdfile.Responses[name]
 	s.lock.Unlock()
 	if !exists {
 		return 0, fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
@@ -208,7 +208,7 @@ func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 // Set delay of the specified command, return error when command not found or when value cannot be converted to time.Duration
 func (s *StreamDevice) SetCommandDelay(name, val string) error {
 	s.lock.Lock()
-	cmd, exists := s.vdfile.Commands[name]
+	cmd, exists := s.vdfile.Responses[name]
 	s.lock.Unlock()
 	if !exists {
 		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
