@@ -17,6 +17,7 @@ import (
 var (
 	ErrWrongResSyntax = errors.New("illegal syntax in response")
 	ErrWrongReqSyntax = errors.New("illegal syntax in request")
+	ErrNilVDFile      = errors.New("vdfile is nil")
 )
 
 // Keeps request and response tokens
@@ -220,6 +221,10 @@ func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 func buildCommandPatterns(vdfile *vdfile.VDFile) (map[string]CommandPattern, error) {
 	patterns := map[string]CommandPattern{}
 
+	if vdfile == nil {
+		return patterns, ErrNilVDFile
+	}
+
 	// validate the items output for each req and res,
 	// report the error back when there is a IllegalItem
 	// this is for [[requests]]
@@ -246,9 +251,11 @@ func buildCommandPatterns(vdfile *vdfile.VDFile) (map[string]CommandPattern, err
 					v.resItems = m
 					patterns[k] = v
 				}
-				for _, item := range v.reqItems {
-					if item.typ == ItemIllegal || item.typ == ItemError {
-						return nil, ErrWrongReqSyntax
+				for _, items := range v.resItems {
+					for _, item := range items {
+						if item.typ == ItemIllegal || item.typ == ItemError {
+							return nil, ErrWrongResSyntax
+						}
 					}
 				}
 			}
