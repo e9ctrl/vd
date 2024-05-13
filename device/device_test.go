@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math/rand"
 	"os"
+	"testing"
 	"time"
 
 	"github.com/e9ctrl/vd/command"
@@ -12,8 +13,8 @@ import (
 	"github.com/e9ctrl/vd/protocol"
 	"github.com/e9ctrl/vd/protocol/stream"
 	"github.com/e9ctrl/vd/vdfile"
-
-	"testing"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 var myStreamDev = func() *StreamDevice {
@@ -31,6 +32,8 @@ var dev = myStreamDev()
 func TestMain(m *testing.M) {
 	params := map[string]parameter.Parameter{}
 	commands := map[string]*command.Command{}
+	reqs := map[string]*command.Request{}
+	resps := map[string]*command.Response{}
 
 	p1, err := parameter.New("50", "", "int")
 	if err != nil {
@@ -193,6 +196,28 @@ func TestMain(m *testing.M) {
 
 	commands[cmdSetMode.Name] = cmdSetMode
 
+	reqSpeed := &command.Request{
+		Name: "get_speed",
+		Cmd:  []byte("get speed?"),
+	}
+
+	reqs["get_speed"] = reqSpeed
+
+	resSpeed1 := &command.Response{
+		Name: "return_get_speed_1",
+		Req:  "get_speed",
+		Cmd:  []byte("High speed: {%f:speed}"),
+	}
+
+	resSpeed2 := &command.Response{
+		Name: "return_get_speed_2",
+		Req:  "get_speed",
+		Cmd:  []byte("Low speed: {%f:speed}"),
+	}
+
+	resps["return_get_speed_1"] = resSpeed1
+	resps["return_get_speed_2"] = resSpeed2
+
 	// for set parameter test only new parameters are required
 	p9, err := parameter.New("40", "", "int")
 	if err != nil {
@@ -225,6 +250,12 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	params["current2"] = p14
+
+	p16, err := parameter.New("36.6", "", "float64")
+	if err != nil {
+		panic(err)
+	}
+	params["speed"] = p16
 
 	cmdGetCurrent2 := &command.Command{
 		Name: "get_current2",
@@ -270,7 +301,15 @@ func TestMain(m *testing.M) {
 
 	dev.vdfile.Commands = commands
 	dev.vdfile.Params = params
-	reqs, resps := vdfile.CommandsToReqRes(commands)
+
+	reqsCmd, respsCmd := vdfile.CommandsToReqRes(commands)
+	for k, v := range reqsCmd {
+		reqs[k] = v
+	}
+	for k, v := range respsCmd {
+		resps[k] = v
+	}
+
 	dev.vdfile.Requests = reqs
 	dev.vdfile.Responses = resps
 	dev.proto, _ = stream.NewParser(dev.vdfile)
@@ -304,6 +343,9 @@ func TestHandle(t *testing.T) {
 		{"one cmd two params", []byte("get two\r\n"), []byte("v1.0.0 53.4\r\n")},
 		{"one cmd two params 2", []byte("get two 2\r\n"), []byte("ver: v1.0.0 off: 53.4\r\n")},
 		{"with newline in reps", []byte("get stat\r\n"), []byte("v1.0.0\n53.4\r\n")},
+		// This case needs to be added when "when" functionality will be added
+		// otherwise get speed returns one of two responses randomly
+		//{"get speed", []byte("get speed?\r\n"), []byte("High speed: 36.600000\r\n")},
 	}
 
 	for _, tt := range tests {
@@ -325,6 +367,9 @@ func TestTriggerCommand(t *testing.T) {
 		expErr  error
 	}{
 		{"version command", "get_version", []byte("v1.0.0\r\n"), nil},
+		// This case needs to be added when "when" functionality will be added
+		// otherwise get speed returns one of two responses randomly
+		//{"speed command", "get_speed", []byte("High speed: 36.600000\r\n"), nil},
 		{"offset command", "get_offset", []byte("ch1 off 53.4\r\n"), nil},
 		{"status command", "get_status", []byte("stop\r\n"), nil},
 		{"mode command", "get_mode", []byte("true\r\n"), nil},
@@ -530,7 +575,6 @@ func TestSetMismatch(t *testing.T) {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	mis := string(b)
-	t.Log(len(b))
 
 	tests := []struct {
 		name   string
@@ -555,5 +599,37 @@ func TestSetMismatch(t *testing.T) {
 				t.Errorf("exp mismatch: %s got: %s", tt.expVal, got)
 			}
 		})
+	}
+}
+
+func TestCreateResps(t *testing.T) {
+	mapExp := make(map[string][]string, len(dev.vdfile.Requests))
+	mapExp["get_current"] = []string{"get_current"}
+	mapExp["get_current2"] = []string{"get_current2"}
+	mapExp["get_max"] = []string{"get_max"}
+	mapExp["get_mode"] = []string{"get_mode"}
+	mapExp["get_stat"] = []string{"get_stat"}
+	mapExp["get_psi"] = []string{"get_psi"}
+	mapExp["get_offset"] = []string{"get_offset"}
+	mapExp["get_version"] = []string{"get_version"}
+	mapExp["get_voltage"] = []string{"get_voltage"}
+	mapExp["get_status"] = []string{"get_status"}
+	mapExp["get_two_params"] = []string{"get_two_params"}
+	mapExp["get_two_params_2"] = []string{"get_two_params_2"}
+	mapExp["get_voltage2"] = []string{"get_voltage2"}
+	mapExp["set_current"] = []string{"set_current"}
+	mapExp["set_current2"] = []string{"set_current2"}
+	mapExp["set_psi"] = []string{"set_psi"}
+	mapExp["set_max"] = []string{"set_max"}
+	mapExp["set_mode"] = []string{"set_mode"}
+	mapExp["set_status"] = []string{"set_status"}
+	mapExp["set_voltage"] = []string{"set_voltage"}
+	mapExp["set_voltage2"] = []string{"set_voltage2"}
+	mapExp["get_speed"] = []string{"return_get_speed_2", "return_get_speed_1"}
+
+	resps := createResps(dev.vdfile)
+	less := func(a, b string) bool { return a < b }
+	if diff := cmp.Diff(mapExp, resps, cmpopts.SortSlices(less)); diff != "" {
+		t.Errorf("Map responses mismatch (-want +got):\n%s", diff)
 	}
 }
