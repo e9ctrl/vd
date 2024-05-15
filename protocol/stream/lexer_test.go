@@ -38,7 +38,7 @@ func TestLexer(t *testing.T) {
 		{"one parameter with whitespaces", "{ %d:param }", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "{%dparam}"},
 		{"one parameter with more whitespaces", "{   %d:param   }", []lexer.ItemType{lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "{%dparam}"},
 
-		{"illegal character", "!", []lexer.ItemType{lexer.ItemIllegal, lexer.ItemEOF}, ""},
+		{"illegal character", "~", []lexer.ItemType{lexer.ItemIllegal, lexer.ItemEOF}, ""},
 		{"illegal escape", "\a", []lexer.ItemType{lexer.ItemIllegal, lexer.ItemEOF}, ""},
 		{"new line between params", "val: {%s:param}\n{%s:param}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEscape, lexer.ItemLeftMeta, lexer.ItemStringValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "val: {%sparam}\n{%sparam}"},
 		{"number as a command", "get two 2", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "get two 2"},
@@ -46,6 +46,7 @@ func TestLexer(t *testing.T) {
 		{"long command", ":STAT POW,{%.1f:pow},1.1,2.2,3.3,4.4", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemCommand, lexer.ItemEOF}, ":STAT POW,{%.1fpow},1.1,2.2,3.3,4.4"},
 		{"set ch1 tec cmd", "set ch1 tec07A", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemEOF}, "set ch1 tec07A"},
 		{"set ch1 tec config", "set ch1 tec{%03X:tec_max_current}\r", []lexer.ItemType{lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemWhiteSpace, lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEscape, lexer.ItemEOF}, "set ch1 tec{%03Xtec_max_current}\r"},
+		{"exclamation mark test", "!{%d:position}", []lexer.ItemType{lexer.ItemCommand, lexer.ItemLeftMeta, lexer.ItemNumberValuePlaceholder, lexer.ItemParam, lexer.ItemRightMeta, lexer.ItemEOF}, "!{%dposition}"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
