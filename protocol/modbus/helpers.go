@@ -43,3 +43,25 @@ func registerAddressAndNumber(frame TCPFrame) (register int, numRegs int, endReg
 	endRegister = register + numRegs
 	return register, numRegs, endRegister
 }
+
+// Read from TCP frame register and value
+func registerAddressAndValue(frame TCPFrame) (int, uint16) {
+	data := frame.GetData()
+	if len(data) < 4 {
+		return 0, 0
+	}
+	register := int(binary.BigEndian.Uint16(data[0:2]))
+	value := binary.BigEndian.Uint16(data[2:4])
+	return register, value
+}
+
+// Convert []byte to []int bits
+func byteToBits(bs []byte) []int {
+	r := make([]int, len(bs)*8)
+	for i, b := range bs {
+		for j := 0; j < 8; j++ {
+			r[i*8+j] = int(b >> uint(7-j) & 0x01)
+		}
+	}
+	return r
+}

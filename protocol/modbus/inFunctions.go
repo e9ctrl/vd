@@ -1,6 +1,10 @@
 package modbus
 
 import (
+	"encoding/binary"
+	"math"
+	"reflect"
+
 	"github.com/e9ctrl/vd/protocol"
 	"github.com/e9ctrl/vd/protocol/modbus/memory"
 )
@@ -58,4 +62,301 @@ func (p *Parser) ReadHoldingRegisters(frame TCPFrame, params map[string]memory.M
 // ReadInputRegisters function 4, reads input registers from internal memory, wrapper around readData.
 func (p *Parser) ReadInputRegisters(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Request, *Exception) {
 	return readData(frame, params, memory.DataInputRegister)
+}
+
+// WriteSingleCoil function 5, write a coil to internal memory.
+func (p *Parser) WriteSingleCoil(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Request, *Exception) {
+	reqs := make([]protocol.Request, 0)
+
+	register, value := registerAddressAndValue(frame)
+	if value != 0 {
+		value = 1
+	}
+
+	for paramName, mem := range params {
+		if mem.Typ == memory.DataCoil {
+			if mem.Addr == uint16(register) {
+				// transaction generation
+				req := protocol.Request{
+					Params: make(map[string]any),
+				}
+				req.Name = frame.GetFunctionName()
+				req.Typ = protocol.ReqWrite
+				req.Params[paramName] = uint8(value)
+				reqs = append(reqs, req)
+			}
+		}
+	}
+
+	return reqs, &Success
+}
+
+// WriteHoldingRegister function 16, write to single holding register
+func (p *Parser) WriteHoldingRegister(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Request, *Exception) {
+	return writeRegister(frame, params, p.holdRegTable)
+}
+
+// WriteHoldingRegister function 6, write a holding register to internal memory.
+func writeRegister(frame TCPFrame, params map[string]memory.Memory, holdRegTable [][]byte) ([]protocol.Request, *Exception) {
+	reqs := make([]protocol.Request, 0)
+
+	register, value := registerAddressAndValue(frame)
+	b := SingleUint16ToBytes(value)
+
+	if len(holdRegTable) == 0 || register >= len(holdRegTable) {
+		return reqs, &IllegalDataAddress
+	}
+
+	// update map
+	holdRegTable[register][0] = b[0]
+	holdRegTable[register][1] = b[1]
+
+	for paramName, mem := range params {
+		if mem.Typ == memory.DataHoldingRegister {
+			if uint16(register) >= mem.Addr && mem.Addr+uint16(mem.Length) > uint16(register) {
+				// transaction generation
+				req := protocol.Request{
+					Params: make(map[string]any),
+				}
+				req.Name = frame.GetFunctionName()
+				req.Typ = protocol.ReqWrite
+
+				switch mem.DataTyp {
+				case reflect.Int16:
+					val := int16(value)
+					req.Params[paramName] = val
+				case reflect.Uint16:
+					req.Params[paramName] = value
+				case reflect.Int32:
+					res := make([]byte, 4)
+					for i := 0; i < 2; i++ {
+						for j := 0; j < 2; j++ {
+							res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+						}
+					}
+					val := int32(binary.BigEndian.Uint32(res))
+					req.Params[paramName] = val
+				case reflect.Uint32:
+					res := make([]byte, 4)
+					for i := 0; i < 2; i++ {
+						for j := 0; j < 2; j++ {
+							res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+						}
+					}
+					val := binary.BigEndian.Uint32(res)
+					req.Params[paramName] = val
+				case reflect.Float32:
+					res := make([]byte, 4)
+					for i := 0; i < 2; i++ {
+						for j := 0; j < 2; j++ {
+							res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+						}
+					}
+					val := math.Float32frombits(binary.BigEndian.Uint32(res))
+					req.Params[paramName] = val
+				case reflect.Int64:
+					res := make([]byte, 8)
+					for i := 0; i < 4; i++ {
+						for j := 0; j < 2; j++ {
+							res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+						}
+					}
+					val := int64(binary.BigEndian.Uint64(res))
+					req.Params[paramName] = val
+				case reflect.Uint64:
+					res := make([]byte, 8)
+					for i := 0; i < 4; i++ {
+						for j := 0; j < 2; j++ {
+							res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+						}
+					}
+					val := binary.BigEndian.Uint64(res)
+					req.Params[paramName] = val
+				case reflect.Float64:
+					res := make([]byte, 8)
+					for i := 0; i < 4; i++ {
+						for j := 0; j < 2; j++ {
+							res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+						}
+					}
+					val := math.Float64frombits(binary.BigEndian.Uint64(res))
+					req.Params[paramName] = val
+				}
+				reqs = append(reqs, req)
+			}
+		}
+	}
+	return reqs, &Success
+}
+
+// WriteMultipleCoils function 15, writes holding registers to internal memory.
+func (p *Parser) WriteMultipleCoils(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Request, *Exception) {
+	reqs := make([]protocol.Request, 0)
+
+	register, _, endRegister := registerAddressAndNumber(frame)
+	data := frame.GetData()
+	if len(data) < 5 {
+		return reqs, &IllegalDataValue
+	}
+
+	valueBytes := data[5:]
+
+	if endRegister > MemoryTableSize {
+		return reqs, &IllegalDataAddress
+	}
+
+	bits := byteToBits(valueBytes)
+
+	for i := range bits {
+		for paramName, mem := range params {
+			if mem.Typ == memory.DataCoil {
+				if mem.Addr == uint16(register+i) {
+					req := protocol.Request{
+						Params: make(map[string]any),
+					}
+					req.Name = frame.GetFunctionName()
+					req.Typ = protocol.ReqWrite
+					req.Params[paramName] = uint8(bits[len(bits)-i-1])
+					reqs = append(reqs, req)
+				}
+			}
+		}
+	}
+
+	return reqs, &Success
+}
+
+// WriteHoldingRegisters, function 16, wrapper around writeRegisters
+func (p *Parser) WriteHoldingRegisters(frame TCPFrame, params map[string]memory.Memory) ([]protocol.Request, *Exception) {
+	return writeRegisters(frame, params, p.holdRegTable)
+}
+
+// Wwrites holding registers to internal memory.
+func writeRegisters(frame TCPFrame, params map[string]memory.Memory, holdRegTable [][]byte) ([]protocol.Request, *Exception) {
+	reqs := make([]protocol.Request, 0)
+
+	register, numRegs, _ := registerAddressAndNumber(frame)
+	data := frame.GetData()
+	if len(data) < 5 {
+		return reqs, &IllegalDataValue
+	}
+
+	valueBytes := data[5:]
+
+	// two bytes per register
+	if len(valueBytes)/2 != numRegs {
+		return reqs, &IllegalDataValue
+	}
+
+	// check if table is empty
+	if len(holdRegTable) == 0 {
+		return reqs, &IllegalDataAddress
+	}
+
+	// check if first register and end register are in internal table memory range
+	for i := register; i < register+numRegs; i++ {
+		if i >= len(holdRegTable) {
+			return reqs, &IllegalDataAddress
+		}
+	}
+
+	// update memory map
+	// needs to be done here cause written registers doesn't have to cover the whole variable
+	// i.e that we can update one register of 4 bytes number
+	for i := register; i < register+numRegs; i++ {
+		holdRegTable[i][0] = valueBytes[(i-register)*2]
+		holdRegTable[i][1] = valueBytes[(i-register)*2+1]
+	}
+
+	bytesCnt := 0
+
+	paramRepeatedName := ""
+	for i := register; i < register+numRegs; i++ {
+		for paramName, mem := range params {
+			if mem.Typ == memory.DataHoldingRegister {
+				if uint16(i) >= mem.Addr && mem.Addr+uint16(mem.Length) > uint16(i) {
+					value := BytesToUint16(valueBytes[bytesCnt*2 : bytesCnt*2+2])[0]
+					bytesCnt++
+
+					// this is not to double transactions for same parameter that is written on several registers
+					if paramRepeatedName != paramName {
+						paramRepeatedName = paramName
+						req := protocol.Request{
+							Params: make(map[string]any),
+						}
+						req.Name = frame.GetFunctionName()
+						req.Typ = protocol.ReqWrite
+
+						switch mem.DataTyp {
+						case reflect.Int16:
+							val := int16(value)
+							req.Params[paramName] = val
+						case reflect.Uint16:
+							req.Params[paramName] = value
+						case reflect.Int32:
+							res := make([]byte, 4)
+							for i := 0; i < 2; i++ {
+								for j := 0; j < 2; j++ {
+									res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+								}
+							}
+							val := int32(binary.BigEndian.Uint32(res))
+							req.Params[paramName] = val
+						case reflect.Uint32:
+							res := make([]byte, 4)
+							for i := 0; i < 2; i++ {
+								for j := 0; j < 2; j++ {
+									res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+								}
+							}
+							val := binary.BigEndian.Uint32(res)
+							req.Params[paramName] = val
+						case reflect.Float32:
+							res := make([]byte, 4)
+							for i := 0; i < 2; i++ {
+								for j := 0; j < 2; j++ {
+									res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+								}
+							}
+							val := math.Float32frombits(binary.BigEndian.Uint32(res))
+							req.Params[paramName] = val
+						case reflect.Int64:
+							res := make([]byte, 8)
+							for i := 0; i < 4; i++ {
+								for j := 0; j < 2; j++ {
+									res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+								}
+							}
+							val := int64(binary.BigEndian.Uint64(res))
+							req.Params[paramName] = val
+						case reflect.Uint64:
+							res := make([]byte, 8)
+							for i := 0; i < 4; i++ {
+								for j := 0; j < 2; j++ {
+									res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+								}
+							}
+							val := binary.BigEndian.Uint64(res)
+							req.Params[paramName] = val
+						case reflect.Float64:
+							res := make([]byte, 8)
+							for i := 0; i < 4; i++ {
+								for j := 0; j < 2; j++ {
+									res[i*2+j] = holdRegTable[mem.Addr+uint16(i)][j]
+
+								}
+							}
+							val := math.Float64frombits(binary.BigEndian.Uint64(res))
+							req.Params[paramName] = val
+						}
+						reqs = append(reqs, req)
+					} else {
+						continue
+					}
+				}
+			}
+		}
+	}
+
+	return reqs, &Success
 }
