@@ -198,3 +198,8 @@ func generateRegistersResponse(frame TCPFrame, memory [][]byte) []byte {
 
 	return res
 }
+
+// Generate response for all write functions
+func (p *Parser) GenerateWriteResponse(frame TCPFrame, resps []protocol.Response) ([]byte, *Exception) {
+	return frame.GetData()[0:4], &Success
+}
