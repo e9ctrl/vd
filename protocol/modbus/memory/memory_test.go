@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -36,20 +37,20 @@ func TestGetLength(t *testing.T) {
 
 func TestIsMemoryValid(t *testing.T) {
 	mapOK1 := make(map[string]Memory, 6)
-	mapOK1["di1"] = New(1, "di", "uint8")
-	mapOK1["di2"] = New(2, "di", "uint8")
-	mapOK1["coil1"] = New(1, "coil", "uint8")
-	mapOK1["hr1"] = New(1, "holdreg", "uint16")
-	mapOK1["hr2"] = New(3, "holdreg", "int64")
-	mapOK1["inreg1"] = New(3, "inreg", "int64")
+	mapOK1["di1"] = New(1, "di", "uint8", reflect.Uint8)
+	mapOK1["di2"] = New(2, "di", "uint8", reflect.Uint8)
+	mapOK1["coil1"] = New(1, "coil", "uint8", reflect.Uint8)
+	mapOK1["hr1"] = New(1, "holdreg", "uint16", reflect.Uint16)
+	mapOK1["hr2"] = New(3, "holdreg", "int64", reflect.Int64)
+	mapOK1["inreg1"] = New(3, "inreg", "int64", reflect.Int64)
 
 	mapWrong1 := make(map[string]Memory, 2)
-	mapWrong1["di1"] = New(1, "di", "uint8")
-	mapWrong1["di2"] = New(1, "di", "uint8")
+	mapWrong1["di1"] = New(1, "di", "uint8", reflect.Uint8)
+	mapWrong1["di2"] = New(1, "di", "uint8", reflect.Uint8)
 
 	mapWrong2 := make(map[string]Memory, 2)
-	mapWrong2["hr1"] = New(1, "holdreg", "int64")
-	mapWrong2["hr2"] = New(3, "holdreg", "uint32")
+	mapWrong2["hr1"] = New(1, "holdreg", "int64", reflect.Int64)
+	mapWrong2["hr2"] = New(3, "holdreg", "uint32", reflect.Uint32)
 
 	t.Parallel()
 	tests := []struct {
