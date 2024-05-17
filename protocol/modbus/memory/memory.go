@@ -2,6 +2,7 @@ package memory
 
 import (
 	"errors"
+	"reflect"
 )
 
 type DataTyp uint8
@@ -21,16 +22,16 @@ type Memory struct {
 	Typ     DataTyp
 	Addr    uint16
 	Length  uint8
-	DataTyp string
+	DataTyp reflect.Kind
 }
 
 // Constructor, returns memory struct for the specific parameter
-func New(addr uint16, regTyp, dataTyp string) Memory {
+func New(addr uint16, regTyp, dataTyp string, memTyp reflect.Kind) Memory {
 	return Memory{
 		Addr:    addr,
 		Typ:     typConvert(regTyp),
 		Length:  getLength(dataTyp),
-		DataTyp: dataTyp,
+		DataTyp: memTyp,
 	}
 }
 
