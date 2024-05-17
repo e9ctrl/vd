@@ -57,6 +57,28 @@ func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 	// create internal memory map
 	parser.MemoryMapping(vdfile.Params)
 
+	// Add default functions
+	parser.inFunctions = make(map[uint8]InHandler, 8)
+	parser.inFunctions[1] = parser.ReadCoils
+	parser.inFunctions[2] = parser.ReadDiscreteInputs
+	parser.inFunctions[3] = parser.ReadHoldingRegisters
+	parser.inFunctions[4] = parser.ReadInputRegisters
+	parser.inFunctions[5] = parser.WriteSingleCoil
+	parser.inFunctions[6] = parser.WriteHoldingRegister
+	parser.inFunctions[15] = parser.WriteMultipleCoils
+	parser.inFunctions[16] = parser.WriteHoldingRegisters
+
+	// Add default functions
+	parser.outFunctions = make(map[uint8]OutHandler, 8)
+	parser.outFunctions[1] = parser.GenerateReadCoilsResponse
+	parser.outFunctions[2] = parser.GenerateReadDIsResponse
+	parser.outFunctions[3] = parser.GenerateReadHoldingRegistersResponse
+	parser.outFunctions[4] = parser.GenerateReadInputRegistersResponse
+	parser.outFunctions[5] = parser.GenerateWriteResponse
+	parser.outFunctions[6] = parser.GenerateWriteResponse
+	parser.outFunctions[15] = parser.GenerateWriteResponse
+	parser.outFunctions[16] = parser.GenerateWriteResponse
+
 	return parser, nil
 }
 
