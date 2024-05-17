@@ -1,9 +1,13 @@
 package modbus
 
 import (
+	"encoding/binary"
+	"math"
+	"reflect"
 	"sync"
 
 	"github.com/e9ctrl/vd/log"
+	"github.com/e9ctrl/vd/parameter"
 	"github.com/e9ctrl/vd/protocol"
 	"github.com/e9ctrl/vd/protocol/modbus/memory"
 	"github.com/e9ctrl/vd/vdfile"
@@ -49,6 +53,9 @@ func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 	}
 	parser.diTable = make([]byte, MemoryTableSize)
 	parser.coilTable = make([]byte, MemoryTableSize)
+
+	// create internal memory map
+	parser.MemoryMapping(vdfile.Params)
 
 	return parser, nil
 }
@@ -126,4 +133,95 @@ func (p *Parser) Encode(resps []protocol.Response) ([]byte, error) {
 // does not have any sense
 func (p *Parser) Trigger(string) protocol.Response {
 	return protocol.Response{}
+}
+
+// MemoryMapping that fulfills memory tables based on their addresses and their lengths
+func (p *Parser) MemoryMapping(params map[string]parameter.Parameter) {
+	for paramName, memUnit := range p.paramsAddrs {
+		if memUnit.Typ == memory.DataCoil {
+			val, _ := params[paramName].Value().(byte)
+			if val != byte(0) {
+				val = byte(1)
+			}
+			p.coilTable[memUnit.Addr] = val
+		} else if memUnit.Typ == memory.DataDiscreteInput {
+			val, _ := params[paramName].Value().(byte)
+			if val != byte(0) {
+				val = byte(1)
+			}
+			p.diTable[memUnit.Addr] = val
+		} else if memUnit.Typ == memory.DataHoldingRegister || memUnit.Typ == memory.DataInputRegister {
+			start := memUnit.Addr
+			end := memUnit.Addr + uint16(memUnit.Length)
+
+			var buf []byte
+			val := params[paramName].Value()
+			switch params[paramName].Type() {
+			case reflect.Uint:
+				uintVal, _ := val.(uint)
+				uintVal64 := uint64(uintVal)
+				buf = make([]byte, 8)
+				binary.BigEndian.PutUint64(buf, uintVal64)
+			case reflect.Uint16:
+				uint16Val, _ := val.(uint16)
+				buf = make([]byte, 2)
+				binary.BigEndian.PutUint16(buf, uint16Val)
+			case reflect.Uint32:
+				uintVal32, _ := val.(uint32)
+				buf = make([]byte, 4)
+				binary.BigEndian.PutUint32(buf, uintVal32)
+			case reflect.Uint64:
+				uintVal64, _ := val.(uint64)
+				buf = make([]byte, 8)
+				binary.BigEndian.PutUint64(buf, uintVal64)
+			case reflect.Int:
+				intVal, _ := val.(int)
+				uintVal := uint64(intVal)
+				buf = make([]byte, 8)
+				binary.BigEndian.PutUint64(buf, uintVal)
+			case reflect.Int16:
+				intVal, _ := val.(int16)
+				uintVal := uint16(intVal)
+				buf = make([]byte, 2)
+				binary.BigEndian.PutUint16(buf, uintVal)
+			case reflect.Int32:
+				intVal, _ := val.(int32)
+				uintVal := uint32(intVal)
+				buf = make([]byte, 4)
+				binary.BigEndian.PutUint32(buf, uintVal)
+			case reflect.Int64:
+				intVal, _ := val.(int64)
+				uintVal := uint64(intVal)
+				buf = make([]byte, 8)
+				binary.BigEndian.PutUint64(buf, uintVal)
+			case reflect.Float32:
+				floatVal, _ := val.(float32)
+				buf = make([]byte, 4)
+				binary.BigEndian.PutUint32(buf, math.Float32bits(floatVal))
+			case reflect.Float64:
+				floatVal, _ := val.(float64)
+				buf = make([]byte, 8)
+				binary.BigEndian.PutUint64(buf, math.Float64bits(floatVal))
+			}
+			if memUnit.Typ == memory.DataHoldingRegister {
+				var j uint16
+				j = 0
+				for i := start; i < end; i++ {
+					p.holdRegTable[i][0] = buf[j]
+					p.holdRegTable[i][1] = buf[j+1]
+					j = j + 2
+				}
+			} else if memUnit.Typ == memory.DataInputRegister {
+				var j uint16
+				j = 0
+				for i := start; i < end; i++ {
+					p.inRegTable[i][0] = buf[j]
+					p.inRegTable[i][1] = buf[j+1]
+					j = j + 2
+				}
+			}
+		} else {
+			continue
+		}
+	}
 }
