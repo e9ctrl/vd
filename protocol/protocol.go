@@ -39,7 +39,7 @@ const (
 type ResponseErr int
 
 const (
-	ResOK = iota
+	ResOK ResponseErr = iota
 	ResError
 	ResMismatch
 )
