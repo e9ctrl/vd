@@ -194,18 +194,18 @@ func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 
 	return &Parser{
 		commandPatterns: commandPattern,
-		outTerminator:   vdfile.OutTerminator,
+		outTerminator:   vdfile.Stream.OutTerminator,
 		mismatch:        vdfile.Mismatch,
 		splitter: func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
 				return 0, nil, nil
 			}
-			if vdfile.InTerminator == nil {
+			if vdfile.Stream.InTerminator == nil {
 				return 0, nil, nil
 			}
 			// Find sequence of terminator bytes
-			if i := bytes.Index(data, vdfile.InTerminator); i >= 0 {
-				return i + len(vdfile.InTerminator), data[0:i], nil
+			if i := bytes.Index(data, vdfile.Stream.InTerminator); i >= 0 {
+				return i + len(vdfile.Stream.InTerminator), data[0:i], nil
 			}
 
 			// If we're at EOF, we have a final, non-terminated line. Return it.
@@ -228,7 +228,7 @@ func buildCommandPatterns(vdfile *vdfile.VDFile) (map[string]CommandPattern, err
 	// validate the items output for each req and res,
 	// report the error back when there is a IllegalItem
 	// this is for [[requests]]
-	for _, req := range vdfile.Requests {
+	for _, req := range vdfile.Stream.Requests {
 		pattern := CommandPattern{}
 		pattern.reqItems = ItemsFromConfig(string(req.Cmd))
 		for _, item := range pattern.reqItems {
@@ -240,7 +240,7 @@ func buildCommandPatterns(vdfile *vdfile.VDFile) (map[string]CommandPattern, err
 	}
 
 	// this is for [[responses]]
-	for _, res := range vdfile.Responses {
+	for _, res := range vdfile.Stream.Responses {
 		for k, v := range patterns {
 			if k == res.Req {
 				if len(v.resItems) > 0 {

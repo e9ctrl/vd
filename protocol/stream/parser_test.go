@@ -12,7 +12,7 @@ import (
 	"github.com/e9ctrl/vd/vdfile"
 )
 
-const FILE1 = "../../vdfile/vdfile"
+const FILE1 = "../../vdfile/vdfile_stream"
 
 func TestDecode(t *testing.T) {
 	t.Parallel()
@@ -181,7 +181,7 @@ func TestBuildCommandPatternsReqErr(t *testing.T) {
 	}
 	m1 := make(map[string]*command.Request)
 	m1[req1.Name] = req1
-	vd.Requests = m1
+	vd.Stream.Requests = m1
 
 	cmdPattern, err := buildCommandPatterns(vd)
 	if cmdPattern != nil {
@@ -201,7 +201,7 @@ func TestBuildCommandPatternsResErr(t *testing.T) {
 	}
 	mReq := make(map[string]*command.Request)
 	mReq[req1.Name] = req1
-	vd.Requests = mReq
+	vd.Stream.Requests = mReq
 
 	res1 := &command.Response{
 		Name: "current_get",
@@ -210,7 +210,7 @@ func TestBuildCommandPatternsResErr(t *testing.T) {
 	}
 	mRes := make(map[string]*command.Response)
 	mRes[res1.Name] = res1
-	vd.Responses = mRes
+	vd.Stream.Responses = mRes
 
 	cmdPattern, err := buildCommandPatterns(vd)
 	if cmdPattern != nil {
