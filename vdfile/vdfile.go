@@ -13,7 +13,7 @@ import (
 	"github.com/e9ctrl/vd/parameter"
 )
 
-type configParameter struct {
+type configStreamParameter struct {
 	Name string `toml:"name"`
 	Typ  string `toml:"typ"`
 	Val  any    `toml:"val"`
@@ -27,12 +27,12 @@ type configCommand struct {
 	Dly  string `toml:"dly,omitempty"`
 }
 
-type configRequest struct {
+type configStreamRequest struct {
 	Name    string `toml:"name"`
 	Request string `toml:"req"`
 }
 
-type configResponse struct {
+type configStreamResponse struct {
 	Name     string `toml:"name"`
 	ReqName  string `toml:"req"`
 	Response string `toml:"res"`
@@ -40,22 +40,27 @@ type configResponse struct {
 	Dly      string `toml:"dly,omitempty"`
 }
 
-type Config struct {
-	InTerminator  string            `toml:"interm"`
-	OutTerminator string            `toml:"outterm"`
-	Params        []configParameter `toml:"parameter"`
-	Commands      []configCommand   `toml:"command,omitempty"`
-	Requests      []configRequest   `toml:"request,omitempty"`
-	Responses     []configResponse  `toml:"response,omitempty"`
-	Mismatch      string            `toml:"mismatch,omitempty"`
+type configStreamCommand struct {
+	Name string `toml:"name"`
+	Req  string `toml:"req"`
+	Res  string `toml:"res,omitempty"`
+	Dly  string `toml:"dly,omitempty"`
 }
 
-// VDFile struct
-type VDFile struct {
+type ConfigStream struct {
+	InTerminator  string                  `toml:"interm"`
+	OutTerminator string                  `toml:"outterm"`
+	Params        []configStreamParameter `toml:"parameter"`
+	Commands      []configStreamCommand   `toml:"command,omitempty"`
+	Requests      []configStreamRequest   `toml:"request,omitempty"`
+	Responses     []configStreamResponse  `toml:"response,omitempty"`
+	Mismatch      string                  `toml:"mismatch,omitempty"`
+}
+
+// Stream struct encapsulated into main VDFile struct
+type VDFileStream struct {
 	InTerminator  []byte
 	OutTerminator []byte
-	Params        map[string]parameter.Parameter
-	Commands      map[string]*command.Command
 	Requests      map[string]*command.Request
 	Responses     map[string]*command.Response
 	Mismatch      []byte
@@ -96,9 +101,12 @@ func CommandsToReqRes(commands map[string]*command.Command) (map[string]*command
 }
 
 // Creates vdfile struct based on Config containing result of TOML file parsing
-func ReadVDFileFromConfig(config Config) (*VDFile, error) {
-	vdfile := &VDFile{
-		Params:    make(map[string]parameter.Parameter, 0),
+func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFile, error) {
+	vd := &VDFile{
+		Params: make(map[string]parameter.Parameter, 0),
+	}
+
+	vdStream := &VDFileStream{
 		Commands:  make(map[string]*command.Command, 0),
 		Requests:  make(map[string]*command.Request, 0),
 		Responses: make(map[string]*command.Response, 0),
@@ -118,7 +126,7 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Val, err)
 		}
 
-		vdfile.Params[param.Name] = currentParam
+		vd.Params[param.Name] = currentParam
 	}
 
 	commandCount := make(map[string]bool)
@@ -153,19 +161,19 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 			Dly:  parseDelays(cmd.Dly),
 		}
 
-		vdfile.Commands[cmd.Name] = currentCmd
+		vdStream.Commands[cmd.Name] = currentCmd
 	}
 
-	reqs, resps := CommandsToReqRes(vdfile.Commands)
-	vdfile.Requests = reqs
-	vdfile.Responses = resps
+	reqs, resps := CommandsToReqRes(vdStream.Commands)
+	vdStream.Requests = reqs
+	vdStream.Responses = resps
 
 	for _, req := range config.Requests {
 		currentReq := &command.Request{
 			Name: req.Name,
 			Cmd:  []byte(req.Request),
 		}
-		vdfile.Requests[req.Name] = currentReq
+		vdStream.Requests[req.Name] = currentReq
 	}
 
 	for _, res := range config.Responses {
@@ -175,14 +183,17 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 			Cmd:  []byte(res.Response),
 			Dly:  parseDelays(res.Dly),
 		}
-		vdfile.Responses[res.Name] = currentRes
+		vdStream.Responses[res.Name] = currentRes
 	}
 
-	vdfile.InTerminator = parseTerminator(config.InTerminator)
-	vdfile.OutTerminator = parseTerminator(config.OutTerminator)
-	vdfile.Mismatch = []byte(config.Mismatch)
+	vdStream.InTerminator = parseTerminator(config.InTerminator)
+	vdStream.OutTerminator = parseTerminator(config.OutTerminator)
+	vd.Mismatch = []byte(config.Mismatch)
 
-	return vdfile, nil
+	vd.Stream = vdStream
+	vd.Protocol = "stream"
+
+	return vd, nil
 }
 
 // Parse TOML file to Config struct
@@ -193,9 +204,17 @@ func DecodeVDFile(path string) (Config, error) {
 	return config, err
 }
 
-// Parse TOML file but using fle system FS to Config struct
-func DecodeVDFS(f fs.FS, path string) (Config, error) {
-	var config Config
+// Parse TOML file to ConfigStream struct
+func DecodeVDFileStream(path string) (ConfigStream, error) {
+	var config ConfigStream
+	_, err := toml.DecodeFile(path, &config)
+
+	return config, err
+}
+
+// Parse TOML file but using fle system FS to ConfigStream struct
+func DecodeVDFSStream(f fs.FS, path string) (ConfigStream, error) {
+	var config ConfigStream
 	_, err := toml.DecodeFS(f, path, &config)
 
 	return config, err
