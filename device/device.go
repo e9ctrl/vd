@@ -36,9 +36,9 @@ type StreamDevice struct {
 }
 
 func createResps(vdfile *vdfile.VDFile) map[string][]string {
-	resps := make(map[string][]string, len(vdfile.Responses))
+	resps := make(map[string][]string, len(vdfile.Stream.Responses))
 
-	for _, res := range vdfile.Responses {
+	for _, res := range vdfile.Stream.Responses {
 		resps[res.Req] = append(resps[res.Req], res.Name)
 	}
 
@@ -69,7 +69,7 @@ func (s *StreamDevice) Mismatch() (res []byte) {
 
 	if len(mis) != 0 {
 		log.MSM(string(mis))
-		res = append(mis, s.vdfile.OutTerminator...)
+		res = append(mis, s.vdfile.Stream.OutTerminator...)
 		log.TX(res)
 	}
 	return
@@ -160,7 +160,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if cmdName != "" && s.vdfile != nil {
-		if cmd, exist := s.vdfile.Commands[cmdName]; exist {
+		if cmd, exist := s.vdfile.Stream.Commands[cmdName]; exist {
 			s.delayRes(cmd.Dly)
 		} else {
 			log.ERR("command name %s not found", cmdName)
@@ -196,7 +196,7 @@ func (s *StreamDevice) SetParameter(name string, value any) error {
 // Get delay of the specified command, return error when command not found
 func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 	s.lock.Lock()
-	cmd, exists := s.vdfile.Responses[name]
+	cmd, exists := s.vdfile.Stream.Responses[name]
 	s.lock.Unlock()
 	if !exists {
 		return 0, fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
@@ -208,7 +208,7 @@ func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 // Set delay of the specified command, return error when command not found or when value cannot be converted to time.Duration
 func (s *StreamDevice) SetCommandDelay(name, val string) error {
 	s.lock.Lock()
-	cmd, exists := s.vdfile.Responses[name]
+	cmd, exists := s.vdfile.Stream.Responses[name]
 	s.lock.Unlock()
 	if !exists {
 		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
