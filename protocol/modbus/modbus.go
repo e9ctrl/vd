@@ -40,8 +40,7 @@ type Parser struct {
 // Constructor, returns struct that fulfills Protocol interface
 func NewParser(vdfile *vdfile.VDFile) (protocol.Protocol, error) {
 	parser := &Parser{
-		// to do: add to vdfile
-		// paramsAddrs: vdfile.Modbus.Mems,
+		paramsAddrs: vdfile.Modbus.Mems,
 	}
 	parser.holdRegTable = make([][]byte, MemoryTableSize)
 	for i := range parser.holdRegTable {
