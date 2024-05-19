@@ -8,6 +8,7 @@ import (
 
 	"github.com/e9ctrl/vd/log"
 	"github.com/e9ctrl/vd/protocol"
+	"github.com/e9ctrl/vd/protocol/modbus"
 	"github.com/e9ctrl/vd/protocol/stream"
 	"github.com/e9ctrl/vd/server"
 	"github.com/e9ctrl/vd/vdfile"
@@ -23,16 +24,21 @@ var (
 	ErrMismatchTooLong = errors.New("new mismatch message exceeded 255 characters limit")
 	// Error to inform that response for the request was not found
 	ErrResponseNotFound = errors.New("no response found")
+	// Error return by NewDevice when protocol type is now known
+	ErrNotKnownProto = errors.New("not know protocol type")
+	// Error to inform that method is not implemented by certain protocol
+	ErrNotSupported = errors.New("feature not supported")
 )
 
 // Stream device store the information of a set of parameters
 type StreamDevice struct {
 	server.Handler
-	vdfile    *vdfile.VDFile
-	proto     protocol.Protocol
-	triggered chan []byte
-	lock      sync.RWMutex
-	resMap    map[string][]string // key is a request, value is a response
+	vdfile      *vdfile.VDFile
+	proto       protocol.Protocol
+	triggered   chan []byte
+	lock        sync.RWMutex
+	resMap      map[string][]string // key is a request, value is a response
+	protocolTyp string
 }
 
 func createResps(vdfile *vdfile.VDFile) map[string][]string {
@@ -47,17 +53,31 @@ func createResps(vdfile *vdfile.VDFile) map[string][]string {
 
 // Create a new stream device given the virtual device configuration file
 func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
-	// make sure the parser is initialize successfully
-	parser, err := stream.NewParser(vdfile)
-	if err != nil {
-		return nil, err
+	var (
+		parser protocol.Protocol
+		err    error
+	)
+
+	switch vdfile.Protocol {
+	case "stream":
+		parser, err = stream.NewParser(vdfile)
+		if err != nil {
+			return nil, err
+		}
+	case "modbus":
+		parser, err = modbus.NewParser(vdfile)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, ErrNotKnownProto
 	}
 
 	return &StreamDevice{
-		vdfile:    vdfile,
-		triggered: make(chan []byte),
-		proto:     parser,
-		resMap:    createResps(vdfile),
+		vdfile:      vdfile,
+		triggered:   make(chan []byte),
+		proto:       parser,
+		protocolTyp: vdfile.Protocol,
 	}, nil
 }
 
