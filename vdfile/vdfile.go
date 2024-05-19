@@ -13,6 +13,10 @@ import (
 	"github.com/e9ctrl/vd/parameter"
 )
 
+// Always parsed protocol type - decides which parse struct should be used
+type ProtocolType struct {
+	Protocol string `toml:"protocol"`
+}
 type configStreamParameter struct {
 	Name string `toml:"name"`
 	Typ  string `toml:"typ"`
@@ -20,13 +24,25 @@ type configStreamParameter struct {
 	Opt  string `toml:"opt,omitempty"`
 }
 
-type configCommand struct {
+// Modbus parameter struct
+type configModbusParameter struct {
 	Name string `toml:"name"`
-	Req  string `toml:"req"`
-	Res  string `toml:"res,omitempty"`
-	Dly  string `toml:"dly,omitempty"`
+	Typ  string `toml:"typ,omitempty"`
+	Reg  string `toml:"reg"`
+	Val  any    `toml:"val"`
+	Addr uint16 `toml:"addr"`
+	Opt  string `toml:"opt,omitempty"`
 }
 
+// Modbus config struct, result of toml parsing
+type ConfigModbus struct {
+	Params []configModbusParameter `toml:"parameter"`
+}
+
+// Modbus struct encapsulated into main VDFile struct
+type VDFileModbus struct {
+	Mems map[string]memory.Memory
+}
 type configStreamRequest struct {
 	Name    string `toml:"name"`
 	Request string `toml:"req"`
@@ -196,9 +212,9 @@ func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFile, error) {
 	return vd, nil
 }
 
-// Parse TOML file to Config struct
-func DecodeVDFile(path string) (Config, error) {
-	var config Config
+// Parse TOML file to ConfigModbus struct
+func DecodeVDFileModbus(path string) (ConfigModbus, error) {
+	var config ConfigModbus
 	_, err := toml.DecodeFile(path, &config)
 
 	return config, err
@@ -212,6 +228,14 @@ func DecodeVDFileStream(path string) (ConfigStream, error) {
 	return config, err
 }
 
+// Parse TOML file to detect protocol type
+func DecodeVDProto(path string) (ProtocolType, error) {
+	var proto ProtocolType
+	_, err := toml.DecodeFile(path, &proto)
+
+	return proto, err
+}
+
 // Parse TOML file but using fle system FS to ConfigStream struct
 func DecodeVDFSStream(f fs.FS, path string) (ConfigStream, error) {
 	var config ConfigStream
@@ -220,12 +244,34 @@ func DecodeVDFSStream(f fs.FS, path string) (ConfigStream, error) {
 	return config, err
 }
 
-// Created TOML config file based on Config
-func WriteVDFile(path string, config Config) error {
+// Parse TOML file but using fle system FS to ConfigModbus struct
+func DecodeVDFSModbus(f fs.FS, path string) (ConfigModbus, error) {
+	var config ConfigModbus
+	_, err := toml.DecodeFS(f, path, &config)
+
+	return config, err
+}
+
+// Created TOML config file based on config struct
+func WriteVDFile(path string, config any) error {
 	var buf = bytes.Buffer{}
 	var encoder = toml.NewEncoder(&buf)
 
-	err := encoder.Encode(config)
+	var p ProtocolType
+	_, ok := config.(ConfigModbus)
+	if ok {
+		p.Protocol = "modbus"
+	} else {
+		p.Protocol = "stream"
+
+	}
+
+	err := encoder.Encode(p)
+	if err != nil {
+		return err
+	}
+
+	err = encoder.Encode(config)
 	if err != nil {
 		return err
 	}
