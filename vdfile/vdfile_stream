@@ -1,3 +1,4 @@
+protocol = "stream"
 interm = "CR LF"
 outterm = "CR LF"
 
