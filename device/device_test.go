@@ -18,10 +18,14 @@ import (
 )
 
 var myStreamDev = func() *StreamDevice {
-	vd := &vdfile.VDFile{
+	vdStream := &vdfile.VDFileStream{
 		InTerminator:  []byte("\r\n"),
 		OutTerminator: []byte("\r\n"),
-		Mismatch:      []byte("error"),
+	}
+	vd := &vdfile.VDFile{
+		Mismatch: []byte("error"),
+		Stream:   vdStream,
+		Protocol: "stream",
 	}
 	d, _ := NewDevice(vd)
 	return d
@@ -299,7 +303,7 @@ func TestMain(m *testing.M) {
 	}
 	commands[cmdGetStat.Name] = cmdGetStat
 
-	dev.vdfile.Commands = commands
+	dev.vdfile.Stream.Commands = commands
 	dev.vdfile.Params = params
 
 	reqsCmd, respsCmd := vdfile.CommandsToReqRes(commands)
@@ -310,8 +314,8 @@ func TestMain(m *testing.M) {
 		resps[k] = v
 	}
 
-	dev.vdfile.Requests = reqs
-	dev.vdfile.Responses = resps
+	dev.vdfile.Stream.Requests = reqs
+	dev.vdfile.Stream.Responses = resps
 	dev.proto, _ = stream.NewParser(dev.vdfile)
 	dev.resMap = createResps(dev.vdfile)
 	// run tests
@@ -603,7 +607,7 @@ func TestSetMismatch(t *testing.T) {
 }
 
 func TestCreateResps(t *testing.T) {
-	mapExp := make(map[string][]string, len(dev.vdfile.Requests))
+	mapExp := make(map[string][]string, len(dev.vdfile.Stream.Requests))
 	mapExp["get_current"] = []string{"get_current"}
 	mapExp["get_current2"] = []string{"get_current2"}
 	mapExp["get_max"] = []string{"get_max"}
