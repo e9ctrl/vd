@@ -43,6 +43,7 @@ type configModbusParameter struct {
 
 // Modbus config struct, result of toml parsing
 type ConfigModbus struct {
+	Delay  string                  `toml:"delay,omitempty"`
 	Params []configModbusParameter `toml:"parameter"`
 }
 
@@ -71,6 +72,7 @@ type configStreamCommand struct {
 }
 
 type ConfigStream struct {
+	Delay         string                  `toml:"delay,omitempty"`
 	InTerminator  string                  `toml:"interm"`
 	OutTerminator string                  `toml:"outterm"`
 	Params        []configStreamParameter `toml:"parameter"`
@@ -96,6 +98,7 @@ type VDFile struct {
 	Protocol string
 	Params   map[string]parameter.Parameter
 	Mismatch []byte
+	Delay    time.Duration
 }
 
 // Read VDFile from disk from the given filepath
@@ -252,6 +255,7 @@ func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFile, error) {
 
 	vd.Stream = vdStream
 	vd.Protocol = "stream"
+	vd.Delay = parseDelays(config.Delay)
 
 	return vd, nil
 }
@@ -296,6 +300,7 @@ func ReadVDFileModbusFromConfig(config ConfigModbus) (*VDFile, error) {
 
 	vd.Modbus = vdMod
 	vd.Protocol = "modbus"
+	vd.Delay = parseDelays(config.Delay)
 	return vd, nil
 }
 
