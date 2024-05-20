@@ -218,24 +218,42 @@ func (s *StreamDevice) SetParameter(name string, value any) error {
 
 // Get delay of the specified command, return error when command not found
 func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
-	s.lock.Lock()
-	cmd, exists := s.vdfile.Stream.Responses[name]
-	s.lock.Unlock()
-	if !exists {
-		return 0, fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
+	if s.protocolTyp == "stream" {
+		s.lock.Lock()
+		cmd, exists := s.vdfile.Stream.Responses[name]
+		s.lock.Unlock()
+		if !exists {
+			return 0, fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
+		}
+		return cmd.Dly, nil
+	} else if s.protocolTyp == "modbus" {
+		return 0, ErrNotSupported
 	}
 
-	return cmd.Dly, nil
+	return 0, ErrNotKnownProto
 }
 
 // Set delay of the specified command, return error when command not found or when value cannot be converted to time.Duration
 func (s *StreamDevice) SetCommandDelay(name, val string) error {
-	s.lock.Lock()
-	cmd, exists := s.vdfile.Stream.Responses[name]
-	s.lock.Unlock()
-	if !exists {
-		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
+	if s.protocolTyp == "stream" {
+		s.lock.Lock()
+		cmd, exists := s.vdfile.Stream.Responses[name]
+		s.lock.Unlock()
+		if !exists {
+			return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
+		}
+
+		if val, err := time.ParseDuration(val); err == nil {
+			cmd.Dly = val
+		} else {
+			return err
+		}
+		return nil
+	} else if s.protocolTyp == "modbus" {
+		return ErrNotSupported
 	}
+	return ErrNotKnownProto
+}
 
 	if val, err := time.ParseDuration(val); err == nil {
 		cmd.Dly = val
@@ -278,40 +296,45 @@ func (s *StreamDevice) SetMismatch(value string) error {
 // Method that cause that value of the parameter associated with the specified command is sent directly via TCP server to connected client.
 // It returns an error when there is no client connected to TCP server or when parameter was not found.
 func (s *StreamDevice) Trigger(cmdName string) error {
-	s.lock.Lock()
-	_, exists := s.resMap[cmdName]
-	s.lock.Unlock()
-	if !exists {
-		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, cmdName)
-	}
+	if s.protocolTyp == "stream" {
+		s.lock.Lock()
+		_, exists := s.resMap[cmdName]
+		s.lock.Unlock()
+		if !exists {
+			return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, cmdName)
+		}
 
-	res := s.proto.Trigger(cmdName)
+		res := s.proto.Trigger(cmdName)
 
-	// check if response for this request exists
-	// future logic here
-	res.Name = s.resMap[cmdName][0]
-	res.ReqName = cmdName
+		// check if response for this request exists
+		// future logic here
+		res.Name = s.resMap[cmdName][0]
+		res.ReqName = cmdName
 
-	for k := range res.Params {
-		v, err := s.GetParameter(k)
+		for k := range res.Params {
+			v, err := s.GetParameter(k)
+			if err != nil {
+				return err
+			}
+			res.Params[k] = v
+		}
+
+		buf, err := s.proto.Encode([]protocol.Response{res})
 		if err != nil {
 			return err
 		}
-		res.Params[k] = v
-	}
 
-	buf, err := s.proto.Encode([]protocol.Response{res})
-	if err != nil {
-		return err
-	}
+		select {
+		case s.triggered <- buf:
+		default:
+			return ErrNoClient
+		}
 
-	select {
-	case s.triggered <- buf:
-	default:
-		return ErrNoClient
+		return nil
+	} else if s.protocolTyp == "modbus" {
+		return ErrNotSupported
 	}
-
-	return nil
+	return ErrNotKnownProto
 }
 
 // Method to delay response generation
