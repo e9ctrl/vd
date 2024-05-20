@@ -58,12 +58,14 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 		err    error
 	)
 
+	resps := make(map[string][]string)
 	switch vdfile.Protocol {
 	case "stream":
 		parser, err = stream.NewParser(vdfile)
 		if err != nil {
 			return nil, err
 		}
+		resps = createResps(vdfile)
 	case "modbus":
 		parser, err = modbus.NewParser(vdfile)
 		if err != nil {
@@ -78,7 +80,7 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 		triggered:   make(chan []byte),
 		proto:       parser,
 		protocolTyp: vdfile.Protocol,
-		resMap:      createResps(vdfile),
+		resMap:      resps,
 	}, nil
 }
 
