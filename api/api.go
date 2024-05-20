@@ -18,6 +18,8 @@ type Device interface {
 	SetParameter(param string, val any) error
 	GetCommandDelay(commandName string) (time.Duration, error)
 	SetCommandDelay(commandName string, val string) error
+	GetGlobalDelay() time.Duration
+	SetGlobalDelay(val string) error
 	GetMismatch() ([]byte, error)
 	SetMismatch(mismatch string) error
 	Trigger(param string) error
@@ -83,6 +85,8 @@ func (a *Api) routes() http.Handler {
 		r.Post("/{param}/{value}", a.setParameter)
 		r.Get("/delay/{command}", a.getCommandDelay)
 		r.Post("/delay/{command}/{value}", a.setCommandDelay)
+		r.Get("/delay", a.getGlobalDelay)
+		r.Post("/delay/{value}", a.setGlobalDelay)
 		r.Get("/mismatch", a.getMismatch)
 		r.Post("/mismatch/{value}", a.setMismatch)
 		r.Post("/trigger/{param}", a.trigger)
@@ -166,6 +170,26 @@ func (a *Api) setCommandDelay(w http.ResponseWriter, r *http.Request) {
 
 	log.API("set delay of", commandName, "to", value)
 	w.Write([]byte("Delay set successfully"))
+}
+
+func (a *Api) getGlobalDelay(w http.ResponseWriter, r *http.Request) {
+	del := a.d.GetGlobalDelay()
+
+	log.API("get global delay")
+	w.Write([]byte(del.String()))
+}
+
+func (a *Api) setGlobalDelay(w http.ResponseWriter, r *http.Request) {
+	value := chi.URLParam(r, "value")
+
+	err := a.d.SetGlobalDelay(value)
+	if err != nil {
+		errorHandler(w, err)
+		return
+	}
+
+	log.API("set global delay to", value)
+	w.Write([]byte("Global delay set successfully"))
 }
 
 func (a *Api) trigger(w http.ResponseWriter, r *http.Request) {
