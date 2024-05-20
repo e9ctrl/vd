@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"io/fs"
 	"net"
 	"os"
@@ -11,10 +12,16 @@ import (
 )
 
 // used to generate an example of vdfile
-var vdTemplate fs.FS
+var (
+	vdTemplateStream fs.FS
+	vdTemplateModbus fs.FS
+)
 
 // name of the example of generated vdile
-const exampleFileName = "vdfile"
+const (
+	exampleFileNameStream = "vdfile_stream.toml"
+	exampleFileNameModbus = "vdfile_modbus.toml"
+)
 
 // check if addr is made of <ip_addr>:<port>
 func verifyIPAddr(addrStr string) bool {
@@ -33,25 +40,36 @@ func verifyIPAddr(addrStr string) bool {
 }
 
 // generate an example of vdfile
-func generateConfig(filename string) error {
+func generateConfig(protoTyp string) error {
 	path, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
-	config, err := vdfile.DecodeVDFS(vdTemplate, "vdfile/vdfile")
-	if err != nil {
-		return err
-	}
+	if protoTyp == "stream" {
+		config, err := vdfile.DecodeVDFSStream(vdTemplateStream, "vdfile/vdfile_stream")
+		if err != nil {
+			return err
+		}
 
-	if filename == "" {
-		filename = exampleFileName
-	}
+		config = vdfile.GenerateRandomDelay(config)
+		err = vdfile.WriteVDFile(path+"/"+exampleFileNameStream, config)
+		if err != nil {
+			return err
+		}
+	} else if protoTyp == "modbus" {
+		config, err := vdfile.DecodeVDFSModbus(vdTemplateModbus, "vdfile/vdfile_modbus")
+		if err != nil {
+			return err
+		}
 
-	config = vdfile.GenerateRandomDelay(config)
-	err = vdfile.WriteVDFile(path+"/"+filename, config)
-	if err != nil {
-		return err
+		err = vdfile.WriteVDFile(path+"/"+exampleFileNameModbus, config)
+		if err != nil {
+			return err
+		}
+
+	} else {
+		return fmt.Errorf("not known protocol type: %s", protoTyp)
 	}
 
 	return nil
