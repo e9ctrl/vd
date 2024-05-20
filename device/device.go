@@ -78,6 +78,7 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 		triggered:   make(chan []byte),
 		proto:       parser,
 		protocolTyp: vdfile.Protocol,
+		resMap:      createResps(vdfile),
 	}, nil
 }
 
