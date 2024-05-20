@@ -349,12 +349,12 @@ func TestGetMismatchModbus(t *testing.T) {
 	ts := newTestServer(t, a.routes())
 
 	defer ts.Close()
-	expected := ``
+	expected := `Error: feature not supported`
 
 	code, _, body := ts.get(t, "/mismatch")
-	if code != http.StatusOK {
+	if code != http.StatusInternalServerError {
 		t.Errorf("handler returned wrong status code: got %v want %v",
-			code, http.StatusOK)
+			code, http.StatusInternalServerError)
 	}
 	if string(body) != expected {
 		t.Errorf("handler returned unexpected body: got\n %s want\n %v",
@@ -382,7 +382,6 @@ func TestSetMismatchModbus(t *testing.T) {
 
 	defer ts.Close()
 	expectedSet := `Error: feature not supported`
-	expectedGet := ``
 
 	code, _, body := ts.set(t, "/mismatch/found error")
 	if code != http.StatusInternalServerError {
@@ -392,16 +391,6 @@ func TestSetMismatchModbus(t *testing.T) {
 	if string(body) != expectedSet {
 		t.Errorf("handler returned unexpected body: got\n %s want\n %v",
 			body, expectedSet)
-	}
-
-	code, _, body = ts.get(t, "/mismatch")
-	if code != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			code, http.StatusOK)
-	}
-	if string(body) != expectedGet {
-		t.Errorf("handler returned unexpected body: got\n %s want\n %v",
-			body, expectedGet)
 	}
 }
 

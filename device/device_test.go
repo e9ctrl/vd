@@ -479,7 +479,10 @@ func TestSetParameter(t *testing.T) {
 
 func TestGetMismatch(t *testing.T) {
 	t.Parallel()
-	got := dev.GetMismatch()
+	got, err := dev.GetMismatch()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	want := []byte("error")
 	if !bytes.Equal(got, want) {
 		t.Errorf("exp mismatch: %[1]s %[1]v got: %[2]s %[2]v", want, got)
@@ -598,7 +601,10 @@ func TestSetMismatch(t *testing.T) {
 			if !errors.Is(err, tt.expErr) {
 				t.Errorf("exp err: %s got: %v", tt.expErr, err)
 			}
-			got := dev.GetMismatch()
+			got, err := dev.GetMismatch()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			if string(got) != tt.expVal {
 				t.Errorf("exp mismatch: %s got: %s", tt.expVal, got)
 			}

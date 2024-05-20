@@ -247,22 +247,32 @@ func (s *StreamDevice) SetCommandDelay(name, val string) error {
 }
 
 // Return mismatch message
-func (s *StreamDevice) GetMismatch() []byte {
-	s.lock.Lock()
-	mis := s.vdfile.Mismatch
-	s.lock.Unlock()
-	return mis
+func (s *StreamDevice) GetMismatch() ([]byte, error) {
+	if s.protocolTyp == "stream" {
+		s.lock.Lock()
+		mis := s.vdfile.Mismatch
+		s.lock.Unlock()
+		return mis, nil
+	} else if s.protocolTyp == "modbus" {
+		return []byte(nil), ErrNotSupported
+	}
+	return []byte(nil), ErrNotKnownProto
 }
 
 // Method to set mismatch message, returns error when string it too long
 func (s *StreamDevice) SetMismatch(value string) error {
-	if len(value) > MISMATCH_LIMIT {
-		return fmt.Errorf("%w: %s", ErrMismatchTooLong, value)
+	if s.protocolTyp == "stream" {
+		if len(value) > MISMATCH_LIMIT {
+			return fmt.Errorf("%w: %s", ErrMismatchTooLong, value)
+		}
+		s.lock.Lock()
+		s.vdfile.Mismatch = []byte(value)
+		s.lock.Unlock()
+		return nil
+	} else if s.protocolTyp == "modbus" {
+		return ErrNotSupported
 	}
-	s.lock.Lock()
-	s.vdfile.Mismatch = []byte(value)
-	s.lock.Unlock()
-	return nil
+	return ErrNotKnownProto
 }
 
 // Method that cause that value of the parameter associated with the specified command is sent directly via TCP server to connected client.

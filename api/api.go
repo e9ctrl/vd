@@ -18,7 +18,7 @@ type Device interface {
 	SetParameter(param string, val any) error
 	GetCommandDelay(commandName string) (time.Duration, error)
 	SetCommandDelay(commandName string, val string) error
-	GetMismatch() []byte
+	GetMismatch() ([]byte, error)
 	SetMismatch(mismatch string) error
 	Trigger(param string) error
 }
@@ -91,7 +91,11 @@ func (a *Api) routes() http.Handler {
 	return r
 }
 func (a *Api) getMismatch(w http.ResponseWriter, r *http.Request) {
-	value := a.d.GetMismatch()
+	value, err := a.d.GetMismatch()
+	if err != nil {
+		errorHandler(w, err)
+		return
+	}
 	log.API("get mismatch")
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write(value)
