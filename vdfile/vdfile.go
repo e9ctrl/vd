@@ -183,7 +183,7 @@ func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFile, error) {
 	for _, param := range config.Params {
 		currentParam, err := parameter.New(param.Val, param.Opt, param.Typ)
 		if err != nil {
-			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Val, err)
+			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Name, err)
 		}
 
 		vd.Params[param.Name] = currentParam
@@ -282,7 +282,7 @@ func ReadVDFileModbusFromConfig(config ConfigModbus) (*VDFile, error) {
 
 		currentParam, err := parameter.New(param.Val, param.Opt, paramType)
 		if err != nil {
-			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Val, err)
+			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Name, err)
 		}
 
 		vd.Params[param.Name] = currentParam
