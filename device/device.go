@@ -233,6 +233,14 @@ func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 	return 0, ErrNotKnownProto
 }
 
+// Get global delay
+func (s *StreamDevice) GetGlobalDelay() time.Duration {
+	s.lock.Lock()
+	del := s.vdfile.Delay
+	s.lock.Unlock()
+	return del
+}
+
 // Set delay of the specified command, return error when command not found or when value cannot be converted to time.Duration
 func (s *StreamDevice) SetCommandDelay(name, val string) error {
 	if s.protocolTyp == "stream" {
@@ -253,6 +261,18 @@ func (s *StreamDevice) SetCommandDelay(name, val string) error {
 		return ErrNotSupported
 	}
 	return ErrNotKnownProto
+}
+
+// Set global delay that will overwrite command delays
+func (s *StreamDevice) SetGlobalDelay(val string) error {
+	if val, err := time.ParseDuration(val); err == nil {
+		s.lock.Lock()
+		s.vdfile.Delay = val
+		s.lock.Unlock()
+		return nil
+	} else {
+		return err
+	}
 }
 
 // Return mismatch message
