@@ -151,6 +151,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 			// temporary solution
 			resps[i].Name = name[0]
 			resps[i].ReqName = r.Name
+			resps[i].Delay = s.getDelay(name[0])
 		} else {
 			log.ERR(ErrResponseNotFound)
 			setResErr(mismatch, &resps[i])
@@ -178,17 +179,9 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		return nil
 	}
 
-	//using first command to determine the delay
-	cmdName := resps[0].Name
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	if cmdName != "" && s.vdfile != nil {
-		if cmd, exist := s.vdfile.Stream.Commands[cmdName]; exist {
-			s.delayRes(cmd.Dly)
-		} else {
-			log.ERR("command name %s not found", cmdName)
-		}
-	}
+	// delay response
+	s.delayRes(resps[0].Delay)
+
 	return buf
 }
 
@@ -356,4 +349,22 @@ func (s *StreamDevice) delayRes(d time.Duration) {
 
 	log.DLY("delaying response by", d)
 	time.Sleep(d)
+}
+
+// Method to determine the final delay value
+func (s *StreamDevice) getDelay(name string) time.Duration {
+	if s.protocolTyp == "stream" {
+		s.lock.Unlock()
+		dly := s.vdfile.Stream.Responses[name].Dly
+		s.lock.Unlock()
+		if dly != 0 {
+			return dly
+		}
+	} else {
+		s.lock.Lock()
+		dly := s.vdfile.Delay
+		s.lock.Unlock()
+		return dly
+	}
+	return 0
 }
