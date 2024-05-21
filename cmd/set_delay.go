@@ -10,7 +10,7 @@ import (
 
 var setDelayCmd = &cobra.Command{
 	Use:   "delay [command name] [value]",
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.RangeArgs(1, 2),
 	Short: "Command to set value of delays",
 	Long: `The command sets value of command delays.
 It communicates with REST API of the simulator and using HTTP POST verb modifies value of the specified delay.
@@ -24,7 +24,13 @@ Examples:
 		}
 
 		c := api.NewClient(apiAddr)
-		err := c.SetCommandDelay(args[0], args[1])
+		var err error
+		if len(args) == 1 {
+			err = c.SetGlobalDelay(args[0])
+		} else {
+			err = c.SetCommandDelay(args[0], args[1])
+		}
+
 		if err != nil {
 			return err
 		}

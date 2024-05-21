@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/e9ctrl/vd/api"
 
@@ -10,7 +11,7 @@ import (
 
 var getDelayCmd = &cobra.Command{
 	Use:   "delay [command name]",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.RangeArgs(0, 1),
 	Short: "Command to get value of delays",
 	Long: `This commands reads value command delays. 
 It communicates with REST API of the simulator and using HTTP GET it reads specified delays.
@@ -26,12 +27,20 @@ Examples:
 
 		c := api.NewClient(apiAddr)
 
-		t, err := c.GetCommandDelay(args[0])
+		var (
+			dly time.Duration
+			err error
+		)
+		if len(args) == 0 {
+			dly, err = c.GetGlobalDelay()
+		} else {
+			dly, err = c.GetCommandDelay(args[0])
+		}
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", t)
+		fmt.Fprintf(cmd.OutOrStdout(), "%s\n", dly)
 		return nil
 	},
 }

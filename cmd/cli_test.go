@@ -204,6 +204,30 @@ func TestGetCommandDelay(t *testing.T) {
 	}
 }
 
+func TestGetGlobalDelay(t *testing.T) {
+	tests := []struct {
+		name string
+		exp  string
+		api  string
+	}{
+		{"get modbus global delay", "5s\n", API_ADDR_MODBUS},
+		{"get stream global delay", "15s\n", API_ADDR_STREAM},
+		{"wrong api addr", `Error: Get "http://127.0.0.1:7878/delay": dial tcp 127.0.0.1:7878: connect: connection refused` + "\n", "127.0.0.1:7878"},
+		{"wrong api addr format", "Error: wrong HTTP address\n", "127.test"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			str := fmt.Sprintf("get delay --apiAddr %s", tt.api)
+			in := strings.Split(str, " ")
+			res := execute(in)
+			if res != tt.exp {
+				t.Errorf("exp value: %s got %s\n", tt.exp, res)
+			}
+		})
+	}
+}
+
 func TestTrigger(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -335,13 +359,47 @@ func TestSetMismatchWrong(t *testing.T) {
 	}
 }
 
+func TestSetCommandDelayStream(t *testing.T) {
+	res := execute([]string{"set", "delay", "get_temp", "5s", "--apiAddr", API_ADDR_STREAM})
 
 	expected := "OK\n"
 	if res != expected {
 		t.Errorf("exp value: %s got %s\n", expected, res)
 	}
 
-	res = execute([]string{"get", "delay", "get_temp", "--apiAddr", API_ADDR})
+	res = execute([]string{"get", "delay", "get_temp", "--apiAddr", API_ADDR_STREAM})
+
+	expected = "5s\n"
+	if res != expected {
+		t.Errorf("exp value: %s got %s\n", expected, res)
+	}
+}
+
+func TestSetDelayStream(t *testing.T) {
+	res := execute([]string{"set", "delay", "4s", "--apiAddr", API_ADDR_STREAM})
+
+	expected := "OK\n"
+	if res != expected {
+		t.Errorf("exp value: %s got %s\n", expected, res)
+	}
+
+	res = execute([]string{"get", "delay", "--apiAddr", API_ADDR_STREAM})
+
+	expected = "4s\n"
+	if res != expected {
+		t.Errorf("exp value: %s got %s\n", expected, res)
+	}
+}
+
+func TestSetDelayModbus(t *testing.T) {
+	res := execute([]string{"set", "delay", "5s", "--apiAddr", API_ADDR_MODBUS})
+
+	expected := "OK\n"
+	if res != expected {
+		t.Errorf("exp value: %s got %s\n", expected, res)
+	}
+
+	res = execute([]string{"get", "delay", "--apiAddr", API_ADDR_MODBUS})
 
 	expected = "5s\n"
 	if res != expected {
