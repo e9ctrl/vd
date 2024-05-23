@@ -255,15 +255,6 @@ func (s *StreamDevice) SetCommandDelay(name, val string) error {
 	return ErrNotKnownProto
 }
 
-	if val, err := time.ParseDuration(val); err == nil {
-		cmd.Dly = val
-	} else {
-		return err
-	}
-
-	return nil
-}
-
 // Return mismatch message
 func (s *StreamDevice) GetMismatch() ([]byte, error) {
 	if s.protocolTyp == "stream" {
