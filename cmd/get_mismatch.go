@@ -14,6 +14,7 @@ var getMismatchCmd = &cobra.Command{
 	Short: "Command to get mismatch message",
 	Long: `This command reads value of global mismatch. 
 It communicates with REST API of the simulator and using HTTP GET it reads mismatch string.
+For Modbus protocol this feature is not supported.
 Examples:
 	vd get mismatch
 	vd get mismatch --apiAddr 127.0.0.1:7070
