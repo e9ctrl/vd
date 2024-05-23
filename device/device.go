@@ -354,7 +354,7 @@ func (s *StreamDevice) delayRes(d time.Duration) {
 // Method to determine the final delay value
 func (s *StreamDevice) getDelay(name string) time.Duration {
 	if s.protocolTyp == "stream" {
-		s.lock.Unlock()
+		s.lock.Lock()
 		dly := s.vdfile.Stream.Responses[name].Dly
 		s.lock.Unlock()
 		if dly != 0 {
