@@ -486,7 +486,7 @@ func TestTriggerCommand(t *testing.T) {
 		{"two params command2 ", "get_two_params_2", []byte("ver: v1.0.0 off: 53.4\r\n"), nil},
 		{"empty command", "", []byte(nil), protocol.ErrCommandNotFound},
 		{"wrong command", "test", []byte(nil), protocol.ErrCommandNotFound},
-		{"set command", "set_mode", []byte(nil), nil},
+		{"set command", "set_mode", []byte(nil), protocol.ErrCommandNotFound},
 	}
 
 	for _, tt := range tests {
@@ -628,10 +628,10 @@ func TestSetCommandDelay(t *testing.T) {
 		expVal time.Duration
 		expErr error
 	}{
-		{"get set voltage delay", "get_voltage", "300us", 300 * time.Microsecond, nil},
-		{"get set psi delay", "set_max", "20ms", 20 * time.Millisecond, nil},
+		{"get set voltage delay", "return_get_voltage", "300us", 300 * time.Microsecond, nil},
+		{"get set psi delay", "return_set_psi", "20ms", 20 * time.Millisecond, nil},
 		{"wrong command name", "set_test", "10s", 0, protocol.ErrCommandNotFound},
-		{"wrong delay value", "set_current", "test", 0, nil},
+		{"wrong delay value", "return_set_current2", "test", 0, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
