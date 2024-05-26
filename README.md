@@ -75,6 +75,27 @@ and finally describes parameters available in the simulated device:
   name = "set_state"
   req = "SET {%s:state}"
   res = "OK"
+
+[[parameter]]
+  name = "speed"
+  typ = "float64"
+  val = 36.6
+
+[[request]]
+  name = "get_speed"
+  req = "get speed?"
+
+[[response]]
+  name = "return_get_speed_1"
+  req = "get_speed"
+  res = "High speed: {%f:speed}"
+  when = "{%f:speed} > 20"
+
+[[response]]
+  name = "return_get_speed_2"
+  req = "get_speed"
+  res = "Low speed: {%f:speed}"
+  when = "{%f:speed} <= 20"
 ```
 
 Here's a breakdown of the configuration:
@@ -85,6 +106,7 @@ Here's a breakdown of the configuration:
 * `res`:  The response the simulated device sends to the client for the request.
 * `dly`:  Response delay with time unit.
 * `opt`: (Optional) Limits the range of values a parameter can take (see below for example of usage).
+* `when`: (Optional) Tells the simulator when to use secified response.
 
 
 Below is a sample configuration:
@@ -127,6 +149,11 @@ outterm = "CR LF"
   typ = "float64"
   val = 36.6
 
+[[parameter]]
+  name = "speed"
+  typ = "float64"
+  val = 36.6
+
 [[command]]
   name = "get_temp"
   req = "TEMP?"
@@ -158,13 +185,35 @@ outterm = "CR LF"
   req = "status?"
   res = "mode:{%s:mode},temp:{%2f:temperature}"
 
+[[request]]
+  name = "get_speed"
+  req = "get speed?"
+
+[[response]]
+  name = "return_get_speed_1"
+  req = "get_speed"
+  res = "High speed: {%f:speed}"
+  when = "{%f:speed} > 20"
+
+[[response]]
+  name = "return_get_speed_2"
+  req = "get_speed"
+  res = "Low speed: {%f:speed}"
+  when = "{%f:speed} <= 20"
+
 ```
 
 # Parameter
 `parameter` is a place where parameter together with its name, type, possible values, and initial value are defined. 
 
 # Command
-`command` is section that keeps information about accepted request strings and responses to them. The command can reference none, one or more parameters. One can assign command to the parameter using `{` `}` with proper placeholder and parameter name between brackets e.g. `{%d:parameter}`.
+`command` is section that keeps information about accepted request strings and responses to them. The command can reference none, one or more parameters. One can assign command to the parameter using `{` `}` with proper placeholder and parameter name between brackets e.g. `{%d:parameter}`. This configuration can be used for simple commands.
+
+# Request
+`request` is a more sophisticated way to define commands for the given parameter.
+
+# Response
+`response` defines responses for the requests. Using `req` field one can connect response to the specified response. In that way, one request can have more than one response. With `when` one can decide when the given response will be used by the simulator.
 
 # Delays
 The `vd` tool enables the introduction of delays when sending responses to requests. This feature allows you to define custom wait times for the `vd` to hold off on every response and acknowledgment, enhancing the simulation of real-world network conditions or server response times.

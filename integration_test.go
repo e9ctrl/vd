@@ -120,6 +120,9 @@ func TestRun(t *testing.T) {
 		{"get status ch2", []byte("get status ch 2\r\n"), []byte("mode: BURS psi: 4.56\r\n")},
 		{"get status ch3", []byte("get status ch 3\r\n"), []byte("mode: BURS\npsi: 4.56\r\n")},
 		{"test command that can be parsed in two ways", []byte("set ch1 tec07F\r\n"), []byte("set ch1 tec 7F\r\r\n")},
+		// This case needs to be added when "when" functionality will be added
+		// otherwise get speed returns one of two responses randomly
+		//{"get speed", []byte("get speed?\r\n"), []byte("High speed: 36.600000\r\n")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

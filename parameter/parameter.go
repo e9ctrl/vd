@@ -32,6 +32,7 @@ type Parameter interface {
 	Value() any
 	String() string
 	Opts() []string
+	Type() reflect.Kind
 }
 
 // ConcreteParameter[T paramType] hold the actual concrete value for each parameter created with New constructor.

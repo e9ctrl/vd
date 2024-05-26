@@ -23,9 +23,10 @@ type Request struct {
 }
 
 type Response struct {
-	Name   string
-	Params map[string]any
-	Err    ResponseErr
+	Name    string
+	ReqName string
+	Params  map[string]any
+	Err     ResponseErr
 }
 
 type RequestTyp int

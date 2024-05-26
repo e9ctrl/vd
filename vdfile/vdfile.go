@@ -27,11 +27,26 @@ type configCommand struct {
 	Dly  string `toml:"dly,omitempty"`
 }
 
+type configRequest struct {
+	Name    string `toml:"name"`
+	Request string `toml:"req"`
+}
+
+type configResponse struct {
+	Name     string `toml:"name"`
+	ReqName  string `toml:"req"`
+	Response string `toml:"res"`
+	When     string `toml:"when,omitempty"`
+	Dly      string `toml:"dly,omitempty"`
+}
+
 type Config struct {
 	InTerminator  string            `toml:"interm"`
 	OutTerminator string            `toml:"outterm"`
 	Params        []configParameter `toml:"parameter"`
-	Commands      []configCommand   `toml:"command"`
+	Commands      []configCommand   `toml:"command,omitempty"`
+	Requests      []configRequest   `toml:"request,omitempty"`
+	Responses     []configResponse  `toml:"response,omitempty"`
 	Mismatch      string            `toml:"mismatch,omitempty"`
 }
 
@@ -41,6 +56,8 @@ type VDFile struct {
 	OutTerminator []byte
 	Params        map[string]parameter.Parameter
 	Commands      map[string]*command.Command
+	Requests      map[string]*command.Request
+	Responses     map[string]*command.Response
 	Mismatch      []byte
 }
 
@@ -54,11 +71,37 @@ func ReadVDFile(path string) (*VDFile, error) {
 	return ReadVDFileFromConfig(config)
 }
 
+func CommandsToReqRes(commands map[string]*command.Command) (map[string]*command.Request, map[string]*command.Response) {
+	reqs := make(map[string]*command.Request, 0)
+	resps := make(map[string]*command.Response, 0)
+
+	for _, cmd := range commands {
+		currentReq := &command.Request{
+			Name: cmd.Name,
+			Cmd:  []byte(cmd.Req),
+		}
+
+		reqs[cmd.Name] = currentReq
+
+		currentRes := &command.Response{
+			Name: cmd.Name,
+			Req:  cmd.Name,
+			Cmd:  []byte(cmd.Res),
+			Dly:  cmd.Dly,
+		}
+
+		resps[cmd.Name] = currentRes
+	}
+	return reqs, resps
+}
+
 // Creates vdfile struct based on Config containing result of TOML file parsing
 func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 	vdfile := &VDFile{
-		Params:   make(map[string]parameter.Parameter, 0),
-		Commands: make(map[string]*command.Command, 0),
+		Params:    make(map[string]parameter.Parameter, 0),
+		Commands:  make(map[string]*command.Command, 0),
+		Requests:  make(map[string]*command.Request, 0),
+		Responses: make(map[string]*command.Response, 0),
 	}
 
 	paramCount := make(map[string]bool)
@@ -76,15 +119,30 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 		}
 
 		vdfile.Params[param.Name] = currentParam
-
 	}
 
 	commandCount := make(map[string]bool)
 	for _, command := range config.Commands {
 		if _, exists := commandCount[command.Name]; exists {
-			return nil, fmt.Errorf("%s name is duplicated", command.Name)
+			return nil, fmt.Errorf("%s command name is duplicated", command.Name)
 		}
 		commandCount[command.Name] = true
+	}
+
+	reqsCount := make(map[string]bool)
+	for _, req := range config.Requests {
+		if _, exists := reqsCount[req.Name]; exists {
+			return nil, fmt.Errorf("%s request name is duplicated", req.Name)
+		}
+		reqsCount[req.Name] = true
+	}
+
+	respsCount := make(map[string]bool)
+	for _, res := range config.Responses {
+		if _, exists := respsCount[res.Name]; exists {
+			return nil, fmt.Errorf("%s response name is duplicated", res.Name)
+		}
+		respsCount[res.Name] = true
 	}
 
 	for _, cmd := range config.Commands {
@@ -96,6 +154,28 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 		}
 
 		vdfile.Commands[cmd.Name] = currentCmd
+	}
+
+	reqs, resps := CommandsToReqRes(vdfile.Commands)
+	vdfile.Requests = reqs
+	vdfile.Responses = resps
+
+	for _, req := range config.Requests {
+		currentReq := &command.Request{
+			Name: req.Name,
+			Cmd:  []byte(req.Request),
+		}
+		vdfile.Requests[req.Name] = currentReq
+	}
+
+	for _, res := range config.Responses {
+		currentRes := &command.Response{
+			Name: res.Name,
+			Req:  res.ReqName,
+			Cmd:  []byte(res.Response),
+			Dly:  parseDelays(res.Dly),
+		}
+		vdfile.Responses[res.Name] = currentRes
 	}
 
 	vdfile.InTerminator = parseTerminator(config.InTerminator)

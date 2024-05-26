@@ -62,110 +62,64 @@ func TestDecode(t *testing.T) {
 }
 
 func TestBuildCommandPatterns(t *testing.T) {
-	input := map[string]*command.Command{}
-	cmd1 := &command.Command{
-		Name: "current_get",
-		Req:  []byte("get curr?"),
-		Res:  []byte("curr {%3.2f:current}"),
+	vd, err := vdfile.ReadVDFile(FILE1)
+	if err != nil {
+		t.Fatalf("error while parsing test file: %v", err)
 	}
-	cmd2 := &command.Command{
-		Name: "current_set",
-		Req:  []byte("set curr {%02d:current}"),
-		Res:  []byte("ok"),
-	}
-	cmd3 := &command.Command{
-		Name: "version_get",
-		Req:  []byte("VER?"),
-		Res:  []byte("{%s:version}"),
-	}
-	cmd4 := &command.Command{
-		Name: "psi_set",
-		Req:  []byte("set {%03X:psi} psi"),
-	}
-	cmd5 := &command.Command{
-		Name: "get_status",
-		Req:  []byte("S?"),
-		Res:  []byte("{%s:version} - {%.1f:temp}"),
-	}
-	cmd6 := &command.Command{
-		Name: "get_stat",
-		Req:  []byte("get stat?"),
-		Res:  []byte("{%s:version}\n{%.1f:temp}"),
-	}
-
-	cmd7 := &command.Command{
-		Name: "get_hex",
-		Req:  []byte("HEX?"),
-		Res:  []byte("0x{%03X:hex}"),
-	}
-
-	cmd8 := &command.Command{
-		Name: "set_hex",
-		Req:  []byte("HEX 0x{%03X:hex}"),
-		Res:  []byte("HEX 0x{%03X:hex}"),
-	}
-
-	input["current_get"] = cmd1
-	input["current_set"] = cmd2
-	input["version_get"] = cmd3
-	input["psi_set"] = cmd4
-	input["get_status"] = cmd5
-	input["get_stat"] = cmd6
-	input["get_hex"] = cmd7
-	input["set_hex"] = cmd8
 
 	exp := map[string]CommandPattern{}
 
+	m1 := make(map[string][]Item)
+	m1["get_current"] = []Item{{typ: ItemCommand, val: "CUR"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%d"}, {typ: ItemParam, val: "current"}, {typ: ItemRightMeta, val: "}"}}
 	p1 := CommandPattern{
-		reqItems: []Item{{typ: ItemCommand, val: "get"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "curr?"}},
-		resItems: []Item{{typ: ItemCommand, val: "curr"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%3.2f"}, {typ: ItemParam, val: "current"}, {typ: ItemRightMeta, val: "}"}},
+		reqItems: []Item{{typ: ItemCommand, val: "CUR?"}},
+		resItems: m1,
 	}
-	exp["current_get"] = p1
+	exp["get_current"] = p1
 
+	m2 := make(map[string][]Item)
+	m2["set_current"] = []Item{{typ: ItemCommand, val: "OK"}}
 	p2 := CommandPattern{
-		reqItems: []Item{{typ: ItemCommand, val: "set"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "curr"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%02d"}, {typ: ItemParam, val: "current"}, {typ: ItemRightMeta, val: "}"}},
-		resItems: []Item{{typ: ItemCommand, val: "ok"}},
+		reqItems: []Item{{typ: ItemCommand, val: "CUR"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%d"}, {typ: ItemParam, val: "current"}, {typ: ItemRightMeta, val: "}"}},
+		resItems: m2,
 	}
 
-	exp["current_set"] = p2
+	exp["set_current"] = p2
 
+	m3 := make(map[string][]Item)
+	m3["get_version"] = []Item{{typ: ItemLeftMeta, val: "{"}, {typ: ItemStringValuePlaceholder, val: "%s"}, {typ: ItemParam, val: "version"}, {typ: ItemRightMeta, val: "}"}}
 	p3 := CommandPattern{
 		reqItems: []Item{{typ: ItemCommand, val: "VER?"}},
-		resItems: []Item{{typ: ItemLeftMeta, val: "{"}, {typ: ItemStringValuePlaceholder, val: "%s"}, {typ: ItemParam, val: "version"}, {typ: ItemRightMeta, val: "}"}},
+		resItems: m3,
 	}
 
-	exp["version_get"] = p3
+	exp["get_version"] = p3
 
+	m4 := make(map[string][]Item)
+	m4["get_status_1"] = []Item{{typ: ItemLeftMeta, val: "{"}, {typ: ItemStringValuePlaceholder, val: "%s"}, {typ: ItemParam, val: "version"}, {typ: ItemRightMeta, val: "}"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "-"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%.1f"}, {typ: ItemParam, val: "temp"}, {typ: ItemRightMeta, val: "}"}}
 	p4 := CommandPattern{
-		reqItems: []Item{{typ: ItemCommand, val: "set"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%03X"}, {typ: ItemParam, val: "psi"}, {typ: ItemRightMeta, val: "}"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "psi"}},
-	}
-	exp["psi_set"] = p4
-
-	p5 := CommandPattern{
 		reqItems: []Item{{typ: ItemCommand, val: "S?"}},
-		resItems: []Item{{typ: ItemLeftMeta, val: "{"}, {typ: ItemStringValuePlaceholder, val: "%s"}, {typ: ItemParam, val: "version"}, {typ: ItemRightMeta, val: "}"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "-"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%.1f"}, {typ: ItemParam, val: "temp"}, {typ: ItemRightMeta, val: "}"}},
+		resItems: m4,
 	}
-	exp["get_status"] = p5
+	exp["get_status_1"] = p4
 
-	p6 := CommandPattern{
-		reqItems: []Item{{typ: ItemCommand, val: "get"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "stat?"}},
-		resItems: []Item{{typ: ItemLeftMeta, val: "{"}, {typ: ItemStringValuePlaceholder, val: "%s"}, {typ: ItemParam, val: "version"}, {typ: ItemRightMeta, val: "}"}, {typ: ItemEscape, val: "\n"}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%.1f"}, {typ: ItemParam, val: "temp"}, {typ: ItemRightMeta, val: "}"}},
-	}
-	exp["get_stat"] = p6
-
-	p8 := CommandPattern{
+	m5 := make(map[string][]Item)
+	m5["set_hex"] = []Item{{typ: ItemCommand, val: "HEX"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "0x"}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%03X"}, {typ: ItemParam, val: "hex"}, {typ: ItemRightMeta, val: "}"}}
+	p5 := CommandPattern{
 		reqItems: []Item{{typ: ItemCommand, val: "HEX"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "0x"}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%03X"}, {typ: ItemParam, val: "hex"}, {typ: ItemRightMeta, val: "}"}},
-		resItems: []Item{{typ: ItemCommand, val: "HEX"}, {typ: ItemWhiteSpace, val: " "}, {typ: ItemCommand, val: "0x"}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%03X"}, {typ: ItemParam, val: "hex"}, {typ: ItemRightMeta, val: "}"}},
+		resItems: m5,
 	}
-	exp["set_hex"] = p8
+	exp["set_hex"] = p5
 
-	p7 := CommandPattern{
+	m6 := make(map[string][]Item)
+	m6["get_hex"] = []Item{{typ: ItemCommand, val: "0x"}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%03X"}, {typ: ItemParam, val: "hex"}, {typ: ItemRightMeta, val: "}"}}
+	p6 := CommandPattern{
 		reqItems: []Item{{typ: ItemCommand, val: "HEX?"}},
-		resItems: []Item{{typ: ItemCommand, val: "0x"}, {typ: ItemLeftMeta, val: "{"}, {typ: ItemNumberValuePlaceholder, val: "%03X"}, {typ: ItemParam, val: "hex"}, {typ: ItemRightMeta, val: "}"}},
+		resItems: m6,
 	}
-	exp["get_hex"] = p7
+	exp["get_hex"] = p6
 
-	cmdPattern, err := buildCommandPatterns(input)
+	cmdPattern, err := buildCommandPatterns(vd)
 	if err != nil {
 		t.Fatalf("building pattern should not fail: %v", err)
 	}
@@ -185,21 +139,34 @@ func TestBuildCommandPatterns(t *testing.T) {
 				t.Errorf("param %s exp value %v on position %d got: %v", expKey, expVal.reqItems[i].Value(), i, req.Value())
 			}
 		}
-		for i, res := range val.resItems {
-			if res.Type() != expVal.resItems[i].Type() {
-				t.Errorf("param %s exp type %v on position %d got: %v", expKey, expVal.resItems[i].Type(), i, res.Type())
-			}
-			if res.Value() != expVal.resItems[i].Value() {
-				t.Errorf("param %s exp value %v on position %d got: %v", expKey, expVal.resItems[i].Value(), i, res.Value())
+		for k, v := range val.resItems {
+			for i, res := range v {
+				if res.Type() != expVal.resItems[k][i].Type() {
+					t.Errorf("param %s exp type %v on position %d got: %v", expKey, expVal.resItems[k][i].Type(), i, res.Type())
+				}
+				if res.Value() != expVal.resItems[k][i].Value() {
+					t.Errorf("param %s exp value %v on position %d got: %v", expKey, expVal.resItems[k][i].Value(), i, res.Value())
+				}
 			}
 		}
 	}
 }
 
-func TestBuildCommandPatternsEmptyCmds(t *testing.T) {
-	cmdPattern, err := buildCommandPatterns(nil)
+func TestBuildCommandPatternsEmptyVD(t *testing.T) {
+	vd := &vdfile.VDFile{}
+	cmdPattern, err := buildCommandPatterns(vd)
 	if err != nil {
-		t.Fatalf("building pattern should not fail: %v", err)
+		t.Errorf("erros should be nil, got :%v", err)
+	}
+	if len(cmdPattern) != 0 {
+		t.Error("patterns should be empty")
+	}
+}
+
+func TestBuildCommandPatternsNilVD(t *testing.T) {
+	cmdPattern, err := buildCommandPatterns(nil)
+	if !errors.Is(err, ErrNilVDFile) {
+		t.Fatalf("exp error: %v got: %v", ErrNilVDFile, err)
 	}
 	if len(cmdPattern) != 0 {
 		t.Error("patterns should be empty")
@@ -207,15 +174,16 @@ func TestBuildCommandPatternsEmptyCmds(t *testing.T) {
 }
 
 func TestBuildCommandPatternsReqErr(t *testing.T) {
-	input := map[string]*command.Command{}
-	cmd1 := &command.Command{
+	vd := &vdfile.VDFile{}
+	req1 := &command.Request{
 		Name: "current_get",
-		Req:  []byte("get curr{}?"),
-		Res:  []byte("curr {%3.2f:current}"),
+		Cmd:  []byte("get curr{}?"),
 	}
-	input["current_get"] = cmd1
+	m1 := make(map[string]*command.Request)
+	m1[req1.Name] = req1
+	vd.Requests = m1
 
-	cmdPattern, err := buildCommandPatterns(input)
+	cmdPattern, err := buildCommandPatterns(vd)
 	if cmdPattern != nil {
 		t.Error("patterns should be empty")
 	}
@@ -225,15 +193,26 @@ func TestBuildCommandPatternsReqErr(t *testing.T) {
 }
 
 func TestBuildCommandPatternsResErr(t *testing.T) {
-	input := map[string]*command.Command{}
-	cmd1 := &command.Command{
-		Name: "current_get",
-		Req:  []byte("get curr?"),
-		Res:  []byte("curr {%3z.2f:current}"),
-	}
-	input["current_get"] = cmd1
+	vd := &vdfile.VDFile{}
 
-	cmdPattern, err := buildCommandPatterns(input)
+	req1 := &command.Request{
+		Name: "current_get",
+		Cmd:  []byte("get curr?"),
+	}
+	mReq := make(map[string]*command.Request)
+	mReq[req1.Name] = req1
+	vd.Requests = mReq
+
+	res1 := &command.Response{
+		Name: "current_get",
+		Req:  "current_get",
+		Cmd:  []byte("curr {}%3.2f:current}"),
+	}
+	mRes := make(map[string]*command.Response)
+	mRes[res1.Name] = res1
+	vd.Responses = mRes
+
+	cmdPattern, err := buildCommandPatterns(vd)
 	if cmdPattern != nil {
 		t.Error("patterns should be empty")
 	}
@@ -399,17 +378,17 @@ func TestEncode(t *testing.T) {
 		resps   []protocol.Response
 		expData []byte
 	}{
-		{"current param", []protocol.Response{{Name: "get_current", Params: map[string]any{"current": 20}}}, []byte("CUR 20\r\n")},
-		{"get command str", []protocol.Response{{Name: "get_version", Params: map[string]any{"version": "version 1.0"}}}, []byte("version 1.0\r\n")},
-		{"get status two params", []protocol.Response{{Name: "get_status_1", Params: map[string]any{"version": "version 1.0", "temp": 30.0}}}, []byte("version 1.0 - 30.0\r\n")},
-		{"get status two params with new line", []protocol.Response{{Name: "get_status_3", Params: map[string]any{"mode": "NORM", "psi": 6.86}}}, []byte("mode: NORM\npsi: 6.86\r\n")},
-		{"set psi command", []protocol.Response{{Name: "set_psi", Params: map[string]any{"psi": 30.42}}}, []byte("PSI 30.42 OK\r\n")},
+		{"current param", []protocol.Response{{Name: "get_current", ReqName: "get_current", Params: map[string]any{"current": 20}}}, []byte("CUR 20\r\n")},
+		{"get command str", []protocol.Response{{Name: "get_version", ReqName: "get_version", Params: map[string]any{"version": "version 1.0"}}}, []byte("version 1.0\r\n")},
+		{"get status two params", []protocol.Response{{Name: "get_status_1", ReqName: "get_status_1", Params: map[string]any{"version": "version 1.0", "temp": 30.0}}}, []byte("version 1.0 - 30.0\r\n")},
+		{"get status two params with new line", []protocol.Response{{Name: "get_status_3", ReqName: "get_status_3", Params: map[string]any{"mode": "NORM", "psi": 6.86}}}, []byte("mode: NORM\npsi: 6.86\r\n")},
+		{"set psi command", []protocol.Response{{Name: "set_psi", ReqName: "set_psi", Params: map[string]any{"psi": 30.42}}}, []byte("PSI 30.42 OK\r\n")},
 		{"empty command", []protocol.Response{{Name: ""}}, []byte(nil)},
 		{"non-existent command", []protocol.Response{{Err: protocol.ResError, Name: "wrong_cmd"}}, []byte(nil)},
 		{"non-existent get command", []protocol.Response{{Name: "wrong_cmd"}}, []byte(nil)},
-		{"set current command", []protocol.Response{{Name: "set_current", Params: map[string]any{"current": 30}}}, []byte("OK\r\n")},
+		{"set current command", []protocol.Response{{Name: "set_current", ReqName: "set_current", Params: map[string]any{"current": 30}}}, []byte("OK\r\n")},
 		{"wrong value of the command", []protocol.Response{{Err: protocol.ResMismatch, Name: "set_current", Params: map[string]any{"current": "test"}}}, []byte(nil)},
-		{"set command with opt", []protocol.Response{{Name: "set_mode", Params: map[string]any{"mode": "SING"}}}, []byte("ok\r\n")},
+		{"set command with opt", []protocol.Response{{Name: "set_mode", ReqName: "set_mode", Params: map[string]any{"mode": "SING"}}}, []byte("ok\r\n")},
 		{"wrong opt of the command", []protocol.Response{{Err: protocol.ResMismatch, Name: "set_mode", Params: map[string]any{"mode": "TEST"}}}, []byte(nil)},
 	}
 

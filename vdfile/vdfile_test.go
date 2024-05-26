@@ -54,6 +54,7 @@ func TestWriteVDFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if !cmp.Equal(want, got) {
 		t.Fatal(cmp.Diff(want, got))
 	}

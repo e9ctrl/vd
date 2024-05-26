@@ -32,16 +32,14 @@ type Device struct {
 	proto     protocol.Protocol
 	triggered chan []byte
 	lock      sync.RWMutex
-	resMap    map[string]string // key is a request, value is a response
+	resMap    map[string][]string // key is a request, value is a response
 }
 
-func createResps(vdfile *vdfile.VDFile) map[string]string {
-	resps := make(map[string]string, len(vdfile.Commands))
+func createResps(vdfile *vdfile.VDFile) map[string][]string {
+	resps := make(map[string][]string, len(vdfile.Responses))
 
-	for _, cmd := range vdfile.Commands {
-		// Currently, reponse has exactly the same name as requests,
-		// in the future, their names will differ
-		resps[cmd.Name] = cmd.Name
+	for _, res := range vdfile.Responses {
+		resps[res.Req] = append(resps[res.Req], res.Name)
 	}
 
 	return resps
@@ -51,6 +49,7 @@ func createResps(vdfile *vdfile.VDFile) map[string]string {
 func NewDevice(vdfile *vdfile.VDFile) (*Device, error) {
 	// make sure the parser is initialize successfully
 	parser, err := stream.NewParser(vdfile)
+
 	if err != nil {
 		return nil, err
 	}
@@ -97,6 +96,7 @@ func (s *Device) Handle(cmd []byte) []byte {
 	}
 
 	reqs, err := s.proto.Decode(cmd)
+
 	if err != nil {
 		log.ERR(err)
 		return nil
@@ -126,7 +126,9 @@ func (s *Device) Handle(cmd []byte) []byte {
 		// check if response for this request exists
 		// future logic here
 		if name, ok := s.resMap[r.Name]; ok {
-			resps[i].Name = name
+			// temporary solution
+			resps[i].Name = name[0]
+			resps[i].ReqName = r.Name
 		} else {
 			log.ERR(ErrResponseNotFound)
 			setResErr(mismatch, &resps[i])
@@ -195,7 +197,7 @@ func (s *Device) SetParameter(name string, value any) error {
 // Get delay of the specified command, return error when command not found
 func (s *Device) GetCommandDelay(name string) (time.Duration, error) {
 	s.lock.Lock()
-	cmd, exists := s.vdfile.Commands[name]
+	cmd, exists := s.vdfile.Responses[name]
 	s.lock.Unlock()
 	if !exists {
 		return 0, fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
@@ -207,7 +209,7 @@ func (s *Device) GetCommandDelay(name string) (time.Duration, error) {
 // Set delay of the specified command, return error when command not found or when value cannot be converted to time.Duration
 func (s *Device) SetCommandDelay(name, val string) error {
 	s.lock.Lock()
-	cmd, exists := s.vdfile.Commands[name]
+	cmd, exists := s.vdfile.Responses[name]
 	s.lock.Unlock()
 	if !exists {
 		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
@@ -245,13 +247,19 @@ func (s *Device) SetMismatch(value string) error {
 // It returns an error when there is no client connected to TCP server or when parameter was not found.
 func (s *Device) Trigger(cmdName string) error {
 	s.lock.Lock()
-	_, exists := s.vdfile.Commands[cmdName]
+	_, exists := s.resMap[cmdName]
 	s.lock.Unlock()
 	if !exists {
 		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, cmdName)
 	}
 
 	res := s.proto.Trigger(cmdName)
+
+	// check if response for this request exists
+	// future logic here
+	res.Name = s.resMap[cmdName][0]
+	res.ReqName = cmdName
+
 	for k := range res.Params {
 		v, err := s.GetParameter(k)
 		if err != nil {
