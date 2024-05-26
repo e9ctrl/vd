@@ -27,7 +27,7 @@ type configCommand struct {
 	Dly  string `toml:"dly,omitempty"`
 }
 
-type Config struct {
+type VDFile struct {
 	InTerminator  string            `toml:"interm"`
 	OutTerminator string            `toml:"outterm"`
 	Params        []configParameter `toml:"parameter"`
@@ -36,7 +36,7 @@ type Config struct {
 }
 
 // VDFile struct
-type VDFile struct {
+type StreamConfig struct {
 	InTerminator  []byte
 	OutTerminator []byte
 	Params        map[string]parameter.Parameter
@@ -45,37 +45,38 @@ type VDFile struct {
 }
 
 // Read VDFile from disk from the given filepath
-func ReadVDFile(path string) (*VDFile, error) {
-	config, err := DecodeVDFile(path)
+func ReadVDFile(path string) (*StreamConfig, error) {
+	vd, err := DecodeVDFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed decoding file with err %w", err)
 	}
 
-	return ReadVDFileFromConfig(config)
+	return GenerateStreamDeviceConfig(vd)
 }
 
 // Creates vdfile struct based on Config containing result of TOML file parsing
-func ReadVDFileFromConfig(config Config) (*VDFile, error) {
-	vdfile := &VDFile{
+func GenerateStreamDeviceConfig(vd VDFile) (*StreamConfig, error) {
+
+	config := &StreamConfig{
 		Params:   make(map[string]parameter.Parameter, 0),
 		Commands: make(map[string]*command.Command, 0),
 	}
 
 	paramCount := make(map[string]bool)
-	for _, param := range config.Params {
+	for _, param := range vd.Params {
 		if _, exists := paramCount[param.Name]; exists {
 			return nil, fmt.Errorf("%s name is duplicated", param.Name)
 		}
 		paramCount[param.Name] = true
 	}
 
-	for _, param := range config.Params {
+	for _, param := range vd.Params {
 		currentParam, err := parameter.New(param.Val, param.Opt, param.Typ)
 		if err != nil {
 			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Val, err)
 		}
 
-		vdfile.Params[param.Name] = currentParam
+		config.Params[param.Name] = currentParam
 
 	}
 
@@ -87,7 +88,7 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 		commandCount[command.Name] = true
 	}
 
-	for _, cmd := range config.Commands {
+	for _, cmd := range vd.Commands {
 		currentCmd := &command.Command{
 			Name: cmd.Name,
 			Req:  []byte(cmd.Req),
@@ -95,38 +96,38 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 			Dly:  parseDelays(cmd.Dly),
 		}
 
-		vdfile.Commands[cmd.Name] = currentCmd
+		config.Commands[cmd.Name] = currentCmd
 	}
 
-	vdfile.InTerminator = parseTerminator(config.InTerminator)
-	vdfile.OutTerminator = parseTerminator(config.OutTerminator)
-	vdfile.Mismatch = []byte(config.Mismatch)
+	config.InTerminator = parseTerminator(vd.InTerminator)
+	config.OutTerminator = parseTerminator(vd.OutTerminator)
+	config.Mismatch = []byte(vd.Mismatch)
 
-	return vdfile, nil
+	return config, nil
 }
 
 // Parse TOML file to Config struct
-func DecodeVDFile(path string) (Config, error) {
-	var config Config
-	_, err := toml.DecodeFile(path, &config)
+func DecodeVDFile(path string) (VDFile, error) {
+	var vd VDFile
+	_, err := toml.DecodeFile(path, &vd)
 
-	return config, err
+	return vd, err
 }
 
 // Parse TOML file but using fle system FS to Config struct
-func DecodeVDFS(f fs.FS, path string) (Config, error) {
-	var config Config
-	_, err := toml.DecodeFS(f, path, &config)
+func DecodeVDFS(f fs.FS, path string) (VDFile, error) {
+	var vd VDFile
+	_, err := toml.DecodeFS(f, path, &vd)
 
-	return config, err
+	return vd, err
 }
 
 // Created TOML config file based on Config
-func WriteVDFile(path string, config Config) error {
+func WriteVDFile(path string, vd VDFile) error {
 	var buf = bytes.Buffer{}
 	var encoder = toml.NewEncoder(&buf)
 
-	err := encoder.Encode(config)
+	err := encoder.Encode(vd)
 	if err != nil {
 		return err
 	}

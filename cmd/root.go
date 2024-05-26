@@ -56,7 +56,7 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 
 		fmt.Printf(banner, version, website)
 		// parse config file
-		vdfile, err := vdfile.ReadVDFile(args[0])
+		config, err := vdfile.ReadVDFile(args[0])
 		if err != nil {
 			fmt.Printf("Config loading failed %v", err)
 			os.Exit(1)
@@ -66,7 +66,7 @@ By default, vd is listenning on 127.0.0.1:9999.`,
 		defer stop()
 
 		// create device instance using loaded vdfile
-		str, err := device.NewDevice(vdfile)
+		str, err := device.NewDevice(config)
 		if err != nil {
 			fmt.Printf("Device creation failed %v", err)
 			os.Exit(1)

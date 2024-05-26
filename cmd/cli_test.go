@@ -24,33 +24,33 @@ const (
 )
 
 func TestMain(m *testing.M) {
-	config, err := vdfile.DecodeVDFile(FILE)
+	vd, err := vdfile.DecodeVDFile(FILE)
 	if err != nil {
 		panic(err)
 	}
 
-	for i := 0; i < len(config.Commands); i++ {
-		switch config.Commands[i].Name {
+	for i := 0; i < len(vd.Commands); i++ {
+		switch vd.Commands[i].Name {
 		case "get_psi":
-			config.Commands[i].Dly = "3s"
+			vd.Commands[i].Dly = "3s"
 		case "get_temp":
-			config.Commands[i].Dly = "1s"
+			vd.Commands[i].Dly = "1s"
 		case "get_mode":
-			config.Commands[i].Dly = "5s"
+			vd.Commands[i].Dly = "5s"
 		}
 	}
-	config.Mismatch = "Wrong query"
+	vd.Mismatch = "Wrong query"
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
-	vdfile, err := vdfile.ReadVDFileFromConfig(config)
+	config, err := vdfile.GenerateStreamDeviceConfig(vd)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
 	// create stream device
-	d, err := device.NewDevice(vdfile)
+	d, err := device.NewDevice(config)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

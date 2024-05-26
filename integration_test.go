@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	vdfileBase     vdfile.Config
-	vdfileDelay    vdfile.Config
-	vdfileMismatch vdfile.Config
+	vdfileBase     vdfile.VDFile
+	vdfileDelay    vdfile.VDFile
+	vdfileMismatch vdfile.VDFile
 )
 
 const (
@@ -57,14 +57,14 @@ func init() {
 	vdfileMismatch = config2
 }
 
-func setupTestCase(t *testing.T, addr string, vd vdfile.Config) func() {
-	vdfile, err := vdfile.ReadVDFileFromConfig(vd)
+func setupTestCase(t *testing.T, addr string, vd vdfile.VDFile) func() {
+	config, err := vdfile.GenerateStreamDeviceConfig(vd)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	//create stream device
-	d, err := device.NewDevice(vdfile)
+	d, err := device.NewDevice(config)
 	if err != nil {
 		t.Fatal(err)
 	}
