@@ -8,6 +8,7 @@ import (
 
 	"github.com/e9ctrl/vd/log"
 	"github.com/e9ctrl/vd/protocol"
+	"github.com/e9ctrl/vd/protocol/modbus"
 	"github.com/e9ctrl/vd/protocol/stream"
 	"github.com/e9ctrl/vd/server"
 	"github.com/e9ctrl/vd/vdfile"
@@ -23,22 +24,27 @@ var (
 	ErrMismatchTooLong = errors.New("new mismatch message exceeded 255 characters limit")
 	// Error to inform that response for the request was not found
 	ErrResponseNotFound = errors.New("no response found")
+	// Error return by NewDevice when protocol type is now known
+	ErrNotKnownProto = errors.New("not know protocol type")
+	// Error to inform that method is not implemented by certain protocol
+	ErrNotSupported = errors.New("feature not supported")
 )
 
 // Stream device store the information of a set of parameters
 type StreamDevice struct {
 	server.Handler
-	vdfile    *vdfile.VDFile
-	proto     protocol.Protocol
-	triggered chan []byte
-	lock      sync.RWMutex
-	resMap    map[string][]string // key is a request, value is a response
+	vdfile      *vdfile.VDFile
+	proto       protocol.Protocol
+	triggered   chan []byte
+	lock        sync.RWMutex
+	resMap      map[string][]string // key is a request, value is a response
+	protocolTyp string
 }
 
 func createResps(vdfile *vdfile.VDFile) map[string][]string {
-	resps := make(map[string][]string, len(vdfile.Responses))
+	resps := make(map[string][]string, len(vdfile.Stream.Responses))
 
-	for _, res := range vdfile.Responses {
+	for _, res := range vdfile.Stream.Responses {
 		resps[res.Req] = append(resps[res.Req], res.Name)
 	}
 
@@ -47,17 +53,34 @@ func createResps(vdfile *vdfile.VDFile) map[string][]string {
 
 // Create a new stream device given the virtual device configuration file
 func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
-	// make sure the parser is initialize successfully
-	parser, err := stream.NewParser(vdfile)
-	if err != nil {
-		return nil, err
+	var (
+		parser protocol.Protocol
+		err    error
+	)
+
+	resps := make(map[string][]string)
+	switch vdfile.Protocol {
+	case "stream":
+		parser, err = stream.NewParser(vdfile)
+		if err != nil {
+			return nil, err
+		}
+		resps = createResps(vdfile)
+	case "modbus":
+		parser, err = modbus.NewParser(vdfile)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, ErrNotKnownProto
 	}
 
 	return &StreamDevice{
-		vdfile:    vdfile,
-		triggered: make(chan []byte),
-		proto:     parser,
-		resMap:    createResps(vdfile),
+		vdfile:      vdfile,
+		triggered:   make(chan []byte),
+		proto:       parser,
+		protocolTyp: vdfile.Protocol,
+		resMap:      resps,
 	}, nil
 }
 
@@ -69,7 +92,7 @@ func (s *StreamDevice) Mismatch() (res []byte) {
 
 	if len(mis) != 0 {
 		log.MSM(string(mis))
-		res = append(mis, s.vdfile.OutTerminator...)
+		res = append(mis, s.vdfile.Stream.OutTerminator...)
 		log.TX(res)
 	}
 	return
@@ -160,7 +183,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if cmdName != "" && s.vdfile != nil {
-		if cmd, exist := s.vdfile.Commands[cmdName]; exist {
+		if cmd, exist := s.vdfile.Stream.Commands[cmdName]; exist {
 			s.delayRes(cmd.Dly)
 		} else {
 			log.ERR("command name %s not found", cmdName)
@@ -196,7 +219,7 @@ func (s *StreamDevice) SetParameter(name string, value any) error {
 // Get delay of the specified command, return error when command not found
 func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 	s.lock.Lock()
-	cmd, exists := s.vdfile.Responses[name]
+	cmd, exists := s.vdfile.Stream.Responses[name]
 	s.lock.Unlock()
 	if !exists {
 		return 0, fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)
@@ -208,7 +231,7 @@ func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 // Set delay of the specified command, return error when command not found or when value cannot be converted to time.Duration
 func (s *StreamDevice) SetCommandDelay(name, val string) error {
 	s.lock.Lock()
-	cmd, exists := s.vdfile.Responses[name]
+	cmd, exists := s.vdfile.Stream.Responses[name]
 	s.lock.Unlock()
 	if !exists {
 		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, name)

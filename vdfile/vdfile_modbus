@@ -1,0 +1,53 @@
+protocol = "modbus"
+
+[[parameter]]
+  name = "state"
+  reg = "coil"
+  val = "1"
+  addr = 1
+
+[[parameter]]
+  name = "state2"
+  reg = "coil"
+  val = "1"
+  addr = 2
+
+[[parameter]]
+  name = "state3"
+  reg = "coil"
+  val = "1"
+  addr = 3
+
+[[parameter]]
+  name = "mode"
+  reg = "di"
+  val = "1"
+  addr = 3
+
+[[parameter]]
+  name = "temp"
+  typ = "uint16"
+  reg = "holdreg"
+  val = "20"
+  addr = 5
+
+[[parameter]]
+  name = "temp2"
+  typ = "uint32"
+  reg = "holdreg"
+  val = "454211"
+  addr = 7
+
+[[parameter]]
+  name = "volt"
+  typ = "int64"
+  reg = "inreg"
+  val = "30"
+  addr = 10
+
+[[parameter]]
+  name = "pressure"
+  typ = "float64"
+  reg = "inreg"
+  val = 34.5
+  addr = 15

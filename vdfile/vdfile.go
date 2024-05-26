@@ -2,6 +2,7 @@ package vdfile
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -11,28 +12,50 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/e9ctrl/vd/command"
 	"github.com/e9ctrl/vd/parameter"
+	"github.com/e9ctrl/vd/protocol/modbus/memory"
 )
 
-type configParameter struct {
+var (
+	ErrDecoding      = errors.New("failed decoding file")
+	ErrNotKnownProto = errors.New("not known protocol type")
+)
+
+// Always parsed protocol type - decides which parse struct should be used
+type ProtocolType struct {
+	Protocol string `toml:"protocol"`
+}
+type configStreamParameter struct {
 	Name string `toml:"name"`
 	Typ  string `toml:"typ"`
 	Val  any    `toml:"val"`
 	Opt  string `toml:"opt,omitempty"`
 }
 
-type configCommand struct {
+// Modbus parameter struct
+type configModbusParameter struct {
 	Name string `toml:"name"`
-	Req  string `toml:"req"`
-	Res  string `toml:"res,omitempty"`
-	Dly  string `toml:"dly,omitempty"`
+	Typ  string `toml:"typ,omitempty"`
+	Reg  string `toml:"reg"`
+	Val  any    `toml:"val"`
+	Addr uint16 `toml:"addr"`
+	Opt  string `toml:"opt,omitempty"`
 }
 
-type configRequest struct {
+// Modbus config struct, result of toml parsing
+type ConfigModbus struct {
+	Params []configModbusParameter `toml:"parameter"`
+}
+
+// Modbus struct encapsulated into main VDFile struct
+type VDFileModbus struct {
+	Mems map[string]memory.Memory
+}
+type configStreamRequest struct {
 	Name    string `toml:"name"`
 	Request string `toml:"req"`
 }
 
-type configResponse struct {
+type configStreamResponse struct {
 	Name     string `toml:"name"`
 	ReqName  string `toml:"req"`
 	Response string `toml:"res"`
@@ -40,35 +63,77 @@ type configResponse struct {
 	Dly      string `toml:"dly,omitempty"`
 }
 
-type Config struct {
-	InTerminator  string            `toml:"interm"`
-	OutTerminator string            `toml:"outterm"`
-	Params        []configParameter `toml:"parameter"`
-	Commands      []configCommand   `toml:"command,omitempty"`
-	Requests      []configRequest   `toml:"request,omitempty"`
-	Responses     []configResponse  `toml:"response,omitempty"`
-	Mismatch      string            `toml:"mismatch,omitempty"`
+type configStreamCommand struct {
+	Name string `toml:"name"`
+	Req  string `toml:"req"`
+	Res  string `toml:"res,omitempty"`
+	Dly  string `toml:"dly,omitempty"`
+}
+
+type ConfigStream struct {
+	InTerminator  string                  `toml:"interm"`
+	OutTerminator string                  `toml:"outterm"`
+	Params        []configStreamParameter `toml:"parameter"`
+	Commands      []configStreamCommand   `toml:"command,omitempty"`
+	Requests      []configStreamRequest   `toml:"request,omitempty"`
+	Responses     []configStreamResponse  `toml:"response,omitempty"`
+	Mismatch      string                  `toml:"mismatch,omitempty"`
+}
+
+// Stream struct encapsulated into main VDFile struct
+type VDFileStream struct {
+	InTerminator  []byte
+	OutTerminator []byte
+	Requests      map[string]*command.Request
+	Responses     map[string]*command.Response
+	Commands      map[string]*command.Command
 }
 
 // VDFile struct
 type VDFile struct {
-	InTerminator  []byte
-	OutTerminator []byte
-	Params        map[string]parameter.Parameter
-	Commands      map[string]*command.Command
-	Requests      map[string]*command.Request
-	Responses     map[string]*command.Response
-	Mismatch      []byte
+	Stream   *VDFileStream
+	Modbus   *VDFileModbus
+	Protocol string
+	Params   map[string]parameter.Parameter
+	Mismatch []byte
 }
 
 // Read VDFile from disk from the given filepath
 func ReadVDFile(path string) (*VDFile, error) {
-	config, err := DecodeVDFile(path)
+	proto, err := DecodeVDProto(path)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed decoding file with err %w", err)
+		return nil, fmt.Errorf("%w with err %w", ErrDecoding, err)
 	}
 
-	return ReadVDFileFromConfig(config)
+	switch proto.Protocol {
+	case "stream":
+		config, err := DecodeVDFileStream(path)
+		if err != nil {
+			return nil, fmt.Errorf("%w with err %w", ErrDecoding, err)
+		}
+
+		vdfile, err := ReadVDFileStreamFromConfig(config)
+		if err != nil {
+			return nil, err
+		}
+
+		return vdfile, nil
+	case "modbus":
+		config, err := DecodeVDFileModbus(path)
+		if err != nil {
+			return nil, fmt.Errorf("%w with err %w", ErrDecoding, err)
+		}
+
+		vdfile, err := ReadVDFileModbusFromConfig(config)
+		if err != nil {
+			return nil, err
+		}
+		return vdfile, nil
+
+	default:
+		return nil, ErrNotKnownProto
+	}
 }
 
 func CommandsToReqRes(commands map[string]*command.Command) (map[string]*command.Request, map[string]*command.Response) {
@@ -96,9 +161,12 @@ func CommandsToReqRes(commands map[string]*command.Command) (map[string]*command
 }
 
 // Creates vdfile struct based on Config containing result of TOML file parsing
-func ReadVDFileFromConfig(config Config) (*VDFile, error) {
-	vdfile := &VDFile{
-		Params:    make(map[string]parameter.Parameter, 0),
+func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFile, error) {
+	vd := &VDFile{
+		Params: make(map[string]parameter.Parameter, 0),
+	}
+
+	vdStream := &VDFileStream{
 		Commands:  make(map[string]*command.Command, 0),
 		Requests:  make(map[string]*command.Request, 0),
 		Responses: make(map[string]*command.Response, 0),
@@ -118,7 +186,7 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Val, err)
 		}
 
-		vdfile.Params[param.Name] = currentParam
+		vd.Params[param.Name] = currentParam
 	}
 
 	commandCount := make(map[string]bool)
@@ -153,19 +221,19 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 			Dly:  parseDelays(cmd.Dly),
 		}
 
-		vdfile.Commands[cmd.Name] = currentCmd
+		vdStream.Commands[cmd.Name] = currentCmd
 	}
 
-	reqs, resps := CommandsToReqRes(vdfile.Commands)
-	vdfile.Requests = reqs
-	vdfile.Responses = resps
+	reqs, resps := CommandsToReqRes(vdStream.Commands)
+	vdStream.Requests = reqs
+	vdStream.Responses = resps
 
 	for _, req := range config.Requests {
 		currentReq := &command.Request{
 			Name: req.Name,
 			Cmd:  []byte(req.Request),
 		}
-		vdfile.Requests[req.Name] = currentReq
+		vdStream.Requests[req.Name] = currentReq
 	}
 
 	for _, res := range config.Responses {
@@ -175,43 +243,127 @@ func ReadVDFileFromConfig(config Config) (*VDFile, error) {
 			Cmd:  []byte(res.Response),
 			Dly:  parseDelays(res.Dly),
 		}
-		vdfile.Responses[res.Name] = currentRes
+		vdStream.Responses[res.Name] = currentRes
 	}
 
-	vdfile.InTerminator = parseTerminator(config.InTerminator)
-	vdfile.OutTerminator = parseTerminator(config.OutTerminator)
-	vdfile.Mismatch = []byte(config.Mismatch)
+	vdStream.InTerminator = parseTerminator(config.InTerminator)
+	vdStream.OutTerminator = parseTerminator(config.OutTerminator)
+	vd.Mismatch = []byte(config.Mismatch)
 
-	return vdfile, nil
+	vd.Stream = vdStream
+	vd.Protocol = "stream"
+
+	return vd, nil
 }
 
-// Parse TOML file to Config struct
-func DecodeVDFile(path string) (Config, error) {
-	var config Config
+// Creates modbus vdfile struct based on Config containing result of TOML file parsing
+func ReadVDFileModbusFromConfig(config ConfigModbus) (*VDFile, error) {
+	vd := &VDFile{
+		Params: make(map[string]parameter.Parameter, 0),
+	}
+
+	vdMod := &VDFileModbus{
+		Mems: make(map[string]memory.Memory, 0),
+	}
+
+	for _, param := range config.Params {
+		var paramType string
+
+		if param.Reg == "di" || param.Reg == "coil" {
+			paramType = "uint8"
+		}
+
+		if param.Reg == "holdreg" || param.Reg == "inreg" {
+			paramType = param.Typ
+			if len(param.Typ) == 0 {
+				paramType = "uint16"
+			}
+		}
+
+		currentParam, err := parameter.New(param.Val, param.Opt, paramType)
+		if err != nil {
+			return nil, fmt.Errorf("failed initializing parameter %s, err: %w", param.Val, err)
+		}
+
+		vd.Params[param.Name] = currentParam
+		vdMod.Mems[param.Name] = memory.New(param.Addr, param.Reg, param.Typ, currentParam.Type())
+	}
+
+	// need to verify if addresses are ok
+	if err := memory.IsMemoryValid(vdMod.Mems); err != nil {
+		return nil, err
+	}
+
+	vd.Modbus = vdMod
+	vd.Protocol = "modbus"
+	return vd, nil
+}
+
+// Parse TOML file to ConfigModbus struct
+func DecodeVDFileModbus(path string) (ConfigModbus, error) {
+	var config ConfigModbus
 	_, err := toml.DecodeFile(path, &config)
 
 	return config, err
 }
 
-// Parse TOML file but using fle system FS to Config struct
-func DecodeVDFS(f fs.FS, path string) (Config, error) {
-	var config Config
+// Parse TOML file to ConfigStream struct
+func DecodeVDFileStream(path string) (ConfigStream, error) {
+	var config ConfigStream
+	_, err := toml.DecodeFile(path, &config)
+
+	return config, err
+}
+
+// Parse TOML file to detect protocol type
+func DecodeVDProto(path string) (ProtocolType, error) {
+	var proto ProtocolType
+	_, err := toml.DecodeFile(path, &proto)
+
+	return proto, err
+}
+
+// Parse TOML file but using fle system FS to ConfigStream struct
+func DecodeVDFSStream(f fs.FS, path string) (ConfigStream, error) {
+	var config ConfigStream
 	_, err := toml.DecodeFS(f, path, &config)
 
 	return config, err
 }
 
-// Created TOML config file based on Config
-func WriteVDFile(path string, config Config) error {
+// Parse TOML file but using fle system FS to ConfigModbus struct
+func DecodeVDFSModbus(f fs.FS, path string) (ConfigModbus, error) {
+	var config ConfigModbus
+	_, err := toml.DecodeFS(f, path, &config)
+
+	return config, err
+}
+
+// Created TOML config file based on config struct
+func WriteVDFile(path string, config any) error {
 	var buf = bytes.Buffer{}
 	var encoder = toml.NewEncoder(&buf)
 
-	err := encoder.Encode(config)
+	var p ProtocolType
+	_, ok := config.(ConfigModbus)
+	if ok {
+		p.Protocol = "modbus"
+	} else {
+		p.Protocol = "stream"
+
+	}
+
+	err := encoder.Encode(p)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(path, buf.Bytes(), 0666)
+	err = encoder.Encode(config)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(path, buf.Bytes(), os.ModePerm)
 }
 
 // Checks if string can be converted to time.Duration

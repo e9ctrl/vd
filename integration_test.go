@@ -14,28 +14,33 @@ import (
 )
 
 var (
-	vdfileBase     vdfile.Config
-	vdfileDelay    vdfile.Config
-	vdfileMismatch vdfile.Config
+	vdfileStream         vdfile.ConfigStream
+	vdfileStreamDelay    vdfile.ConfigStream
+	vdfileStreamMismatch vdfile.ConfigStream
+	vdfileModbus         vdfile.ConfigModbus
 )
 
 const (
-	FILE1 = "vdfile/vdfile"
-	ADDR1 = "localhost:3333"
-	ADDR2 = "localhost:4444"
-	ADDR3 = "localhost:5555"
-	ADDR4 = "localhost:6666"
+	FILE_STREAM = "vdfile/vdfile_stream"
+	FILE_MODBUS = "vdfile/vdfile_modbus"
+	ADDR1       = "localhost:3333"
+	ADDR2       = "localhost:4444"
+	ADDR3       = "localhost:5555"
+	ADDR4       = "localhost:6666"
+	ADDR5       = "localhost:2222"
+	ADDR6       = "localhost:2233"
+	ADDR7       = "localhost:8888"
 )
 
 func init() {
-	config, err := vdfile.DecodeVDFile(FILE1)
+	config, err := vdfile.DecodeVDFileStream(FILE_STREAM)
 	if err != nil {
 		panic(err)
 	}
 
-	vdfileBase = config
+	vdfileStream = config
 
-	config1, _ := vdfile.DecodeVDFile(FILE1)
+	config1, _ := vdfile.DecodeVDFileStream(FILE_STREAM)
 	for i := 0; i < len(config1.Commands); i++ {
 		switch config1.Commands[i].Name {
 		case "get_psi":
@@ -50,15 +55,22 @@ func init() {
 			config1.Commands[i].Dly = "2s"
 		}
 	}
-	vdfileDelay = config1
+	vdfileStreamDelay = config1
 
-	config2, _ := vdfile.DecodeVDFile(FILE1)
+	config2, _ := vdfile.DecodeVDFileStream(FILE_STREAM)
+
 	config2.Mismatch = "Wrong query"
-	vdfileMismatch = config2
+	vdfileStreamMismatch = config2
+
+	configModbus, err := vdfile.DecodeVDFileModbus(FILE_MODBUS)
+	if err != nil {
+		panic(err)
+	}
+	vdfileModbus = configModbus
 }
 
-func setupTestCase(t *testing.T, addr string, vd vdfile.Config) func() {
-	vdfile, err := vdfile.ReadVDFileFromConfig(vd)
+func setupStreamTestCase(t *testing.T, addr string, vd vdfile.ConfigStream) func() {
+	vdfile, err := vdfile.ReadVDFileStreamFromConfig(vd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,12 +94,37 @@ func setupTestCase(t *testing.T, addr string, vd vdfile.Config) func() {
 	}
 }
 
-func TestRun(t *testing.T) {
+func setupModbusTestCase(t *testing.T, addr string, vd vdfile.ConfigModbus) func() {
+	vdfile, err := vdfile.ReadVDFileModbusFromConfig(vd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	//create stream device
+	d, err := device.NewDevice(vdfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// create TCP server
+	s, err := server.New(d, addr)
+	if err != nil {
+		t.Fatalf("error while creating server %v\n", err)
+	}
+
+	s.Start()
+
+	return func() {
+		s.Stop()
+	}
+}
+
+func TestRunStream(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t, ADDR1, vdfileBase)()
+	defer setupStreamTestCase(t, ADDR1, vdfileStream)()
 	// connect to server
 	conn, err := net.Dial("tcp", ADDR1)
 	if err != nil {
@@ -122,7 +159,7 @@ func TestRun(t *testing.T) {
 		{"test command that can be parsed in two ways", []byte("set ch1 tec07F\r\n"), []byte("set ch1 tec 7F\r\r\n")},
 		// This case needs to be added when "when" functionality will be added
 		// otherwise get speed returns one of two responses randomly
-		//{"get speed", []byte("get speed?\r\n"), []byte("High speed: 36.600000\r\n")},
+		{"get speed", []byte("get speed?\r\n"), []byte("High speed: 36.600000\r\n")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -143,12 +180,71 @@ func TestRun(t *testing.T) {
 	}
 }
 
-func TestRunWrongQueries(t *testing.T) {
+func TestRunModbus(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+	defer setupModbusTestCase(t, ADDR5, vdfileModbus)()
+	// connect to server
+	conn, err := net.Dial("tcp", ADDR5)
+	if err != nil {
+		t.Fatalf("could not connect to to server: %v\n", err)
+	}
+	defer conn.Close()
+	// set timeout for reading data
+	conn.SetReadDeadline(time.Now().Add(time.Second))
+
+	tests := []struct {
+		name   string
+		input  []byte
+		length int
+		want   []byte
+	}{
+		{"read state", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01}, 10, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x01, 0x01, 0x01, 0x01}},
+		{"read temp", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x03, 0x00, 0x05, 0x00, 0x01}, 11, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0x01, 0x03, 0x02, 0x00, 0x14}},
+		{"read temp2", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x03, 0x00, 0x07, 0x00, 0x02}, 13, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x07, 0x01, 0x03, 0x04, 0x00, 0x06, 0xEE, 0x43}},
+		{"read state and state1", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x01, 0x00, 0x01, 0x00, 0x02}, 10, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x01, 0x01, 0x01, 0x03}},
+		{"read voltage", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x04, 0x00, 0x0a, 0x00, 0x04}, 17, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x0b, 0x01, 0x04, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1e}},
+		{"read pressure", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x04, 0x00, 0x0f, 0x00, 0x04}, 17, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x0b, 0x01, 0x04, 0x08, 0x40, 0x41, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00}},
+		{"read mode", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x02, 0x00, 0x03, 0x00, 0x01}, 10, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x01, 0x02, 0x01, 0x01}},
+		{"read coil not param", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x01, 0x00, 0x14, 0x00, 0x01}, 10, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x01, 0x01, 0x01, 0x00}},
+		{"read di not param", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x02, 0x01, 0xc8, 0x00, 0x01}, 10, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x01, 0x02, 0x01, 0x00}},
+		{"read multiple coils not param", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x01, 0x00, 0x08, 0x00, 0x0a}, 11, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0x01, 0x01, 0x02, 0x00, 0x00}},
+		{"read multiple dis not param", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x02, 0x00, 0x17, 0x00, 0x05}, 10, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x01, 0x02, 0x01, 0x00}},
+		{"read holding register not param", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0xFF, 0x03, 0x00, 0xC7, 0x00, 0x01}, 11, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0xff, 0x03, 0x02, 0x00, 0x00}},
+		{"read input register not param", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0xFF, 0x04, 0x00, 0x22, 0x00, 0x01}, 11, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x05, 0xFF, 0x04, 0x02, 0x00, 0x00}},
+		{"write state", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x05, 0x00, 0x01, 0x00, 0x00}, 12, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x05, 0x00, 0x01, 0x00, 0x00}},
+		{"write state2 and state3", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x09, 0x00, 0x0f, 0x00, 0x02, 0x00, 0x02, 0x02, 0x00, 0x00}, 12, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x00, 0x0F, 0x00, 0x02, 0x00, 0x02}},
+		{"write single holding register temp", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x06, 0x00, 0x05, 0x03, 0x09}, 12, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x06, 0x00, 0x05, 0x03, 0x09}},
+		{"write multiple holding registers temp2", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x0b, 0x00, 0x10, 0x00, 0x07, 0x00, 0x02, 0x04, 0x03, 0x04, 0x01, 0x04}, 12, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x00, 0x10, 0x00, 0x07, 0x00, 0x02}},
+		{"write multiple holding registers not param", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x0f, 0x01, 0x10, 0x00, 0x1e, 0x00, 0x04, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x14}, 12, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x10, 0x00, 0x1e, 0x00, 0x04}},
+		{"write single holding register not param", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x06, 0x00, 0x19, 0x00, 0x32}, 12, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x01, 0x06, 0x00, 0x19, 0x00, 0x32}},
+		{"illegal address", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x0f, 0x01, 0x10, 0x27, 0x0d, 0x00, 0x04, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x09}, 9, []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x03, 0x01, 0x90, 0x02}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := conn.Write(tt.input); err != nil {
+				t.Error("could not write payload to TCP server:", err)
+			}
+
+			out := make([]byte, tt.length)
+			if _, err := conn.Read(out); err == nil {
+				if !bytes.Equal(tt.want, out) {
+					t.Errorf("exp resp: %v got: %v\n", tt.want, out)
+				}
+			} else {
+				t.Error("could not read from connection")
+			}
+		})
+	}
+}
+
+func TestRunWrongQueriesStream(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t, ADDR2, vdfileBase)()
+	defer setupStreamTestCase(t, ADDR2, vdfileStream)()
 	// connect to server
 	conn, err := net.Dial("tcp", ADDR2)
 
@@ -192,12 +288,51 @@ func TestRunWrongQueries(t *testing.T) {
 	}
 }
 
-func TestRunWithDelays(t *testing.T) {
+func TestRunWrongQueriesModbus(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t, ADDR3, vdfileDelay)()
+	defer setupModbusTestCase(t, ADDR6, vdfileModbus)()
+	// connect to server
+	conn, err := net.Dial("tcp", ADDR6)
+
+	if err != nil {
+		t.Fatalf("could not connect to to server: %v\n", err)
+	}
+	defer conn.Close()
+	// set timeout for reading data
+	conn.SetReadDeadline(time.Now().Add(time.Second))
+
+	tests := []struct {
+		name  string
+		input []byte
+	}{
+		{"empty", []byte(nil)},
+		{"wrong frame length", []byte{0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x01, 0x02, 0x01, 0x00}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := conn.Write(tt.input); err != nil {
+				t.Error("could not write payload to TCP server:", err)
+			}
+
+			out := make([]byte, 128)
+			_, err := conn.Read(out)
+			if !errors.Is(err, os.ErrDeadlineExceeded) {
+				t.Errorf("exp error: %s got: %s\n", os.ErrDeadlineExceeded, err)
+			}
+		})
+	}
+}
+
+func TestRunWithDelaysStream(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+	defer setupStreamTestCase(t, ADDR3, vdfileStreamDelay)()
 	// connect to server
 	conn, err := net.Dial("tcp", ADDR3)
 	if err != nil {
@@ -241,12 +376,12 @@ func TestRunWithDelays(t *testing.T) {
 	}
 }
 
-func TestRunWithMismatch(t *testing.T) {
+func TestRunWithMismatchStream(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	defer setupTestCase(t, ADDR4, vdfileMismatch)()
+	defer setupStreamTestCase(t, ADDR4, vdfileStreamMismatch)()
 	// connect to server
 	conn, err := net.Dial("tcp", ADDR4)
 	if err != nil {
