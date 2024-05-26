@@ -16,8 +16,9 @@ import (
 	"testing"
 )
 
-var myStreamDev = func() *StreamDevice {
+var myStreamDev = func() *Device {
 	config := &vdfile.StreamConfig{
+
 		InTerminator:  []byte("\r\n"),
 		OutTerminator: []byte("\r\n"),
 		Mismatch:      []byte("error"),
@@ -268,9 +269,11 @@ func TestMain(m *testing.M) {
 	}
 	commands[cmdGetStat.Name] = cmdGetStat
 
+
 	dev.config.Commands = commands
 	dev.config.Params = params
 	dev.proto, _ = stream.NewParser(dev.config)
+	dev.resMap = createResps(dev.vdfile)
 	// run tests
 	os.Exit(m.Run())
 }

@@ -36,30 +36,30 @@ type Parser struct {
 
 // Method that fullfils main Protocol interface, all logic is implemented here.
 // Based on byte input it returns transactions to be processed.
-func (p *Parser) Decode(data []byte) ([]protocol.Transaction, error) {
+func (p *Parser) Decode(data []byte) ([]protocol.Request, error) {
 
 	r := bytes.NewReader(data)
 	scanner := bufio.NewScanner(r)
 	scanner.Split(p.splitter)
 
 	var err error
-	txs := make([]protocol.Transaction, 0)
+	reqs := make([]protocol.Request, 0)
 	for scanner.Scan() {
-		txs = append(txs, p.decode(scanner.Text()))
+		reqs = append(reqs, p.decode(scanner.Text()))
 	}
 
 	if err = scanner.Err(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error scanning: ", err.Error())
-		return []protocol.Transaction{}, err
+		return []protocol.Request{}, err
 	}
 
-	return txs, nil
+	return reqs, nil
 }
 
-func (p *Parser) decode(input string) protocol.Transaction {
+func (p *Parser) decode(input string) protocol.Request {
 
-	tx := protocol.Transaction{
-		Payload: make(map[string]any),
+	req := protocol.Request{
+		Params: make(map[string]any, 0),
 	}
 
 	// It happens that input string matches several patterns
@@ -97,7 +97,7 @@ func (p *Parser) decode(input string) protocol.Transaction {
 	// if nothing is matched, just return an error
 	if len(matched) == 0 {
 		log.ERR(protocol.ErrCommandNotFound)
-		return tx
+		return req
 	}
 
 	// sorting struct from those containing the longest request slice of items
@@ -109,44 +109,43 @@ func (p *Parser) decode(input string) protocol.Transaction {
 	// always use first index from slice, in that way
 	// it does not matter how many matches we have
 	values := matched[0].vals
-	tx.CommandName = matched[0].cmd
+	req.Name = matched[0].cmd
 	res := matched[0].res
 
 	if len(values) > 0 {
 		// set params
-		tx.Typ = protocol.TxSetParam
+		req.Typ = protocol.ReqWrite
 		for paramName, val := range values {
-			tx.Payload[paramName] = val
+			req.Params[paramName] = val
 		}
 
-		return tx
+		return req
 	}
 
 	//get params
-	tx.Typ = protocol.TxGetParam
+	req.Typ = protocol.ReqRead
 	for _, item := range res {
 		if item.Type() == ItemParam {
-			tx.Payload[item.Value()] = nil
-
+			req.Params[item.Value()] = nil
 		}
 	}
-	return tx
+	return req
 }
 
 // Method that fulfils Protocol interface.
 // Based on received transactions it generates byte response/
-func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
+func (p *Parser) Encode(resps []protocol.Response) ([]byte, error) {
 
 	var buf []byte
 	var out []byte
 
-	for _, tx := range txs {
-		if tx.Typ == protocol.TxMismatch {
+	for _, res := range resps {
+		if res.Err == protocol.ResMismatch {
 			buf = p.mismatch
 			log.MSM(string(buf))
 		} else {
-			responseItems := p.commandPatterns[tx.CommandName].resItems
-			buf = constructOutput(responseItems, tx.Payload)
+			responseItems := p.commandPatterns[res.Name].resItems
+			buf = constructOutput(responseItems, res.Params)
 		}
 		if len(buf) > 0 {
 			buf = append(buf, p.outTerminator...)
@@ -159,24 +158,24 @@ func (p *Parser) Encode(txs []protocol.Transaction) ([]byte, error) {
 
 // Method that fulfils Protocol interface. It enforces processing of
 // the specified command
-func (p *Parser) Trigger(cmdName string) protocol.Transaction {
-	tx := protocol.Transaction{}
+func (p *Parser) Trigger(cmdName string) protocol.Response {
+	res := protocol.Response{}
 
 	responseItems := p.commandPatterns[cmdName].resItems
 	if len(responseItems) == 0 {
-		return tx
+		return res
 	}
 
-	tx.Payload = make(map[string]any)
-	tx.CommandName = cmdName
+	res.Params = make(map[string]any, 0)
+	res.Name = cmdName
 
 	for _, item := range responseItems {
 		if item.Type() == ItemParam {
-			tx.Payload[item.Value()] = nil
+			res.Params[item.Value()] = nil
 		}
 	}
 
-	return tx
+	return res
 }
 
 // Constructor, returns parser struct with processed commands patterns that are used while parsing incoming data.

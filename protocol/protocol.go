@@ -11,38 +11,35 @@ var (
 )
 
 type Protocol interface {
-	Decode(data []byte) ([]Transaction, error)
-	Encode(txs []Transaction) ([]byte, error)
-	Trigger(cmdName string) Transaction
+	Decode(data []byte) ([]Request, error)
+	Encode([]Response) ([]byte, error)
+	Trigger(cmdName string) Response
 }
 
-type TransactionType int
+type Request struct {
+	Name   string
+	Typ    RequestTyp
+	Params map[string]any
+}
+
+type Response struct {
+	Name   string
+	Params map[string]any
+	Err    ResponseErr
+}
+
+type RequestTyp int
 
 const (
-	TxUnknown TransactionType = iota
-
-	TxGetParam
-	TxSetParam
-
-	TxMismatch
+	ReqUnknown RequestTyp = iota
+	ReqRead
+	ReqWrite
 )
 
-func (t TransactionType) String() string {
-	switch t {
-	case TxGetParam:
-		return "GetParam"
-	case TxSetParam:
-		return "SetParam"
-	default:
-		return "Unknown"
-	}
-}
+type ResponseErr int
 
-// TxPayload holds name : value of the parameter
-//type TxPayload map[string]any
-
-type Transaction struct {
-	Typ         TransactionType
-	CommandName string
-	Payload     map[string]any
-}
+const (
+	ResOK ResponseErr = iota
+	ResError
+	ResMismatch
+)

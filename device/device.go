@@ -21,34 +21,51 @@ var (
 	ErrNoClient = errors.New("no client available")
 	// Error returned by SetMimsatch if new message is too long
 	ErrMismatchTooLong = errors.New("new mismatch message exceeded 255 characters limit")
+	// Error to inform that response for the request was not found
+	ErrResponseNotFound = errors.New("no response found")
 )
 
 // Stream device store the information of a set of parameters
-type StreamDevice struct {
+type Device struct {
 	server.Handler
 	config    *vdfile.StreamConfig
 	proto     protocol.Protocol
 	triggered chan []byte
 	lock      sync.RWMutex
+	resMap    map[string]string // key is a request, value is a response
+}
+
+func createResps(vdfile *vdfile.VDFile) map[string]string {
+	resps := make(map[string]string, len(vdfile.Commands))
+
+	for _, cmd := range vdfile.Commands {
+		// Currently, reponse has exactly the same name as requests,
+		// in the future, their names will differ
+		resps[cmd.Name] = cmd.Name
+	}
+
+	return resps
 }
 
 // Create a new stream device given the virtual device configuration file
-func NewDevice(config *vdfile.StreamConfig) (*StreamDevice, error) {
+
+func NewDevice(config *vdfile.StreamConfig) (*Device, error) {
 	// make sure the parser is initialize successfully
 	parser, err := stream.NewParser(config)
 	if err != nil {
 		return nil, err
 	}
 
-	return &StreamDevice{
+	return &Device{
 		config:    config,
 		triggered: make(chan []byte),
 		proto:     parser,
+		resMap:    createResps(config),
 	}, nil
 }
 
 // Return mismatch message together with terminators
-func (s *StreamDevice) Mismatch() (res []byte) {
+func (s *Device) Mismatch() (res []byte) {
 	s.lock.Lock()
 	mis := s.config.Mismatch
 	s.lock.Unlock()
@@ -61,18 +78,26 @@ func (s *StreamDevice) Mismatch() (res []byte) {
 	return
 }
 
+func setResErr(mismatch []byte, res *protocol.Response) {
+	if len(mismatch) > 0 {
+		res.Err = protocol.ResMismatch
+		return
+	}
+	res.Err = protocol.ResError
+}
+
 // Method that returns channel with value of the parameter
-func (s *StreamDevice) Triggered() chan []byte { return s.triggered }
+func (s *Device) Triggered() chan []byte { return s.triggered }
 
 // Method that fulfills Handler interface that is used by TCP server.
 // It divides bytes into understandable pieces of data and parses it.
-func (s *StreamDevice) Handle(cmd []byte) []byte {
+func (s *Device) Handle(cmd []byte) []byte {
 
 	if len(cmd) == 0 {
 		return nil
 	}
 
-	txs, err := s.proto.Decode(cmd)
+	reqs, err := s.proto.Decode(cmd)
 	if err != nil {
 		log.ERR(err)
 		return nil
@@ -82,43 +107,56 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 	mismatch := s.config.Mismatch
 	s.lock.Unlock()
 
-	for i, tx := range txs {
-		if len(mismatch) > 0 && tx.Typ == protocol.TxUnknown {
-			txs[i].Typ = protocol.TxMismatch
+	resps := make([]protocol.Response, len(reqs))
+
+	for i, r := range reqs {
+		if r.Typ == protocol.ReqUnknown {
+			setResErr(mismatch, &resps[i])
 		}
 
 		// set the parameter
-		if tx.Typ == protocol.TxSetParam {
-			for p, v := range tx.Payload {
-				if err := s.SetParameter(p, v); err != nil {
+		if r.Typ == protocol.ReqWrite {
+			for k, v := range r.Params {
+				if err := s.SetParameter(k, v); err != nil {
 					log.ERR(err)
-					txs[i].Typ = protocol.TxMismatch
+					setResErr(mismatch, &resps[i])
 				}
 			}
 		}
 
+		// check if response for this request exists
+		// future logic here
+		if name, ok := s.resMap[r.Name]; ok {
+			resps[i].Name = name
+		} else {
+			log.ERR(ErrResponseNotFound)
+			setResErr(mismatch, &resps[i])
+		}
+
+		// init values
+		resps[i].Params = make(map[string]any, 0)
+
 		// the following for range code is to ensure the proper type of the parameter value
 		// that needs to be set back to the transaction payload
 		// it is due to fact that proto does not have information about the type of the parameter
-		for p := range tx.Payload {
-			v, err := s.GetParameter(p)
+		for k := range r.Params {
+			v, err := s.GetParameter(k)
 			if err != nil {
 				log.ERR(err)
-				txs[i].Typ = protocol.TxMismatch
+				setResErr(mismatch, &resps[i])
 			}
-
-			txs[i].Payload[p] = v
+			resps[i].Params[k] = v
 		}
 	}
 
-	buf, err := s.proto.Encode(txs)
+	buf, err := s.proto.Encode(resps)
 	if err != nil {
 		log.ERR(err)
 		return nil
 	}
 
 	//using first command to determine the delay
-	cmdName := txs[0].CommandName
+	cmdName := resps[0].Name
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	if cmdName != "" && s.config != nil {
@@ -132,7 +170,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 }
 
 // Method to read value of the specified parameter, returns error when parameter not found
-func (s *StreamDevice) GetParameter(name string) (any, error) {
+func (s *Device) GetParameter(name string) (any, error) {
 	s.lock.Lock()
 	param, exists := s.config.Params[name]
 	s.lock.Unlock()
@@ -144,7 +182,7 @@ func (s *StreamDevice) GetParameter(name string) (any, error) {
 }
 
 // Method to access value of the specified parameter and change it, return error when parameter not found
-func (s *StreamDevice) SetParameter(name string, value any) error {
+func (s *Device) SetParameter(name string, value any) error {
 	s.lock.Lock()
 	param, exists := s.config.Params[name]
 	s.lock.Unlock()
@@ -156,7 +194,7 @@ func (s *StreamDevice) SetParameter(name string, value any) error {
 }
 
 // Get delay of the specified command, return error when command not found
-func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
+func (s *Device) GetCommandDelay(name string) (time.Duration, error) {
 	s.lock.Lock()
 	cmd, exists := s.config.Commands[name]
 	s.lock.Unlock()
@@ -168,7 +206,7 @@ func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 }
 
 // Set delay of the specified command, return error when command not found or when value cannot be converted to time.Duration
-func (s *StreamDevice) SetCommandDelay(name, val string) error {
+func (s *Device) SetCommandDelay(name, val string) error {
 	s.lock.Lock()
 	cmd, exists := s.config.Commands[name]
 	s.lock.Unlock()
@@ -186,7 +224,7 @@ func (s *StreamDevice) SetCommandDelay(name, val string) error {
 }
 
 // Return mismatch message
-func (s *StreamDevice) GetMismatch() []byte {
+func (s *Device) GetMismatch() []byte {
 	s.lock.Lock()
 	mis := s.config.Mismatch
 	s.lock.Unlock()
@@ -194,7 +232,7 @@ func (s *StreamDevice) GetMismatch() []byte {
 }
 
 // Method to set mismatch message, returns error when string it too long
-func (s *StreamDevice) SetMismatch(value string) error {
+func (s *Device) SetMismatch(value string) error {
 	if len(value) > MISMATCH_LIMIT {
 		return fmt.Errorf("%w: %s", ErrMismatchTooLong, value)
 	}
@@ -206,7 +244,7 @@ func (s *StreamDevice) SetMismatch(value string) error {
 
 // Method that cause that value of the parameter associated with the specified command is sent directly via TCP server to connected client.
 // It returns an error when there is no client connected to TCP server or when parameter was not found.
-func (s *StreamDevice) Trigger(cmdName string) error {
+func (s *Device) Trigger(cmdName string) error {
 	s.lock.Lock()
 	_, exists := s.config.Commands[cmdName]
 	s.lock.Unlock()
@@ -214,17 +252,16 @@ func (s *StreamDevice) Trigger(cmdName string) error {
 		return fmt.Errorf("%w: %s", protocol.ErrCommandNotFound, cmdName)
 	}
 
-	tx := s.proto.Trigger(cmdName)
-	for p := range tx.Payload {
-		v, err := s.GetParameter(p)
+	res := s.proto.Trigger(cmdName)
+	for k := range res.Params {
+		v, err := s.GetParameter(k)
 		if err != nil {
 			return err
 		}
-
-		tx.Payload[p] = v
+		res.Params[k] = v
 	}
 
-	buf, err := s.proto.Encode([]protocol.Transaction{tx})
+	buf, err := s.proto.Encode([]protocol.Response{res})
 	if err != nil {
 		return err
 	}
@@ -239,7 +276,7 @@ func (s *StreamDevice) Trigger(cmdName string) error {
 }
 
 // Method to delay response generation
-func (s *StreamDevice) delayRes(d time.Duration) {
+func (s *Device) delayRes(d time.Duration) {
 	if d == 0 {
 		return
 	}

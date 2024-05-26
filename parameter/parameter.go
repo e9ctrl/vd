@@ -10,7 +10,7 @@ import (
 )
 
 type paramType interface {
-	int | int32 | int64 | float32 | float64 | bool | string
+	uint8 | int8 | uint16 | int16 | uint32 | int32 | uint64 | int64 | uint | int | float32 | float64 | bool | string
 }
 
 var (
@@ -18,6 +18,7 @@ var (
 	ErrValNotAllowed    = errors.New("value outside opts - ignoring set")
 	ErrWrongStringVal   = errors.New("could not convert paramTypeString to string")
 	ErrUnknownParamType = errors.New("unknown parameter type")
+	ErrWrongUintVal     = errors.New("received param type that cannot be converted to uint")
 	ErrWrongIntVal      = errors.New("received param type that cannot be converted to int")
 	ErrWrongFloatVal    = errors.New("received param type that cannot be converted to float")
 	ErrWrongBoolVal     = errors.New("received param type that cannot be converted to bool")
@@ -48,10 +49,22 @@ type ConcreteParameter[T paramType] struct {
 // Parameter constructor, the constructor will automatically create the ConcreteParameter instance base on the value passed on in the params
 func New(val any, opt, typ string) (Parameter, error) {
 	switch typ {
+	case "uint8":
+		return newParameter[uint8](reflect.Uint8, val, opt)
+	case "int8":
+		return newParameter[int8](reflect.Int8, val, opt)
+	case "uint16":
+		return newParameter[uint16](reflect.Uint16, val, opt)
 	case "int16":
-		return newParameter[int](reflect.Int, val, opt)
+		return newParameter[int16](reflect.Int16, val, opt)
 	case "int32":
 		return newParameter[int32](reflect.Int32, val, opt)
+	case "uint32":
+		return newParameter[uint32](reflect.Uint32, val, opt)
+	case "uint":
+		fallthrough
+	case "uint64":
+		return newParameter[uint64](reflect.Uint64, val, opt)
 	case "int":
 		fallthrough
 	case "int64":
@@ -162,17 +175,68 @@ func (p *ConcreteParameter[T]) Opts() []string {
 // It converts received string to the corresponding value under parameter.
 func convertStringToVal[T paramType](typ reflect.Kind, val string) (*T, error) {
 	switch typ {
-	case reflect.Int:
-		if intVal, err := strconv.Atoi(val); err == nil {
-			return interface{}(&intVal).(*T), nil
-		} else if hexVal, err := strconv.ParseInt(val, 16, 64); err == nil {
+	case reflect.Uint8:
+		if uintVal, err := strconv.ParseUint(val, 10, 8); err == nil {
+			uintVal8 := uint8(uintVal)
+			return interface{}(&uintVal8).(*T), nil
+		} else {
+			return nil, ErrWrongUintVal
+		}
+	case reflect.Uint16:
+		if uintVal, err := strconv.ParseUint(val, 10, 16); err == nil {
+			uintVal16 := uint16(uintVal)
+			return interface{}(&uintVal16).(*T), nil
+		} else {
+			return nil, ErrWrongUintVal
+		}
+	case reflect.Uint32:
+		if uintVal, err := strconv.ParseUint(val, 10, 32); err == nil {
+			uintVal32 := uint32(uintVal)
+			return interface{}(&uintVal32).(*T), nil
+		} else {
+			return nil, ErrWrongUintVal
+		}
+	case reflect.Uint64:
+		if uintVal, err := strconv.ParseUint(val, 10, 64); err == nil {
+			uintVal64 := uint64(uintVal)
+			return interface{}(&uintVal64).(*T), nil
+		} else {
+			return nil, ErrWrongUintVal
+		}
+	case reflect.Uint:
+		if uintVal, err := strconv.ParseUint(val, 10, 64); err == nil {
+			uintVal64 := uint(uintVal)
+			return interface{}(&uintVal64).(*T), nil
+		} else {
+			return nil, ErrWrongUintVal
+		}
+	case reflect.Int8:
+		if intVal, err := strconv.ParseInt(val, 10, 8); err == nil {
+			int8Val := int8(intVal)
+			return interface{}(&int8Val).(*T), nil
+		} else if hexVal, err := strconv.ParseInt(val, 16, 8); err == nil {
 			// for hex that starts with 0x
-			hexValInt := int(hexVal)
-			return interface{}(&hexValInt).(*T), nil
-		} else if hexVal, err := strconv.ParseInt(val, 0, 64); err == nil {
+			hexVal8 := int8(hexVal)
+			return interface{}(&hexVal8).(*T), nil
+		} else if hexVal, err := strconv.ParseInt(val, 0, 8); err == nil {
 			// for hex without 0x
-			hexValInt := int(hexVal)
-			return interface{}(&hexValInt).(*T), nil
+			hexVal8 := int8(hexVal)
+			return interface{}(&hexVal8).(*T), nil
+		} else {
+			return nil, ErrWrongIntVal
+		}
+	case reflect.Int16:
+		if intVal, err := strconv.ParseInt(val, 10, 16); err == nil {
+			int16Val := int16(intVal)
+			return interface{}(&int16Val).(*T), nil
+		} else if hexVal, err := strconv.ParseInt(val, 16, 16); err == nil {
+			// for hex that starts with 0x
+			hexVal16 := int16(hexVal)
+			return interface{}(&hexVal16).(*T), nil
+		} else if hexVal, err := strconv.ParseInt(val, 0, 16); err == nil {
+			// for hex without 0x
+			hexVal16 := int16(hexVal)
+			return interface{}(&hexVal16).(*T), nil
 		} else {
 			return nil, ErrWrongIntVal
 		}
@@ -188,6 +252,20 @@ func convertStringToVal[T paramType](typ reflect.Kind, val string) (*T, error) {
 			// for hex without 0x
 			hexVal32 := int32(hexVal)
 			return interface{}(&hexVal32).(*T), nil
+		} else {
+			return nil, ErrWrongIntVal
+		}
+	case reflect.Int:
+		if intVal, err := strconv.Atoi(val); err == nil {
+			return interface{}(&intVal).(*T), nil
+		} else if hexVal, err := strconv.ParseInt(val, 16, 64); err == nil {
+			// for hex that starts with 0x
+			hexValInt := int(hexVal)
+			return interface{}(&hexValInt).(*T), nil
+		} else if hexVal, err := strconv.ParseInt(val, 0, 64); err == nil {
+			// for hex without 0x
+			hexValInt := int(hexVal)
+			return interface{}(&hexValInt).(*T), nil
 		} else {
 			return nil, ErrWrongIntVal
 		}
@@ -239,10 +317,66 @@ func buildOptions[T paramType](typ reflect.Kind, opt string) ([]T, error) {
 	if opt != "" {
 		splits := strings.Split(opt, "|")
 		switch typ {
+		case reflect.Uint:
+			for _, val := range splits {
+				if uintVal, err := strconv.ParseUint(val, 10, 8); err == nil {
+					opts = append(opts, interface{}(uint(uintVal)).(T))
+				} else {
+					return nil, ErrWrongUintVal
+				}
+			}
+		case reflect.Uint8:
+			for _, val := range splits {
+				if uintVal, err := strconv.ParseUint(val, 10, 8); err == nil {
+					opts = append(opts, interface{}(uint8(uintVal)).(T))
+				} else {
+					return nil, ErrWrongUintVal
+				}
+			}
+		case reflect.Uint16:
+			for _, val := range splits {
+				if uintVal, err := strconv.ParseUint(val, 10, 16); err == nil {
+					opts = append(opts, interface{}(uint16(uintVal)).(T))
+				} else {
+					return nil, ErrWrongUintVal
+				}
+			}
+		case reflect.Uint32:
+			for _, val := range splits {
+				if uintVal, err := strconv.ParseUint(val, 10, 32); err == nil {
+					opts = append(opts, interface{}(uint32(uintVal)).(T))
+				} else {
+					return nil, ErrWrongUintVal
+				}
+			}
+		case reflect.Uint64:
+			for _, val := range splits {
+				if uintVal, err := strconv.ParseUint(val, 10, 64); err == nil {
+					opts = append(opts, interface{}(uint64(uintVal)).(T))
+				} else {
+					return nil, ErrWrongUintVal
+				}
+			}
 		case reflect.Int:
 			for _, val := range splits {
 				if intVal, err := strconv.Atoi(val); err == nil {
 					opts = append(opts, interface{}(intVal).(T))
+				} else {
+					return nil, ErrWrongIntVal
+				}
+			}
+		case reflect.Int8:
+			for _, val := range splits {
+				if intVal, err := strconv.ParseInt(val, 10, 8); err == nil {
+					opts = append(opts, interface{}(int8(intVal)).(T))
+				} else {
+					return nil, ErrWrongIntVal
+				}
+			}
+		case reflect.Int16:
+			for _, val := range splits {
+				if intVal, err := strconv.ParseInt(val, 10, 16); err == nil {
+					opts = append(opts, interface{}(int16(intVal)).(T))
 				} else {
 					return nil, ErrWrongIntVal
 				}
