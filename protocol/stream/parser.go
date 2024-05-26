@@ -102,13 +102,13 @@ func (p *Parser) decode(input string) protocol.Request {
 		return req
 	}
 
-	// sorting struct from those containg the longest request slice of items
+	// sorting struct from those containing the longest request slice of items
 	if len(matched) > 1 {
 		sort.Slice(matched, func(i, j int) bool {
 			return len(matched[i].req) > len(matched[j].req)
 		})
 	}
-	// alwyas use first index from slice, in that way
+	// always use first index from slice, in that way
 	// it does not matter how many matches we have
 	values := matched[0].vals
 	req.Name = matched[0].cmd
@@ -161,7 +161,7 @@ func (p *Parser) Encode(resps []protocol.Response) ([]byte, error) {
 	return out, nil
 }
 
-// Method that fulfils Protocl interface. It enforces processing of
+// Method that fulfils Protocol interface. It enforces processing of
 // the specified command
 func (p *Parser) Trigger(cmdName string) protocol.Response {
 	res := protocol.Response{}

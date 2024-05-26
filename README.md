@@ -28,7 +28,7 @@ vd is a tool for simulating devices that communicate using stream-based protocol
 5. Interact with the device parameters via the HTTP API on port `:8080`.
 
 # How It Works
-The `vd` tool can simulate devices that communicate using stream-based communication, i.e., those that can be integrated using StreamDevice. Creating a simulator doesn't require programming; communication is described in a file called `vdfile`.
+The `vd` tool can simulate devices that communicate using stream-based communication, i.e., those that can be integrated using Device. Creating a simulator doesn't require programming; communication is described in a file called `vdfile`.
 
 `vd` is able to lex and parse incoming messages from the client and, based on them, determine action.
 
