@@ -17,7 +17,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
-var myStreamDev = func() *StreamDevice {
+var myStreamDev = func() *Device {
 	vd := &vdfile.VDFile{
 		InTerminator:  []byte("\r\n"),
 		OutTerminator: []byte("\r\n"),

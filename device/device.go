@@ -26,7 +26,7 @@ var (
 )
 
 // Stream device store the information of a set of parameters
-type StreamDevice struct {
+type Device struct {
 	server.Handler
 	vdfile    *vdfile.VDFile
 	proto     protocol.Protocol
@@ -46,14 +46,15 @@ func createResps(vdfile *vdfile.VDFile) map[string][]string {
 }
 
 // Create a new stream device given the virtual device configuration file
-func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
+func NewDevice(vdfile *vdfile.VDFile) (*Device, error) {
 	// make sure the parser is initialize successfully
 	parser, err := stream.NewParser(vdfile)
+
 	if err != nil {
 		return nil, err
 	}
 
-	return &StreamDevice{
+	return &Device{
 		vdfile:    vdfile,
 		triggered: make(chan []byte),
 		proto:     parser,
@@ -62,7 +63,7 @@ func NewDevice(vdfile *vdfile.VDFile) (*StreamDevice, error) {
 }
 
 // Return mismatch message together with terminators
-func (s *StreamDevice) Mismatch() (res []byte) {
+func (s *Device) Mismatch() (res []byte) {
 	s.lock.Lock()
 	mis := s.vdfile.Mismatch
 	s.lock.Unlock()
@@ -84,11 +85,11 @@ func setResErr(mismatch []byte, res *protocol.Response) {
 }
 
 // Method that returns channel with value of the parameter
-func (s *StreamDevice) Triggered() chan []byte { return s.triggered }
+func (s *Device) Triggered() chan []byte { return s.triggered }
 
 // Method that fulfills Handler interface that is used by TCP server.
 // It divides bytes into understandable pieces of data and parses it.
-func (s *StreamDevice) Handle(cmd []byte) []byte {
+func (s *Device) Handle(cmd []byte) []byte {
 
 	if len(cmd) == 0 {
 		return nil
@@ -170,7 +171,7 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 }
 
 // Method to read value of the specified parameter, returns error when parameter not found
-func (s *StreamDevice) GetParameter(name string) (any, error) {
+func (s *Device) GetParameter(name string) (any, error) {
 	s.lock.Lock()
 	param, exists := s.vdfile.Params[name]
 	s.lock.Unlock()
@@ -182,7 +183,7 @@ func (s *StreamDevice) GetParameter(name string) (any, error) {
 }
 
 // Method to access value of the specified parameter and change it, return error when parameter not found
-func (s *StreamDevice) SetParameter(name string, value any) error {
+func (s *Device) SetParameter(name string, value any) error {
 	s.lock.Lock()
 	param, exists := s.vdfile.Params[name]
 	s.lock.Unlock()
@@ -194,7 +195,7 @@ func (s *StreamDevice) SetParameter(name string, value any) error {
 }
 
 // Get delay of the specified command, return error when command not found
-func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
+func (s *Device) GetCommandDelay(name string) (time.Duration, error) {
 	s.lock.Lock()
 	cmd, exists := s.vdfile.Responses[name]
 	s.lock.Unlock()
@@ -206,7 +207,7 @@ func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 }
 
 // Set delay of the specified command, return error when command not found or when value cannot be converted to time.Duration
-func (s *StreamDevice) SetCommandDelay(name, val string) error {
+func (s *Device) SetCommandDelay(name, val string) error {
 	s.lock.Lock()
 	cmd, exists := s.vdfile.Responses[name]
 	s.lock.Unlock()
@@ -224,7 +225,7 @@ func (s *StreamDevice) SetCommandDelay(name, val string) error {
 }
 
 // Return mismatch message
-func (s *StreamDevice) GetMismatch() []byte {
+func (s *Device) GetMismatch() []byte {
 	s.lock.Lock()
 	mis := s.vdfile.Mismatch
 	s.lock.Unlock()
@@ -232,7 +233,7 @@ func (s *StreamDevice) GetMismatch() []byte {
 }
 
 // Method to set mismatch message, returns error when string it too long
-func (s *StreamDevice) SetMismatch(value string) error {
+func (s *Device) SetMismatch(value string) error {
 	if len(value) > MISMATCH_LIMIT {
 		return fmt.Errorf("%w: %s", ErrMismatchTooLong, value)
 	}
@@ -244,7 +245,7 @@ func (s *StreamDevice) SetMismatch(value string) error {
 
 // Method that cause that value of the parameter associated with the specified command is sent directly via TCP server to connected client.
 // It returns an error when there is no client connected to TCP server or when parameter was not found.
-func (s *StreamDevice) Trigger(cmdName string) error {
+func (s *Device) Trigger(cmdName string) error {
 	s.lock.Lock()
 	_, exists := s.resMap[cmdName]
 	s.lock.Unlock()
@@ -282,7 +283,7 @@ func (s *StreamDevice) Trigger(cmdName string) error {
 }
 
 // Method to delay response generation
-func (s *StreamDevice) delayRes(d time.Duration) {
+func (s *Device) delayRes(d time.Duration) {
 	if d == 0 {
 		return
 	}
