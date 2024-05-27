@@ -9,12 +9,13 @@ import (
 )
 
 var setMismatchCmd = &cobra.Command{
-	Use:   "mismatch [value]",
+	Use:   "mismatch <value>",
 	Args:  cobra.ExactArgs(1),
 	Short: "Command to set mismatch message",
 	Long: `This command sets value of global mismatch. 
 It communicates with REST API of the simulator and using
 HTTP POST verb modifies value of the mismatch message.
+For Modbus protocol this feature is not supported.
 Examples:
 	vd set mismatch "wrong parameter"
 	vd set mismatch error

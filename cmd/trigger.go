@@ -15,6 +15,7 @@ var triggerCmd = &cobra.Command{
 	Short: "Command to trigger the sending of the parameter value to the client ",
 	Long: `This commands causes sending the current value of the specified parameter to the
 connected TCP client. As a argument it is required to pass corresponding getter command name.
+For Modbus protocol this feature is not supported.
 Examples:
 	vd trigger get_current
 	vd trigger get_voltage --apiAddr 127.0.0.1:7070

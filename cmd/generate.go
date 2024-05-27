@@ -6,10 +6,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var availableProtocols = []string{"stream", "modbus"}
+
 var generateCmd = &cobra.Command{
-	Use:   "generate [filename]",
-	Args:  cobra.ExactArgs(1),
-	Short: "Generate example of config file",
+	Use:       "generate <protocol type>",
+	ValidArgs: availableProtocols,
+	Args:      cobra.ExactArgs(1),
+	Short:     "Generate example of config file",
 	Long: `This commands generate an example of config file in the current directory.
 Usage:
 	vd generate
