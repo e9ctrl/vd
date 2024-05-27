@@ -87,9 +87,55 @@ func (c *Client) GetCommandDelay(commandName string) (time.Duration, error) {
 	return time.ParseDuration(string(body))
 }
 
+// Get global delay value via exposed REST API with HTTP Get query.
+func (c *Client) GetGlobalDelay() (time.Duration, error) {
+	resp, err := http.Get("http://" + c.url + "/delay")
+	if err != nil {
+		return 0, err
+	}
+
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("API error %s", body)
+	}
+
+	return time.ParseDuration(string(body))
+}
+
 // Set command delay via exposed REST aPI with HTTP Post query.
 func (c *Client) SetCommandDelay(commandName, value string) error {
 	resp, err := http.Post("http://"+c.url+"/delay/"+commandName+"/"+value, "text/plain", nil)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("API error %s", body)
+	}
+
+	return nil
+}
+
+// Set global delay via exposed REST aPI with HTTP Post query.
+func (c *Client) SetGlobalDelay(value string) error {
+	resp, err := http.Post("http://"+c.url+"/delay/"+value, "text/plain", nil)
 	if err != nil {
 		return err
 	}

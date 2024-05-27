@@ -37,6 +37,7 @@ func init() {
 	}
 
 	config.Mismatch = "Wrong query"
+	config.Delay = "10s"
 	// vdfile with changed mismatch message and delays
 	vdfileTestStream = config
 
@@ -45,7 +46,8 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	// vdfile with changed delay
+	// vdfile with changed global delay
+	configMod.Delay = "2s"
 	vdfileTestModbus = configMod
 }
 
@@ -272,6 +274,182 @@ func TestGetCommandDelayStream(t *testing.T) {
 	}
 }
 
+func TestGetGlobalDelayStream(t *testing.T) {
+	t.Parallel()
+	vdfile, err := vdfile.ReadVDFileStreamFromConfig(vdfileTestStream)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dev, err := device.NewDevice(vdfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a := &Api{
+		d: dev,
+	}
+
+	ts := newTestServer(t, a.routes())
+
+	defer ts.Close()
+
+	expected := `10s`
+	code, _, body := ts.get(t, "/delay")
+	if code != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			code, http.StatusOK)
+	}
+	if string(body) != expected {
+		t.Errorf("handler returned unexpected body: got\n %s want\n %v",
+			body, expected)
+	}
+}
+
+func TestGetGlobalDelayModbus(t *testing.T) {
+	t.Parallel()
+	vdfile, err := vdfile.ReadVDFileModbusFromConfig(vdfileTestModbus)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dev, err := device.NewDevice(vdfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a := &Api{
+		d: dev,
+	}
+
+	ts := newTestServer(t, a.routes())
+
+	defer ts.Close()
+
+	expected := `2s`
+	code, _, body := ts.get(t, "/delay")
+	if code != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			code, http.StatusOK)
+	}
+	if string(body) != expected {
+		t.Errorf("handler returned unexpected body: got\n %s want\n %v",
+			body, expected)
+	}
+}
+
+func TestSetGlobalDelayStream(t *testing.T) {
+	t.Parallel()
+	vdfile, err := vdfile.ReadVDFileStreamFromConfig(vdfileTestStream)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dev, err := device.NewDevice(vdfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a := &Api{
+		d: dev,
+	}
+
+	ts := newTestServer(t, a.routes())
+
+	defer ts.Close()
+
+	tests := []struct {
+		name       string
+		set        string
+		expSet     string
+		expSetCode int
+		expGet     string
+		expGetCode int
+	}{
+		{"set delay", "20s", "Global delay set successfully", http.StatusOK, "20s", http.StatusOK},
+		{"set wrong delay value", "10test", "Error: time: unknown unit \"test\" in duration \"10test\"", http.StatusInternalServerError, "20s", http.StatusOK},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			code, _, body := ts.set(t, "/delay/"+tt.set)
+			if code != tt.expSetCode {
+				t.Errorf("handler returned wrong status code: got %v want %v",
+					code, tt.expSetCode)
+			}
+			if string(body) != tt.expSet {
+				t.Errorf("handler returned unexpected body: got\n %s want\n %v",
+					body, tt.expSet)
+			}
+
+			code, _, body = ts.get(t, "/delay")
+			if code != tt.expGetCode {
+				t.Errorf("handler returned wrong status code: got %v want %v",
+					code, tt.expGetCode)
+			}
+			if string(body) != tt.expGet {
+				t.Errorf("handler returned unexpected body: got\n %s want\n %v",
+					body, tt.expGet)
+			}
+		})
+	}
+}
+
+func TestSetGlobalDelayModbus(t *testing.T) {
+	t.Parallel()
+	vdfile, err := vdfile.ReadVDFileModbusFromConfig(vdfileTestModbus)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dev, err := device.NewDevice(vdfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	a := &Api{
+		d: dev,
+	}
+
+	ts := newTestServer(t, a.routes())
+
+	defer ts.Close()
+
+	tests := []struct {
+		name       string
+		set        string
+		expSet     string
+		expSetCode int
+		expGet     string
+		expGetCode int
+	}{
+		{"set delay", "20s", "Global delay set successfully", http.StatusOK, "20s", http.StatusOK},
+		{"set wrong delay value", "10test", "Error: time: unknown unit \"test\" in duration \"10test\"", http.StatusInternalServerError, "20s", http.StatusOK},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			code, _, body := ts.set(t, "/delay/"+tt.set)
+			if code != tt.expSetCode {
+				t.Errorf("handler returned wrong status code: got %v want %v",
+					code, tt.expSetCode)
+			}
+			if string(body) != tt.expSet {
+				t.Errorf("handler returned unexpected body: got\n %s want\n %v",
+					body, tt.expSet)
+			}
+
+			code, _, body = ts.get(t, "/delay")
+			if code != tt.expGetCode {
+				t.Errorf("handler returned wrong status code: got %v want %v",
+					code, tt.expGetCode)
+			}
+			if string(body) != tt.expGet {
+				t.Errorf("handler returned unexpected body: got\n %s want\n %v",
+					body, tt.expGet)
+			}
+		})
+	}
+}
+
 func TestSetCommandDelayStream(t *testing.T) {
 	t.Parallel()
 	vdfile, err := vdfile.ReadVDFileStreamFromConfig(vdfileTestStream)
@@ -349,12 +527,12 @@ func TestGetMismatchModbus(t *testing.T) {
 	ts := newTestServer(t, a.routes())
 
 	defer ts.Close()
-	expected := ``
+	expected := `Error: feature not supported`
 
 	code, _, body := ts.get(t, "/mismatch")
-	if code != http.StatusOK {
+	if code != http.StatusInternalServerError {
 		t.Errorf("handler returned wrong status code: got %v want %v",
-			code, http.StatusOK)
+			code, http.StatusInternalServerError)
 	}
 	if string(body) != expected {
 		t.Errorf("handler returned unexpected body: got\n %s want\n %v",
@@ -382,7 +560,6 @@ func TestSetMismatchModbus(t *testing.T) {
 
 	defer ts.Close()
 	expectedSet := `Error: feature not supported`
-	expectedGet := ``
 
 	code, _, body := ts.set(t, "/mismatch/found error")
 	if code != http.StatusInternalServerError {
@@ -392,16 +569,6 @@ func TestSetMismatchModbus(t *testing.T) {
 	if string(body) != expectedSet {
 		t.Errorf("handler returned unexpected body: got\n %s want\n %v",
 			body, expectedSet)
-	}
-
-	code, _, body = ts.get(t, "/mismatch")
-	if code != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			code, http.StatusOK)
-	}
-	if string(body) != expectedGet {
-		t.Errorf("handler returned unexpected body: got\n %s want\n %v",
-			body, expectedGet)
 	}
 }
 

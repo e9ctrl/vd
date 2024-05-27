@@ -10,7 +10,7 @@ import (
 )
 
 var setCmd = &cobra.Command{
-	Use:   "set [parameter name] [value]",
+	Use:   "set <parameter name> <value>",
 	Args:  cobra.ExactArgs(2),
 	Short: "Command to set value of any parameter",
 	Long: `The command sets value of any parameter.

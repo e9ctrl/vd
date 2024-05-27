@@ -13,8 +13,6 @@ import (
 	"github.com/e9ctrl/vd/protocol"
 	"github.com/e9ctrl/vd/protocol/stream"
 	"github.com/e9ctrl/vd/vdfile"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 var myStreamDev = func() *StreamDevice {
@@ -35,7 +33,6 @@ var dev = myStreamDev()
 
 func TestMain(m *testing.M) {
 	params := map[string]parameter.Parameter{}
-	commands := map[string]*command.Command{}
 	reqs := map[string]*command.Request{}
 	resps := map[string]*command.Response{}
 
@@ -45,20 +42,20 @@ func TestMain(m *testing.M) {
 	}
 	params["current"] = p1
 
-	cmdGetCurrent := &command.Command{
+	reqGetCurrent := &command.Request{
 		Name: "get_current",
-		Req:  []byte("CUR?"),
-		Res:  []byte("CUR {%d:current}"),
+		Cmd:  []byte("CUR?"),
+	}
+
+	resGetCurrent := &command.Response{
+		Name: "return_get_current",
+		Cmd:  []byte("CUR {%d:current}"),
+		Req:  "get_current",
 		Dly:  time.Second,
 	}
-	commands[cmdGetCurrent.Name] = cmdGetCurrent
 
-	cmdSetCurrent := &command.Command{
-		Name: "set_current",
-		Req:  []byte("CUR {%d:current}"),
-		Res:  []byte("OK"),
-	}
-	commands[cmdSetCurrent.Name] = cmdSetCurrent
+	reqs[reqGetCurrent.Name] = reqGetCurrent
+	resps[resGetCurrent.Name] = resGetCurrent
 
 	p2, err := parameter.New(24.10, "", "float64")
 	if err != nil {
@@ -66,20 +63,34 @@ func TestMain(m *testing.M) {
 	}
 	params["psi"] = p2
 
-	cmdGetPsi := &command.Command{
+	reqGetPsi := &command.Request{
 		Name: "get_psi",
-		Req:  []byte("PSI?"),
-		Res:  []byte("PSI {%3.2f:psi}"),
+		Cmd:  []byte("PSI?"),
 	}
-	commands[cmdGetPsi.Name] = cmdGetPsi
 
-	cmdSetPsi := &command.Command{
-		Name: "set_psi",
-		Req:  []byte("PSI {%3.2f:psi}"),
-		Res:  []byte("PSI {%3.2f:psi} OK"),
+	resGetPsi := &command.Response{
+		Name: "return_get_psi",
+		Req:  "get_psi",
+		Cmd:  []byte("PSI {%3.2f:psi}"),
 		Dly:  time.Millisecond * 10,
 	}
-	commands[cmdSetPsi.Name] = cmdSetPsi
+
+	reqs[reqGetPsi.Name] = reqGetPsi
+	resps[resGetPsi.Name] = resGetPsi
+
+	reqSetPsi := &command.Request{
+		Name: "set_psi",
+		Cmd:  []byte("PSI {%3.2f:psi}"),
+	}
+	resSetPsi := &command.Response{
+		Name: "return_set_psi",
+		Req:  "set_psi",
+		Cmd:  []byte("PSI {%3.2f:psi} OK"),
+		Dly:  time.Millisecond * 10,
+	}
+
+	reqs[reqSetPsi.Name] = reqSetPsi
+	resps[resSetPsi.Name] = resSetPsi
 
 	p3, err := parameter.New(5.342, "", "float")
 	if err != nil {
@@ -87,19 +98,32 @@ func TestMain(m *testing.M) {
 	}
 	params["voltage"] = p3
 
-	cmdGetVoltage := &command.Command{
+	reqGetVoltage := &command.Request{
 		Name: "get_voltage",
-		Req:  []byte("VOLT?"),
-		Res:  []byte("VOLT {%.3f:voltage}"),
+		Cmd:  []byte("VOLT?"),
 	}
-	commands[cmdGetVoltage.Name] = cmdGetVoltage
 
-	cmdSetVoltage := &command.Command{
-		Name: "set_voltage",
-		Req:  []byte("VOLT {%.3f:voltage}"),
-		Res:  []byte("VOLT {%.3f:voltage} OK"),
+	resGetVoltage := &command.Response{
+		Name: "return_get_voltage",
+		Req:  "get_voltage",
+		Cmd:  []byte("VOLT {%.3f:voltage}"),
 	}
-	commands[cmdSetVoltage.Name] = cmdSetVoltage
+
+	reqs[reqGetVoltage.Name] = reqGetVoltage
+	resps[resGetVoltage.Name] = resGetVoltage
+
+	reqSetVoltage := &command.Request{
+		Name: "set_voltage",
+		Cmd:  []byte("VOLT {%.3f:voltage}"),
+	}
+	resSetVoltage := &command.Response{
+		Name: "return_set_voltage",
+		Req:  "set_voltage",
+		Cmd:  []byte("VOLT {%.3f:voltage} OK"),
+	}
+
+	reqs[reqSetVoltage.Name] = reqSetVoltage
+	resps[resSetVoltage.Name] = resSetVoltage
 
 	p4, err := parameter.New(24.20, "", "float")
 	if err != nil {
@@ -107,18 +131,26 @@ func TestMain(m *testing.M) {
 	}
 	params["max"] = p4
 
-	cmdGetMax := &command.Command{
+	reqGetMax := &command.Request{
 		Name: "get_max",
-		Req:  []byte("get ch1 max?"),
-		Res:  []byte("ch1 max{%2.2f:max}"),
+		Cmd:  []byte("get ch1 max?"),
 	}
-	commands[cmdGetMax.Name] = cmdGetMax
 
-	cmdSetMax := &command.Command{
-		Name: "set_max",
-		Req:  []byte("set ch1 max{%2.2f:max}"),
+	resGetMax := &command.Response{
+		Name: "return_get_max",
+		Req:  "get_max",
+		Cmd:  []byte("ch1 max{%2.2f:max}"),
 	}
-	commands[cmdSetMax.Name] = cmdSetMax
+
+	reqs[reqGetMax.Name] = reqGetMax
+	resps[resGetMax.Name] = resGetMax
+
+	reqSetMax := &command.Request{
+		Name: "set_max",
+		Cmd:  []byte("set ch1 max{%2.2f:max}"),
+	}
+
+	reqs[reqSetMax.Name] = reqSetMax
 
 	p5, err := parameter.New("v1.0.0", "", "string")
 	if err != nil {
@@ -126,12 +158,19 @@ func TestMain(m *testing.M) {
 	}
 	params["version"] = p5
 
-	cmdGetVersion := &command.Command{
+	reqGetVersion := &command.Request{
 		Name: "get_version",
-		Req:  []byte("ver?"),
-		Res:  []byte("{%s:version}"),
+		Cmd:  []byte("ver?"),
 	}
-	commands[cmdGetVersion.Name] = cmdGetVersion
+
+	resGetVersion := &command.Response{
+		Name: "return_get_version",
+		Req:  "get_version",
+		Cmd:  []byte("{%s:version}"),
+	}
+
+	reqs[reqGetVersion.Name] = reqGetVersion
+	resps[resGetVersion.Name] = resGetVersion
 
 	p6, err := parameter.New(53.4, "", "float")
 	if err != nil {
@@ -139,26 +178,45 @@ func TestMain(m *testing.M) {
 	}
 	params["offset"] = p6
 
-	cmdGetOffset := &command.Command{
+	reqGetOffset := &command.Request{
 		Name: "get_offset",
-		Req:  []byte("get ch1 off"),
-		Res:  []byte("ch1 off {%.1f:offset}"),
+		Cmd:  []byte("get ch1 off"),
 	}
-	commands[cmdGetOffset.Name] = cmdGetOffset
 
-	cmdTwoParams := &command.Command{
+	resGetOffset := &command.Response{
+		Name: "return_get_offset",
+		Req:  "get_offset",
+		Cmd:  []byte("ch1 off {%.1f:offset}"),
+	}
+
+	reqs[reqGetOffset.Name] = reqGetOffset
+	resps[resGetOffset.Name] = resGetOffset
+
+	reqTwoParams := &command.Request{
 		Name: "get_two_params",
-		Req:  []byte("get two"),
-		Res:  []byte("{%s:version} {%.1f:offset}"),
+		Cmd:  []byte("get two"),
 	}
-	commands[cmdTwoParams.Name] = cmdTwoParams
+	resTwoParams := &command.Response{
+		Name: "return_get_two_params",
+		Req:  "get_two_params",
+		Cmd:  []byte("{%s:version} {%.1f:offset}"),
+	}
 
-	cmdTwoParams2 := &command.Command{
+	reqs[reqTwoParams.Name] = reqTwoParams
+	resps[resTwoParams.Name] = resTwoParams
+
+	reqTwoParams2 := &command.Request{
 		Name: "get_two_params_2",
-		Req:  []byte("get two 2"),
-		Res:  []byte("ver: {%s:version} off: {%.1f:offset}"),
+		Cmd:  []byte("get two 2"),
 	}
-	commands[cmdTwoParams2.Name] = cmdTwoParams2
+	resTwoParams2 := &command.Response{
+		Name: "return_get_two_params_2",
+		Req:  "get_two_params_2",
+		Cmd:  []byte("ver: {%s:version} off: {%.1f:offset}"),
+	}
+
+	reqs[reqTwoParams2.Name] = reqTwoParams2
+	resps[resTwoParams2.Name] = resTwoParams2
 
 	p7, err := parameter.New("stop", "start|stop|failed", "string")
 	if err != nil {
@@ -166,19 +224,33 @@ func TestMain(m *testing.M) {
 	}
 	params["status"] = p7
 
-	cmdGetStatus := &command.Command{
+	reqGetStatus := &command.Request{
 		Name: "get_status",
-		Req:  []byte("get status"),
-		Res:  []byte("{%s:status}"),
+		Cmd:  []byte("get status"),
 	}
-	commands[cmdGetStatus.Name] = cmdGetStatus
 
-	cmdSetStatus := &command.Command{
-		Name: "set_status",
-		Req:  []byte("set status {%s:status}"),
-		Res:  []byte("ok"),
+	resGetStatus := &command.Response{
+		Name: "return_get_status",
+		Req:  "get_status",
+		Cmd:  []byte("{%s:status}"),
 	}
-	commands[cmdSetStatus.Name] = cmdSetStatus
+
+	reqs[reqGetStatus.Name] = reqGetStatus
+	resps[resGetStatus.Name] = resGetStatus
+
+	reqSetStatus := &command.Request{
+		Name: "set_status",
+		Cmd:  []byte("set status {%s:status}"),
+	}
+
+	resSetStatus := &command.Response{
+		Name: "return_set_status",
+		Req:  "set_status",
+		Cmd:  []byte("ok"),
+	}
+
+	reqs[reqSetStatus.Name] = reqSetStatus
+	resps[resSetStatus.Name] = resSetStatus
 
 	p8, err := parameter.New("true", "", "bool")
 	if err != nil {
@@ -186,19 +258,26 @@ func TestMain(m *testing.M) {
 	}
 	params["mode"] = p8
 
-	cmdGetMode := &command.Command{
+	reqGetMode := &command.Request{
 		Name: "get_mode",
-		Req:  []byte("get ch1 mode"),
-		Res:  []byte("{%t:mode}"),
+		Cmd:  []byte("get ch1 mode"),
 	}
-	commands[cmdGetMode.Name] = cmdGetMode
 
-	cmdSetMode := &command.Command{
+	resGetMode := &command.Response{
+		Name: "return_get_mode",
+		Req:  "get_mode",
+		Cmd:  []byte("{%t:mode}"),
+	}
+
+	reqs[reqGetMode.Name] = reqGetMode
+	resps[resGetMode.Name] = resGetMode
+
+	reqSetMode := &command.Request{
 		Name: "set_mode",
-		Req:  []byte("set ch1 {%t:mode}"),
+		Cmd:  []byte("set ch1 {%t:mode}"),
 	}
 
-	commands[cmdSetMode.Name] = cmdSetMode
+	reqs[reqSetMode.Name] = reqSetMode
 
 	reqSpeed := &command.Request{
 		Name: "get_speed",
@@ -261,20 +340,34 @@ func TestMain(m *testing.M) {
 	}
 	params["speed"] = p16
 
-	cmdGetCurrent2 := &command.Command{
+	reqGetCurrent2 := &command.Request{
 		Name: "get_current2",
-		Req:  []byte("CUR2?"),
-		Res:  []byte("CUR2 {%d:current2}"),
+		Cmd:  []byte("CUR2?"),
+	}
+
+	resGetCurrent2 := &command.Response{
+		Name: "return_get_current2",
+		Req:  "get_current2",
+		Cmd:  []byte("CUR2 {%d:current2}"),
 		Dly:  time.Second,
 	}
-	commands[cmdGetCurrent2.Name] = cmdGetCurrent2
 
-	cmdSetCurrent2 := &command.Command{
+	reqs[reqGetCurrent2.Name] = reqGetCurrent2
+	resps[resGetCurrent2.Name] = resGetCurrent2
+
+	reqSetCurrent2 := &command.Request{
 		Name: "set_current2",
-		Req:  []byte("CUR2 {%d:current2}"),
-		Res:  []byte("OK"),
+		Cmd:  []byte("CUR2 {%d:current2}"),
 	}
-	commands[cmdSetCurrent2.Name] = cmdSetCurrent2
+
+	resSetCurrent2 := &command.Response{
+		Name: "return_set_current2",
+		Req:  "set_current2",
+		Cmd:  []byte("OK"),
+	}
+
+	reqs[reqSetCurrent2.Name] = reqSetCurrent2
+	resps[resSetCurrent2.Name] = resSetCurrent2
 
 	p15, err := parameter.New(5.342, "", "float")
 	if err != nil {
@@ -282,37 +375,49 @@ func TestMain(m *testing.M) {
 	}
 	params["voltage2"] = p15
 
-	cmdGetVoltage2 := &command.Command{
+	reqGetVoltage2 := &command.Request{
 		Name: "get_voltage2",
-		Req:  []byte("VOLT2?"),
-		Res:  []byte("VOLT2 {%.3f:voltage2}"),
+		Cmd:  []byte("VOLT2?"),
 	}
-	commands[cmdGetVoltage2.Name] = cmdGetVoltage2
 
-	cmdSetVoltage2 := &command.Command{
+	resGetVoltage2 := &command.Response{
+		Name: "return_get_voltage2",
+		Req:  "get_voltage2",
+		Cmd:  []byte("VOLT2 {%.3f:voltage2}"),
+	}
+
+	reqs[reqGetVoltage2.Name] = reqGetVoltage2
+	resps[resGetVoltage2.Name] = resGetVoltage2
+
+	reqSetVoltage2 := &command.Request{
 		Name: "set_voltage2",
-		Req:  []byte("VOLT2 {%.3f:voltage2}"),
-		Res:  []byte("VOLT2 {%.3f:voltage2} OK"),
+		Cmd:  []byte("VOLT2 {%.3f:voltage2}"),
 	}
-	commands[cmdSetVoltage2.Name] = cmdSetVoltage2
 
-	cmdGetStat := &command.Command{
+	resSetVoltage2 := &command.Response{
+		Name: "return_set_volatge2",
+		Req:  "set_voltage2",
+		Cmd:  []byte("VOLT2 {%.3f:voltage2} OK"),
+	}
+
+	reqs[reqSetVoltage2.Name] = reqSetVoltage2
+	resps[resSetVoltage2.Name] = resSetVoltage2
+
+	reqGetStat := &command.Request{
 		Name: "get_stat",
-		Req:  []byte("get stat"),
-		Res:  []byte("{%s:version}\n{%.1f:offset}"),
+		Cmd:  []byte("get stat"),
 	}
-	commands[cmdGetStat.Name] = cmdGetStat
 
-	dev.vdfile.Stream.Commands = commands
+	resGetStat := &command.Response{
+		Name: "return_get_stat",
+		Req:  "get_stat",
+		Cmd:  []byte("{%s:version}\n{%.1f:offset}"),
+	}
+
+	reqs[reqGetStat.Name] = reqGetStat
+	resps[resGetStat.Name] = resGetStat
+
 	dev.vdfile.Params = params
-
-	reqsCmd, respsCmd := vdfile.CommandsToReqRes(commands)
-	for k, v := range reqsCmd {
-		reqs[k] = v
-	}
-	for k, v := range respsCmd {
-		resps[k] = v
-	}
 
 	dev.vdfile.Stream.Requests = reqs
 	dev.vdfile.Stream.Responses = resps
@@ -381,7 +486,7 @@ func TestTriggerCommand(t *testing.T) {
 		{"two params command2 ", "get_two_params_2", []byte("ver: v1.0.0 off: 53.4\r\n"), nil},
 		{"empty command", "", []byte(nil), protocol.ErrCommandNotFound},
 		{"wrong command", "test", []byte(nil), protocol.ErrCommandNotFound},
-		{"set command", "set_mode", []byte(nil), nil},
+		{"set command", "set_mode", []byte(nil), protocol.ErrCommandNotFound},
 	}
 
 	for _, tt := range tests {
@@ -479,7 +584,10 @@ func TestSetParameter(t *testing.T) {
 
 func TestGetMismatch(t *testing.T) {
 	t.Parallel()
-	got := dev.GetMismatch()
+	got, err := dev.GetMismatch()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	want := []byte("error")
 	if !bytes.Equal(got, want) {
 		t.Errorf("exp mismatch: %[1]s %[1]v got: %[2]s %[2]v", want, got)
@@ -520,10 +628,10 @@ func TestSetCommandDelay(t *testing.T) {
 		expVal time.Duration
 		expErr error
 	}{
-		{"get set voltage delay", "get_voltage", "300us", 300 * time.Microsecond, nil},
-		{"get set psi delay", "set_max", "20ms", 20 * time.Millisecond, nil},
+		{"get set voltage delay", "return_get_voltage", "300us", 300 * time.Microsecond, nil},
+		{"get set psi delay", "return_set_psi", "20ms", 20 * time.Millisecond, nil},
 		{"wrong command name", "set_test", "10s", 0, protocol.ErrCommandNotFound},
-		{"wrong delay value", "set_current", "test", 0, nil},
+		{"wrong delay value", "return_set_current2", "test", 0, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -598,42 +706,13 @@ func TestSetMismatch(t *testing.T) {
 			if !errors.Is(err, tt.expErr) {
 				t.Errorf("exp err: %s got: %v", tt.expErr, err)
 			}
-			got := dev.GetMismatch()
+			got, err := dev.GetMismatch()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
 			if string(got) != tt.expVal {
 				t.Errorf("exp mismatch: %s got: %s", tt.expVal, got)
 			}
 		})
-	}
-}
-
-func TestCreateResps(t *testing.T) {
-	mapExp := make(map[string][]string, len(dev.vdfile.Stream.Requests))
-	mapExp["get_current"] = []string{"get_current"}
-	mapExp["get_current2"] = []string{"get_current2"}
-	mapExp["get_max"] = []string{"get_max"}
-	mapExp["get_mode"] = []string{"get_mode"}
-	mapExp["get_stat"] = []string{"get_stat"}
-	mapExp["get_psi"] = []string{"get_psi"}
-	mapExp["get_offset"] = []string{"get_offset"}
-	mapExp["get_version"] = []string{"get_version"}
-	mapExp["get_voltage"] = []string{"get_voltage"}
-	mapExp["get_status"] = []string{"get_status"}
-	mapExp["get_two_params"] = []string{"get_two_params"}
-	mapExp["get_two_params_2"] = []string{"get_two_params_2"}
-	mapExp["get_voltage2"] = []string{"get_voltage2"}
-	mapExp["set_current"] = []string{"set_current"}
-	mapExp["set_current2"] = []string{"set_current2"}
-	mapExp["set_psi"] = []string{"set_psi"}
-	mapExp["set_max"] = []string{"set_max"}
-	mapExp["set_mode"] = []string{"set_mode"}
-	mapExp["set_status"] = []string{"set_status"}
-	mapExp["set_voltage"] = []string{"set_voltage"}
-	mapExp["set_voltage2"] = []string{"set_voltage2"}
-	mapExp["get_speed"] = []string{"return_get_speed_2", "return_get_speed_1"}
-
-	resps := createResps(dev.vdfile)
-	less := func(a, b string) bool { return a < b }
-	if diff := cmp.Diff(mapExp, resps, cmpopts.SortSlices(less)); diff != "" {
-		t.Errorf("Map responses mismatch (-want +got):\n%s", diff)
 	}
 }

@@ -10,7 +10,7 @@ import (
 )
 
 var getCmd = &cobra.Command{
-	Use:   "get [parameter name]",
+	Use:   "get <parameter name>",
 	Args:  cobra.ExactArgs(1),
 	Short: "Command to get value of any parameter",
 	Long: `This command reads value of any parameter.
