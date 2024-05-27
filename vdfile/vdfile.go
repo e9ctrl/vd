@@ -43,6 +43,7 @@ type configModbusParameter struct {
 
 // Modbus config struct, result of toml parsing
 type ConfigModbus struct {
+	Delay  string                  `toml:"delay,omitempty"`
 	Params []configModbusParameter `toml:"parameter"`
 }
 
@@ -71,6 +72,7 @@ type configStreamCommand struct {
 }
 
 type ConfigStream struct {
+	Delay         string                  `toml:"delay,omitempty"`
 	InTerminator  string                  `toml:"interm"`
 	OutTerminator string                  `toml:"outterm"`
 	Params        []configStreamParameter `toml:"parameter"`
@@ -86,7 +88,6 @@ type VDFileStream struct {
 	OutTerminator []byte
 	Requests      map[string]*command.Request
 	Responses     map[string]*command.Response
-	Commands      map[string]*command.Command
 }
 
 // VDFile struct
@@ -96,6 +97,7 @@ type VDFile struct {
 	Protocol string
 	Params   map[string]parameter.Parameter
 	Mismatch []byte
+	Delay    time.Duration
 }
 
 // Read VDFile from disk from the given filepath
@@ -136,30 +138,6 @@ func ReadVDFile(path string) (*VDFile, error) {
 	}
 }
 
-func CommandsToReqRes(commands map[string]*command.Command) (map[string]*command.Request, map[string]*command.Response) {
-	reqs := make(map[string]*command.Request, 0)
-	resps := make(map[string]*command.Response, 0)
-
-	for _, cmd := range commands {
-		currentReq := &command.Request{
-			Name: cmd.Name,
-			Cmd:  []byte(cmd.Req),
-		}
-
-		reqs[cmd.Name] = currentReq
-
-		currentRes := &command.Response{
-			Name: cmd.Name,
-			Req:  cmd.Name,
-			Cmd:  []byte(cmd.Res),
-			Dly:  cmd.Dly,
-		}
-
-		resps[cmd.Name] = currentRes
-	}
-	return reqs, resps
-}
-
 // Creates vdfile struct based on Config containing result of TOML file parsing
 func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFile, error) {
 	vd := &VDFile{
@@ -167,7 +145,6 @@ func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFile, error) {
 	}
 
 	vdStream := &VDFileStream{
-		Commands:  make(map[string]*command.Command, 0),
 		Requests:  make(map[string]*command.Request, 0),
 		Responses: make(map[string]*command.Response, 0),
 	}
@@ -214,19 +191,20 @@ func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFile, error) {
 	}
 
 	for _, cmd := range config.Commands {
-		currentCmd := &command.Command{
+		currentReq := &command.Request{
 			Name: cmd.Name,
-			Req:  []byte(cmd.Req),
-			Res:  []byte(cmd.Res),
+			Cmd:  []byte(cmd.Req),
+		}
+		vdStream.Requests[cmd.Name] = currentReq
+
+		currentRes := &command.Response{
+			Name: cmd.Name,
+			Req:  cmd.Name,
+			Cmd:  []byte(cmd.Res),
 			Dly:  parseDelays(cmd.Dly),
 		}
-
-		vdStream.Commands[cmd.Name] = currentCmd
+		vdStream.Responses[cmd.Name] = currentRes
 	}
-
-	reqs, resps := CommandsToReqRes(vdStream.Commands)
-	vdStream.Requests = reqs
-	vdStream.Responses = resps
 
 	for _, req := range config.Requests {
 		currentReq := &command.Request{
@@ -252,6 +230,7 @@ func ReadVDFileStreamFromConfig(config ConfigStream) (*VDFile, error) {
 
 	vd.Stream = vdStream
 	vd.Protocol = "stream"
+	vd.Delay = parseDelays(config.Delay)
 
 	return vd, nil
 }
@@ -296,6 +275,7 @@ func ReadVDFileModbusFromConfig(config ConfigModbus) (*VDFile, error) {
 
 	vd.Modbus = vdMod
 	vd.Protocol = "modbus"
+	vd.Delay = parseDelays(config.Delay)
 	return vd, nil
 }
 
