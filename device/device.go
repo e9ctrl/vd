@@ -22,13 +22,14 @@ var (
 	ErrNoClient = errors.New("no client available")
 	// Error returned by SetMimsatch if new message is too long
 	ErrMismatchTooLong = errors.New("new mismatch message exceeded 255 characters limit")
-	// Error to inform that response for the request was not found
-	ErrResponseNotFound = errors.New("no response found")
 	// Error return by NewDevice when protocol type is now known
 	ErrNotKnownProto = errors.New("not know protocol type")
 	// Error to inform that method is not implemented by certain protocol
 	ErrNotSupported = errors.New("feature not supported")
 )
+
+// Inform that response for the request was not found
+const ResponseNotFound = "no response found"
 
 // Stream device store the information of a set of parameters
 type StreamDevice struct {
@@ -151,9 +152,9 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 			// temporary solution
 			resps[i].Name = name[0]
 			resps[i].ReqName = r.Name
+			resps[i].Delay = s.getDelay(name[0])
 		} else {
-			log.ERR(ErrResponseNotFound)
-			setResErr(mismatch, &resps[i])
+			log.INF(ResponseNotFound)
 		}
 
 		// init values
@@ -178,17 +179,9 @@ func (s *StreamDevice) Handle(cmd []byte) []byte {
 		return nil
 	}
 
-	//using first command to determine the delay
-	cmdName := resps[0].Name
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	if cmdName != "" && s.vdfile != nil {
-		if cmd, exist := s.vdfile.Stream.Commands[cmdName]; exist {
-			s.delayRes(cmd.Dly)
-		} else {
-			log.ERR("command name %s not found", cmdName)
-		}
-	}
+	// delay response
+	s.delayRes(resps[0].Delay)
+
 	return buf
 }
 
@@ -233,6 +226,14 @@ func (s *StreamDevice) GetCommandDelay(name string) (time.Duration, error) {
 	return 0, ErrNotKnownProto
 }
 
+// Get global delay
+func (s *StreamDevice) GetGlobalDelay() time.Duration {
+	s.lock.Lock()
+	del := s.vdfile.Delay
+	s.lock.Unlock()
+	return del
+}
+
 // Set delay of the specified command, return error when command not found or when value cannot be converted to time.Duration
 func (s *StreamDevice) SetCommandDelay(name, val string) error {
 	if s.protocolTyp == "stream" {
@@ -253,6 +254,18 @@ func (s *StreamDevice) SetCommandDelay(name, val string) error {
 		return ErrNotSupported
 	}
 	return ErrNotKnownProto
+}
+
+// Set global delay that will overwrite command delays
+func (s *StreamDevice) SetGlobalDelay(val string) error {
+	if val, err := time.ParseDuration(val); err == nil {
+		s.lock.Lock()
+		s.vdfile.Delay = val
+		s.lock.Unlock()
+		return nil
+	} else {
+		return err
+	}
 }
 
 // Return mismatch message
@@ -336,4 +349,22 @@ func (s *StreamDevice) delayRes(d time.Duration) {
 
 	log.DLY("delaying response by", d)
 	time.Sleep(d)
+}
+
+// Method to determine the final delay value
+func (s *StreamDevice) getDelay(name string) time.Duration {
+	if s.protocolTyp == "stream" {
+		s.lock.Lock()
+		dly := s.vdfile.Stream.Responses[name].Dly
+		s.lock.Unlock()
+		if dly != 0 {
+			return dly
+		}
+	} else {
+		s.lock.Lock()
+		dly := s.vdfile.Delay
+		s.lock.Unlock()
+		return dly
+	}
+	return 0
 }
