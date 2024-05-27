@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"errors"
+	"time"
 )
 
 var (
@@ -27,6 +28,7 @@ type Response struct {
 	ReqName string
 	Params  map[string]any
 	Err     ResponseErr
+	Delay   time.Duration
 }
 
 type RequestTyp int
