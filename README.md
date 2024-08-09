@@ -89,13 +89,11 @@ and finally describes parameters available in the simulated device:
   name = "return_get_speed_1"
   req = "get_speed"
   res = "High speed: {%f:speed}"
-  when = "{%f:speed} > 20"
 
 [[response]]
   name = "return_get_speed_2"
   req = "get_speed"
   res = "Low speed: {%f:speed}"
-  when = "{%f:speed} <= 20"
 ```
 
 Here's a breakdown of the configuration:
@@ -106,7 +104,6 @@ Here's a breakdown of the configuration:
 * `res`:  The response the simulated device sends to the client for the request.
 * `dly`:  Response delay with time unit.
 * `opt`: (Optional) Limits the range of values a parameter can take (see below for example of usage).
-* `when`: (Optional) Tells the simulator when to use secified response.
 
 
 Below is a sample configuration:
@@ -193,13 +190,11 @@ outterm = "CR LF"
   name = "return_get_speed_1"
   req = "get_speed"
   res = "High speed: {%f:speed}"
-  when = "{%f:speed} > 20"
 
 [[response]]
   name = "return_get_speed_2"
   req = "get_speed"
   res = "Low speed: {%f:speed}"
-  when = "{%f:speed} <= 20"
 
 ```
 
